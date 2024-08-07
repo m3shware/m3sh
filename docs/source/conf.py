@@ -111,4 +111,4 @@ html_favicon = 'icon/ghems_red.ico'
 html_static_path = ['_static']
 
 # Do not offer to show html source files.
-html_show_sourcelink = False
+html_show_sourcelink = True
