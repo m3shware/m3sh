@@ -12,7 +12,7 @@ on:
 
 jobs:  
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22-04
     permissions:
         contents: write
     steps:
@@ -20,7 +20,7 @@ jobs:
       - uses: actions/setup-python@v5
       
       - name: Install dependencies
-        run: pip install numpy sphinx==4.3.2 sphinx_rtd_theme
+        run: pip install numpy sphinx sphinx_rtd_theme
 
       - name: Sphinx build
         run: sphinx-build docs/source docs/build
