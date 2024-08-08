@@ -1,14 +1,8 @@
-name: Build HTML documentation
+name: build-sphinx-rtd
 
 on:
-  # Triggers the workflow on push or pull request events but only for the "main" branch
   push:
     branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
-
-  # Allows you to run this workflow manually from the Actions tab
-  workflow_dispatch:
 
 jobs:  
   build:
@@ -18,11 +12,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
-        with:
-          python-version: '3.10' 
       
       - name: Install dependencies
-        run: pip install numpy sphinx sphinx_rtd_theme==1.1.0
+        run: pip install numpy sphinx sphinx_rtd_theme
 
       - name: Sphinx build
         run: sphinx-build docs/source docs/build
@@ -31,7 +23,7 @@ jobs:
         uses: peaceiris/actions-gh-pages@v4
         if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
         with:
-          publish_branch: gh-pages
+          publish_branch: html
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: docs/build
           force_orphan: true
