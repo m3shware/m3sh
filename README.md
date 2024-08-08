@@ -21,6 +21,9 @@ to the search path. Assuming the directory structure
     │
     ┆
     └── m3sh/
+        ├── hds.py
+        ┆
+        └── ...
 
 the latter can be achieved on a per project basis by adding the following
 lines to a Python script (e.g. ``project1.py``) before importing any modules
@@ -34,11 +37,8 @@ from the m3sh package:
 If the location of the m3sh package folder relative to your project
 folder is different, the path needs to be adapted accordingly. See the
 [sys.path](https://docs.python.org/3/library/sys_path_init.html)
-documentation for more details.
-
-Alternatively you may set the ``PYTHONPATH`` environment variable.
-Setting environment variables depends on the used operating system
-and is not described here.
+documentation for more details. Alternatively you may set the
+``PYTHONPATH`` environment variable.
 
 ## Dependencies
 
