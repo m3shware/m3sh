@@ -530,7 +530,7 @@ class Mesh:
         Raises
         ------
         ValueError
-            If an attribute of the same name already exists.
+            If a data block of the same name already exists.
 
 
         To add a vector field (one vector per vertex) to a mesh we can
@@ -591,8 +591,8 @@ class Mesh:
         if hasattr(self, private_name):
             raise ValueError(f"data block '{name}' already exists")
 
-        if hasattr(Vertex, attr):
-            raise ValueError(f"vertex attribute '{attr}' already in use")
+        # if hasattr(Vertex, attr):
+        #     raise ValueError(f"vertex attribute '{attr}' already in use")
 
         setattr(self, private_name, data)
 
@@ -770,7 +770,7 @@ class Mesh:
         Raises
         ------
         ValueError
-            If an attribute of the same name already exists.
+            If a data block of the same name already exists.
 
         Note
         ----
@@ -805,8 +805,8 @@ class Mesh:
         if hasattr(self, private_name):
             raise ValueError(f"data block '{name}' already exists")
 
-        if hasattr(Face, attr):
-            raise ValueError(f"face attribute '{attr}' already in use")
+        # if hasattr(Face, attr):
+        #     raise ValueError(f"face attribute '{attr}' already in use")
 
         setattr(self, private_name, data)
 
@@ -840,7 +840,7 @@ class Mesh:
         Raises
         ------
         ValueError
-            If an attribute of the same name already exists or the
+            If a data block of same name already exists or the
             data block is not a dictionary instance.
 
         Note
@@ -878,8 +878,8 @@ class Mesh:
         if hasattr(self, private_name):
             raise ValueError(f"data block '{name}' already exists")
 
-        if hasattr(Halfedge, attr):
-            raise ValueError(f"halfedge attribute '{attr}' already in use")
+        # if hasattr(Halfedge, attr):
+        #     raise ValueError(f"halfedge attribute '{attr}' already in use")
 
         setattr(self, private_name, data)
 
