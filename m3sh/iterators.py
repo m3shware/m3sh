@@ -75,7 +75,7 @@ def verts(obj):
     return obj._viter()
 
 
-def verts_bfs(item, stop=None, start=0):
+def _verts_bfs(item, stop=None, start=0):
     """ Breadth-first vertex neighborhood iterator.
 
     Breadth-first traversal of vertex neighborhood of a mesh item.
@@ -129,7 +129,7 @@ def verts_bfs(item, stop=None, start=0):
                 assert level[w] <= d + 1
 
 
-def verts_dij(item, stop=None, start=0.0):
+def _verts_dij(item, stop=None, start=0.0):
     """ Dijkstra based vertex neighborhood iterator.
 
     Visit the vertex neighborhood of a mesh item in a Dijkstra like
@@ -197,7 +197,7 @@ def verts_dij(item, stop=None, start=0.0):
                 queue.push(w, d + edge_len)
 
 
-def verts_frozen(obj):
+def _verts_frozen(obj):
     """ Vertex iterator.
     """
     return iter(list(obj._viter()))
@@ -238,7 +238,7 @@ def halfs(obj):
     return obj._hiter()
 
 
-def halfs_frozen(obj):
+def _halfs_frozen(obj):
     """ Halfedge iterator.
     """
     return iter(list(obj._hiter()))
@@ -263,7 +263,7 @@ def edges(mesh):
     return mesh._eiter()
 
 
-def edges_frozen(mesh):
+def _edges_frozen(mesh):
     """ Edge iterator.
     """
     return iter(list(mesh._eiter()))
@@ -306,7 +306,7 @@ def faces(obj):
     return obj._fiter()
 
 
-def faces_bfs(item, stop=None, start=0):
+def _faces_bfs(item, stop=None, start=0):
     """ Breadth-first face neighborhood iterator.
 
     Breadth-first traversal of the face neighborhood of a mesh
@@ -364,7 +364,7 @@ def faces_bfs(item, stop=None, start=0):
                     yield f, level[f]
 
 
-def faces_lnk(item):
+def _faces_lnk(item):
     """ Face iterator.
 
     Counter-clockwise traversal of all faces that share an edge or a
@@ -382,7 +382,7 @@ def faces_lnk(item):
     return item._fiter_lnk()
 
 
-def faces_frozen(obj):
+def _faces_frozen(obj):
     """ Face iterator.
     """
     return iter(list(obj._fiter()))

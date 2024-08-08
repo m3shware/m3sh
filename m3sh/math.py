@@ -73,7 +73,7 @@ def dot(u, v):
     Returns
     -------
     float
-        Inner product :math:`\mathbf{u}^T \mathbf{v}`.
+        Inner product of vectors `u` and `v`.
 
     Note
     ----
@@ -133,7 +133,7 @@ def unit(u):
     return u
 
 
-def rotate(x, a, phi, sin_phi=None):
+def rotate(x, a, phi, sinphi=None):
     r""" Rotate vector around axis.
 
     Rotation is performed via Rodrigues' rotation formula,
@@ -156,7 +156,7 @@ def rotate(x, a, phi, sin_phi=None):
         Normalized axis vector.
     phi : float
         Rotation angle in radians or :math:`\cos(\varphi)`.
-    sin_phi : float, optional
+    sinphi : float, optional
         :math:`\sin(\varphi)`.
 
     Returns
@@ -167,12 +167,12 @@ def rotate(x, a, phi, sin_phi=None):
     Note
     ----
     Evaluation of trigonometric functions can be avoid by providing
-    the optional argument `sin_phi`. In this case `phi` is interpreted
+    the optional argument `sinphi`. In this case `phi` is interpreted
     as :math:`\cos(\varphi)`.
     """
-    if sin_phi is not None:
+    if sinphi is not None:
         cphi = phi
-        sphi = sin_phi
+        sphi = sinphi
     else:
         cphi = math.cos(phi)
         sphi = math.sin(phi)

@@ -19,6 +19,9 @@
 # IN THE SOFTWARE.
 
 """ Geometric mesh traits.
+
+Convenience functions to compute common and often used geometric mesh
+traits like vertex and face normals, etc.
 """
 
 import math
@@ -27,7 +30,7 @@ import numpy as np
 import m3sh.math as m4th
 
 
-def aabb(points):
+def _aabb(points):
     """ Axis-aligned bounding box.
 
     Corner vertices of the axis-aligned bounding box.
@@ -52,14 +55,14 @@ def vertex_normal(vertex):
     planes spanned by consecutive edges in a counter-clockwise
     traversal of all incident edges.
 
-    Raises
-    ------
-    NotImplementedError
-        For non-triangular faces.
+    Parameters
+    ----------
+    vertex : Vertex
+        Non-isolated vertex of a mesh.
 
     Returns
     -------
-    ~numpy.ndarray
+    ~numpy.ndarray, shape (3, )
         Unit normal vector.
 
     Note
@@ -78,6 +81,22 @@ def vertex_normal(vertex):
 
 
 def vertex_normals(mesh):
+    """ Vertex normals.
+
+    Parameters
+    ----------
+    mesh : Mesh
+        A mesh.
+
+    Returns
+    -------
+    ~numpy.ndarray, shape (n, 3)
+        Unit normal vectors for a mesh with n vertices.
+
+    Note
+    ----
+    Vertex normals are not well defined for isolated vertices.
+    """
     normals = np.zeros_like(mesh.points)
 
     for f in mesh.faces:
@@ -91,7 +110,7 @@ def vertex_normals(mesh):
     return normals
 
 
-def vertex_angle(vertex):
+def _vertex_angle(vertex):
     clamp = lambda x, l, h: l if x < l else h if x > h else x
     angle = 2.0 * math.pi
 
@@ -105,11 +124,11 @@ def vertex_angle(vertex):
     return angle
 
 
-def vertex_area(vertex):
+def _vertex_area(vertex):
     return sum(face_area(f) for f in vertex._fiter())
 
 
-def angle_defect(vertex):
+def _angle_defect(vertex):
     r""" Angle defect.
 
     For a vertex with :math:`k` incident angles :math:`\alpha_i`,
@@ -134,11 +153,11 @@ def angle_defect(vertex):
     return defect
 
 
-def halfedge_normal(halfedge):
+def _halfedge_normal(halfedge):
     pass
 
 
-def halfedge_angle(self):
+def _halfedge_angle(self):
     """ Edge angle.
 
     Angle (in radians) between normals of adjacent faces. The angle
@@ -179,7 +198,7 @@ def halfedge_angle(self):
     return alpha
 
 
-def halfedge_rotation(self):
+def _halfedge_rotation(self):
     r""" Rotation parameters.
 
     Computes the parameters :math:`\cos(\varphi)` and
@@ -226,6 +245,25 @@ def halfedge_rotation(self):
 
 
 def face_normal(face):
+    """ Face normal.
+
+    Compute face normal as cross product of edge vectors.
+
+    Parameters
+    ----------
+    face : Face
+        Face of a mesh.
+
+    Raises
+    ------
+    NotImplementedError
+        For non-triangular faces.
+
+    Returns
+    -------
+    ~numpy.ndarray, shape (3, )
+        Unit normal vector.
+    """
     if len(face) == 3:
         vector = m4th.cross(face.halfedge.vector,
                             face.halfedge.next.vector)
@@ -236,6 +274,18 @@ def face_normal(face):
 
 
 def face_normals(mesh):
+    """ Face normals.
+
+    Parameters
+    ----------
+    mesh : Mesh
+        A triangle mesh.
+
+    Returns
+    -------
+    ~numpy.ndarray, shape (n, 3)
+        Unit normal vectors for a mesh with n faces.
+    """
     return np.array([face_normal(f) for f in mesh.faces])
 
 
@@ -244,10 +294,20 @@ def face_area(face):
 
     Areas are only computed for triangular faces.
 
+    Parameters
+    ----------
+    face : Face
+        A triangular face.
+
     Raises
     ------
     NotImplementedError
         For non-triangular faces.
+
+    Returns
+    -------
+    float
+        Face area.
     """
     if len(face) == 3:
         vector = m4th.cross(face.halfedge.vector,

@@ -150,15 +150,19 @@ class Mesh:
         """ Face iterator.
 
         The returned iterator visits all faces of a mesh that are **not**
-        marked as deleted in order of ascending face indices (insertion
-        order).
+        marked as deleted in order of ascending face indices.
 
-        Example
-        -------
-        Visit the faces that contribute to the mesh combinatorics, i.e.,
-        those not marked as deleted. The loop
+        Yields
+        ------
+        Face
+            Next face in insertion order traversal.
+
+
+        The loop that visits all faces of a mesh that contribute to its
+        combinatorics
 
         .. code-block:: python
+           :linenos:
 
            for f in mesh:
                # do something with the face
@@ -168,6 +172,7 @@ class Mesh:
         of a face:
 
         .. code-block:: python
+           :linenos:
 
            for f in mesh.faces:
                if not f.deleted:
@@ -2620,7 +2625,14 @@ class Halfedge:
         return (vertex is self._origin) or (vertex is self._target)
 
     def __iter__(self):
-        """ Incident vertex iterator.
+        """ Vertex iterator.
+
+        Produces the origin and target vertex of a halfedge.
+
+        Yields
+        ------
+        Vertex
+            Next vertex.
         """
         yield self.origin
         yield self.target
@@ -2628,12 +2640,12 @@ class Halfedge:
     def __getitem__(self, index):
         """ Vertex access.
 
-        Vertex access by relative index (either 0 or 1).
+        Vertex access by relative index.
 
         Parameters
         ----------
         index : int
-            Relative vertex index.
+            Relative vertex index, either 0 or 1.
 
         Raises
         ------
@@ -2643,7 +2655,7 @@ class Halfedge:
         Returns
         -------
         Vertex
-            Origin or target vertex of halfedge.
+            Origin or target vertex of a halfedge.
         """
         assert not self._deleted
 
@@ -3007,20 +3019,34 @@ class Face:
     """ Face base class.
 
     In a halfedge based mesh representation a face is defined by the
-    closed loop of halfedges starting at :attr:`halfedge`.
+    closed loop of halfedges starting at the :attr:`halfedge` attribute.
 
     Parameters
     ----------
     index : int
         Face index.
 
+
+    The vertices of a face can be visited in several ways. Using
+    :meth:`~m3sh.hds.Face.__len__` and :meth:`~m3sh.hds.Face.__getitem__`
+
+    .. code-block:: python
+       :linenos:
+
+        for i in range(len(f)):
+            print(f[i])
+
+    is equivalent to using :meth:`~m3sh.hds.Face.__iter__`
+
+    .. code-block:: python
+       :linenos:
+
+        for v in f:
+            print(v)
+
     Note
     ----
-    Faces provide implementations of :meth:`~object.__len__` to query
-    the number of incident vertices and :meth:`~object.__contains__` to
-    test for incidence with a given vertex or halfedge. The :term:`iterator`
-    returned by :meth:`~object.__iter__` visits the vertices of the
-    face in counter-clockwise order.
+    The latter is much more efficient and preferred.
     """
 
     def __init__(self, index):
@@ -3112,6 +3138,11 @@ class Face:
 
         The returned :term:`iterator` visits the vertices of ``self``
         starting with the ``self.halfedge.origin`` vertex.
+
+        Yields
+        ------
+        Vertex
+            Next vertex in counter-clockwise traversal.
         """
         assert not self._deleted
         assert self._halfedge is not None

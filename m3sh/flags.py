@@ -22,8 +22,8 @@
 
 Note
 ----
-Work in progress. There should be a way to add user defined flags. Python
-enumerations cannot be subclassed.
+Support for mesh item flags is still experimental and subject to change.
+User defined flags are missing. Python enumerations cannot be subclassed.
 """
 
 from enum import Flag
