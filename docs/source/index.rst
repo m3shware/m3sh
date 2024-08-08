@@ -21,17 +21,10 @@ orientable surfaces in Euclidean 3-space.
 
    mesh
    helper
-   
-   
-Index
------
-
-* :ref:`genindex`
-* :ref:`modindex`
-   
-   
+    
+      
 Disclaimer
-----------
+==========
 
 Links to 3rd party websites are being provided as a convenience and for 
 informational purposes only; they do not constitute an endorsement or an 
