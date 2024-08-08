@@ -30,3 +30,25 @@
    {%- endfor %}
    {% endif %}
    {% endblock %}
+   
+   {% block special %}
+   {% if all_methods %}
+   .. rubric:: Special methods
+ 
+   .. autosummary::
+      :toctree: 
+      :template: function.rst
+   {% for item in all_methods %}
+      {%- if item in ['__iter__',
+                      '__len__',
+                      '__getitem__',
+                      '__contains__',
+                      '__index__',
+                      '__int__',
+                     ] %}
+         ~{{ name }}.{{ item }}
+      {%- endif -%}
+   {%- endfor %}
+   {% endif %}
+   {% endblock %}
+   

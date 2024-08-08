@@ -66,6 +66,9 @@ templates_path = ['_templates']
 # This pattern also affects html_static_path and html_extra_path.
 exclude_patterns = []
 
+# New in 5.2: create table of contents entries for domain objects (e.g. 
+# functions, classes, attributes, etc.). This generated unwanted sidebar
+# entries.
 toc_object_entries = False
 
 
