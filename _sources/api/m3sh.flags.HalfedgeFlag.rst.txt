@@ -1,0 +1,37 @@
+HalfedgeFlag
+============
+
+.. currentmodule:: m3sh.flags
+ 
+.. autoclass:: HalfedgeFlag
+   :no-inherited-members:
+    
+   
+   
+   .. rubric:: Attributes
+ 
+   .. autosummary::
+      :toctree:
+      :template: attribute.rst
+   
+      ~HalfedgeFlag.CREASE
+      ~HalfedgeFlag.SEAM
+   
+   
+ 
+   
+   
+   
+   
+   
+   
+   .. rubric:: Special methods
+ 
+   .. autosummary::
+      :toctree: 
+      :template: function.rst
+   
+         ~HalfedgeFlag.__contains__
+   
+   
+   

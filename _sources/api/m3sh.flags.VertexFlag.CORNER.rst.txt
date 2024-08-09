@@ -1,0 +1,6 @@
+CORNER
+======
+
+.. currentmodule:: m3sh.flags
+
+.. autoattribute:: VertexFlag.CORNER
