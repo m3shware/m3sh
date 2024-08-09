@@ -9,4 +9,4 @@ Auxiliary modules
 
    heap
    obj
-   math
+   linalg
