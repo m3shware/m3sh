@@ -59,4 +59,5 @@ class FaceFlag(Flag):
     """ Face flags enumeration (reserved).
     """
 
-    pass
+    RESERVED = auto()
+    """ Reserved for future use. """

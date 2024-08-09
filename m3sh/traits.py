@@ -27,7 +27,7 @@ traits like vertex and face normals, etc.
 import math
 import numpy as np
 
-import m3sh.math as m4th
+import m3sh.linalg as linalg
 
 
 def _aabb(points):
@@ -73,11 +73,11 @@ def vertex_normal(vertex):
 
     for h in vertex._hiter():
         if h._face is not None:
-            vector = m4th.unit(m4th.cross(h.prev.vector,
-                                          h.vector))
+            vector = linalg.unit(linalg.cross(h.prev.vector,
+                                              h.vector))
             normal += vector
 
-    return m4th.unit(normal)
+    return linalg.unit(normal)
 
 
 def vertex_normals(mesh):
@@ -100,8 +100,8 @@ def vertex_normals(mesh):
     normals = np.zeros_like(mesh.points)
 
     for f in mesh.faces:
-        n = m4th.unit(m4th.cross(f.halfedge.vector,
-                                 f.halfedge.next.vector))
+        n = linalg.unit(linalg.cross(f.halfedge.vector,
+                                     f.halfedge.next.vector))
 
         for v in f._viter():
             normals[v, ...] += n
@@ -116,8 +116,8 @@ def _vertex_angle(vertex):
 
     for h in vertex._hiter():
         if h._face is not None:
-            u = m4th.unit(h._prev._pair.vector)
-            v = m4th.unit(h.vector)
+            u = linalg.unit(h._prev._pair.vector)
+            v = linalg.unit(h.vector)
 
             angle += math.acos(clamp(u.dot(v), -1.0, 1.0))
 
@@ -145,8 +145,8 @@ def _angle_defect(vertex):
 
     for h in vertex._hiter():
         if h._face is not None:
-            u = m4th.unit(h._prev._pair.vector)
-            v = m4th.unit(h.vector)
+            u = linalg.unit(h._prev._pair.vector)
+            v = linalg.unit(h.vector)
 
             defect -= math.acos(clamp(u.dot(v), -1.0, 1.0))
 
@@ -192,7 +192,7 @@ def _halfedge_angle(self):
 
     # The vector orthogonal to both face normals (oriented according
     # to the right hand rule) determines the sign of alpha.
-    if self.vector.dot(m4th.cross(u, v)) < 0.0:
+    if self.vector.dot(linalg.cross(u, v)) < 0.0:
         alpha *= -1.0
 
     return alpha
@@ -231,10 +231,10 @@ def _halfedge_rotation(self):
 
     # The vector orthogonal to both face normals. Oriented according
     # to the right hand rule.
-    vector = m4th.cross(u, v)
+    vector = linalg.cross(u, v)
 
     cos_alpha = u.dot(v)
-    sin_alpha = m4th.norm(vector)
+    sin_alpha = linalg.norm(vector)
 
     if self.vector.dot(vector) < 0.0:
         sin_alpha *= -1.0
@@ -265,12 +265,12 @@ def face_normal(face):
         Unit normal vector.
     """
     if len(face) == 3:
-        vector = m4th.cross(face.halfedge.vector,
-                            face.halfedge.next.vector)
+        vector = linalg.cross(face.halfedge.vector,
+                              face.halfedge.next.vector)
     else:
         raise NotImplementedError('triangular face required')
 
-    return m4th.unit(vector)
+    return linalg.unit(vector)
 
 
 def face_normals(mesh):
@@ -310,9 +310,9 @@ def face_area(face):
         Face area.
     """
     if len(face) == 3:
-        vector = m4th.cross(face.halfedge.vector,
-                            face.halfedge.next.vector)
+        vector = linalg.cross(face.halfedge.vector,
+                              face.halfedge.next.vector)
     else:
         raise NotImplementedError('triangular face required')
 
-    return 0.5 * m4th.norm(vector)
+    return 0.5 * linalg.norm(vector)
