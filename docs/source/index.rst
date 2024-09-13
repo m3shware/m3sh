@@ -21,6 +21,7 @@ orientable surfaces in Euclidean 3-space.
 
    mesh
    helper
+   vis
     
       
 Disclaimer
