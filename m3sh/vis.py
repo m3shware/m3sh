@@ -55,8 +55,8 @@ _renderers = []
 _interactors = []
 
 
-def canvas(*size, color=None, color2=None, camera=None, renderer=None,
-           transparent=None, interactive=None, layer=None):
+def canvas(*args, color=None, color2=None, camera=None, transparent=None,
+           interactive=None, layer=None):
     r""" Create or modify viewport.
 
     Change properties of an existing viewport or create a new one inside
@@ -65,9 +65,28 @@ def canvas(*size, color=None, color2=None, camera=None, renderer=None,
 
     Parameters
     ----------
-    *size : float
-        Viewport dimensions :math:`(x_{min}, x_{max}, y_{min}, y_{max})`.
-        All values have to be in the interval :math:`[0, 1]`.
+    renderer : vtkRenderer, optional
+        Viewport identifier.
+    xmin : float, optional
+        Smaller x-coordinate of the viewport.
+    xmax : float, optional
+        Larger x-coordinate of the viewport.
+    ymin : float, optional
+        Smaller y-coordinate of the viewport.
+    ymax : float, optional
+        Larger y-coordinate of the viewport.
+
+    Returns
+    -------
+    vtkRenderer
+        Active viewport. All subsequent plotting commands happen in the
+        this viewport.
+
+    Note
+    ----
+    Passing a renderer as first positional argument makes it the current
+    viewport. All non-:obj:`None` keyword arguments modify the corresponding
+    properties of this viewport.
 
     Keyword Arguments
     -----------------
@@ -77,10 +96,7 @@ def canvas(*size, color=None, color2=None, camera=None, renderer=None,
         Top background color for color gradient background. Passing
         :obj:`False` disables gradient background.
     camera : vtkRenderer or vtkCamera, optional
-        Useful to sync the view of different renderers.
-    renderer : vtkRenderer, optional
-        Modify the given renderer instead of creating a new one. This
-        renderer becomes the active viewport.
+        Shared camera, use to sync the view of different viewports.
     transparent : bool, optional
         Transparent viewport background.
     interactive : bool, optional
@@ -88,22 +104,8 @@ def canvas(*size, color=None, color2=None, camera=None, renderer=None,
     layer : int, optional
         Layer index. Only for internal use.
 
-    Returns
-    -------
-    vtkRenderer
-        Active renderer.
-
-
-    The returned renderer becomes the active renderer of the main render
-    window. All subsequent plotting commands happen in the this viewport.
-    Passing a renderer instance as argument `other` will make `other` the
-    active renderer.
-
-    Viewports can be layered, i.e., occupy the same region in a render
-    window or overlap partially. In this case it can be useful to set all
-    viewports except for the bottom one as transparent (this is VTK's
-    default behavior when using the `layer` argument).
-
+    Note
+    ----
     Setting `interactive` to :obj:`False` will prevent a viewport from
     receiving events. Note that widgets placed in such a non-interactive
     renderer still receive interaction events.
@@ -112,12 +114,16 @@ def canvas(*size, color=None, color2=None, camera=None, renderer=None,
     # inside this function.
     global _renderer
 
-    if renderer is not None:
+    if len(args) == 1 or len(args) == 5:
         # A renderer is given. Change its properties if they are given.
         # The passed renderer also becomes the active renderer.
-        _renderer = renderer
-    else:
-         # No renderer is given. Create a new one and set its properties
+        _renderer = args[0]
+
+        # Remove the viewport argument from the argument list for easy
+        # access of the vieport dimension parameters.
+        args = args[1:]
+    elif len(args) == 0 or len(args) == 4:
+        # No renderer is given. Create a new one and set its properties
          # to the given values or global defaults. The renderer becomes
          # the active renderer.
         _renderer = vtk.vtkRenderer()
@@ -143,21 +149,16 @@ def canvas(*size, color=None, color2=None, camera=None, renderer=None,
         # Assign default color for new renderers if no color is given.
         if color is None:
             _renderer.SetBackground(colors.white)
+    else:
+        raise ValueError('wrong number of positional arguments')
 
-    if size:
-        vpdim = _renderer.GetViewport()
-
-        xmin = vpdim[0] if len(size) < 1 else size[0]
-        xmax = vpdim[2] if len(size) < 2 else size[1]
-
-        ymin = vpdim[1] if len(size) < 3 else size[2]
-        ymax = vpdim[3] if len(size) < 4 else size[3]
-
-        _renderer.SetViewport(xmin, ymin, xmax, ymax)
+    if len(args) == 4:
+        _renderer.SetViewport(args[0], args[2],             # lower left
+                              args[1], args[3])             # upper right
 
     if camera is not None:
-        # Set the provided camera. Either directly or use the camera
-        # of another renderer. The latter case will sync the viewports.
+        # Set the provided camera. Either directly or use the camera of
+        # another renderer. The latter case will sync the viewports.
         if isinstance(camera, vtk.vtkRenderer):
             camera = camera.GetActiveCamera()
 
@@ -172,7 +173,14 @@ def canvas(*size, color=None, color2=None, camera=None, renderer=None,
     if interactive is not None:
         _renderer.SetInteractive(interactive)
 
+    # Viewports can be layered, i.e., occupy the same region in a render
+    # window or overlap partially. In this case it can be useful to set
+    # all viewports except for the bottom one as transparent (this is
+    # VTK's default behavior when using the `layer` argument).
     if layer is not None:
+        # The render window to which this renderer belongs needs to
+        # support multiple layers for this to work, see show() and the
+        # method SetNumberOfLayers() of a render window.
         _renderer.SetLayer(layer)
 
     # A None value will not touch values for the top background color
@@ -269,7 +277,7 @@ def _window(width=1200, height=600, title=None, color=colors.white,
 
     iren = vtk.vtkRenderWindowInteractor()
     iren.SetRenderWindow(renwin)
-    iren.SetInteractorStyle(MouseInteractorStyle())
+    iren.SetInteractorStyle(_MouseInteractorStyle())
 
     # Apparently this should be the last call when creating a new window.
     # iren.Initialize()
@@ -326,7 +334,7 @@ def add(actor, renderer=None):
 
     Parameters
     ----------
-    actor : vtkActor or SoActor
+    actor : vtkActor or Actor
         Instance of a renderable object.
     renderer : vtkRenderer or vtkRenderWindow, optional
         The viewport or window to display the actor.
@@ -360,7 +368,7 @@ def add(actor, renderer=None):
         # no longer holds a None value.
         renderer = _renderer
 
-    # Get the wrapped vtkActor from an SoActor instance.
+    # Get the wrapped vtkActor from an Actor instance.
     if isinstance(actor, Actor):
         actor = actor.actor
 
@@ -423,6 +431,8 @@ def update(*args, **kwargs):
     *args
         Variable length argument list. Not used. Only here to make this
         function usable as a callback.
+    **kwargs
+        Dictionary of keyword arguments. Not used.
 
     Note
     ----
@@ -630,13 +640,31 @@ def colorbar(object, x=0.8, y=0.1):
 
 
 def aabb(points, opacity=0.15, edges=True, color=colors.grey):
-    """ Box.
+    """ Axis aligned bounding box.
+
+    Axis aligned bounding box with annotation.
+
+    Parameters
+    ----------
+    points : array_like, shape (3, k)
+        An array of :math:`k` points in 3-space.
+    opacity : float, optional
+        Opacity of bounding box.
+    edges : bool, optional
+        Toggle edges of the bounding box.
+    colors : array_like, shape (3, )
+        Bounding box color.
+
+    Returns
+    -------
+    Shape
+        Bounding box shape.
     """
     a = np.min(points, axis=0)
     b = np.max(points, axis=0)
 
-    caption(a, f'({a[0]:.1f}, {a[1]:.1f}, {a[2]:.1f})', 11)
-    caption(b, f'({b[0]:.1f}, {b[1]:.1f}, {b[2]:.1f})', 11)
+    _caption(a, f'({a[0]:.1f}, {a[1]:.1f}, {a[2]:.1f})', 11)
+    _caption(b, f'({b[0]:.1f}, {b[1]:.1f}, {b[2]:.1f})', 11)
 
     cube = vtk.vtkCubeSource()
     cube.SetBounds(a[0], b[0],
@@ -648,14 +676,13 @@ def aabb(points, opacity=0.15, edges=True, color=colors.grey):
 
     actor = vtk.vtkActor()
     actor.SetMapper(mapper)
-    actor.SetPickable(False)
     actor.GetProperty().SetColor(color)
     actor.GetProperty().SetOpacity(opacity)
     actor.GetProperty().SetEdgeVisibility(edges)
     actor.GetProperty().SetLineWidth(2.0)
 
     add(actor)
-    return actor
+    return Shape(actor)
 
 
 def _contour(M, S, levels=10, width=2.0, style='-', color=(0.0, 0.0, 0.0)):
@@ -824,7 +851,7 @@ def _silhouette(M):
 
     silhouette = vtk.vtkPolyDataSilhouette()
     silhouette.SetInputData(polyData)
-    silhouette.SetCamera(_active_renderer.GetActiveCamera())
+    silhouette.SetCamera(_renderer.GetActiveCamera())
     # silhouette->SetEnableFeatureAngle(0);
 
     mapper = vtk.vtkPolyDataMapper()
@@ -946,7 +973,7 @@ def quiver(points, vectors, scale=1.0, color=(0.5, 0.5, 0.5), *,
     return actor
 
 
-def splat(P, N, *args, scale=1.0, color=(1.0, 1.0, 1.0), **kwargs):
+def _splat(P, N, *args, scale=1.0, color=(1.0, 1.0, 1.0), **kwargs):
     """
     Point cloud splatting.
 
@@ -1113,7 +1140,7 @@ def splat(P, N, *args, scale=1.0, color=(1.0, 1.0, 1.0), **kwargs):
         return actor, scalarBar
 
 
-def _splat(P, N, scale=1.0, color=(1.0, 1.0, 1.0)):
+def _splat_alt(P, N, scale=1.0, color=(1.0, 1.0, 1.0)):
     """
     Point cloud splatting.
 
@@ -1278,7 +1305,7 @@ def plot(P, width=2.0, size=6.0, style='-', color=(0.25, 0.25, 0.25)):
     return actor
 
 
-def box(bb_min, bb_max, color=(0.8, 0.8, 0.8)):
+def _box(bb_min, bb_max, color=(0.8, 0.8, 0.8)):
     """ Box.
 
     Covenience function that displays an axis aligned box with given corner
@@ -1319,7 +1346,7 @@ def box(bb_min, bb_max, color=(0.8, 0.8, 0.8)):
     return actor
 
 
-def sphere(center, radius, color=(0.8, 0.8, 0.8)):
+def _sphere(center, radius, color=(0.8, 0.8, 0.8)):
     """ Sphere.
 
     Covenience function that displays a sphere with given center and radius.
@@ -1447,7 +1474,7 @@ def _spheres(C, r):
     return actor
 
 
-def display(message, x=0.05, y=0.95, size=12, color=colors.white, bold=False,
+def _display(message, x=0.05, y=0.95, size=12, color=colors.white, bold=False,
             italic=False, shadow=False, frame=False):
     """ Display static text in the render window.
 
@@ -1486,7 +1513,7 @@ def display(message, x=0.05, y=0.95, size=12, color=colors.white, bold=False,
     return Shape(textActor)
 
 
-def annotate(point, string, size=1.0, color=(0.25, 0.25, 0.25)):
+def _annotate(point, string, size=1.0, color=(0.25, 0.25, 0.25)):
     """ Display 3D text annotation.
 
     Puts the given text at a certain location such that it always faces the
@@ -1527,7 +1554,7 @@ def annotate(point, string, size=1.0, color=(0.25, 0.25, 0.25)):
     return textActor
 
 
-def caption(pos, text, size=2.0, opacity=0.0, color=(1.0, 1.0, 1.0)):
+def _caption(pos, text, size=2.0, opacity=0.0, color=(1.0, 1.0, 1.0)):
     """
     """
     textActor = vtk.vtkCaptionActor2D()
@@ -1551,7 +1578,7 @@ def caption(pos, text, size=2.0, opacity=0.0, color=(1.0, 1.0, 1.0)):
     return textActor
 
 
-def commands():
+def _commands():
     """ Toggle splash screen.
     """
     global _renderer, _splash
@@ -1566,7 +1593,7 @@ def commands():
         ren = _renderer
         _splash = canvas(layer=1, interactive=False)
 
-        display(message, y=0.9, shadow=True)
+        _display(message, y=0.9, shadow=True)
 
         _renderer = ren
     else:
@@ -1574,12 +1601,12 @@ def commands():
         _splash = None
 
 
-def show(width=1200, height=600, title=None, info=False, lmbdown=None,
+def show(width=1200, height=600, title=None, *, info=False, lmbdown=None,
          lmbup=None, rmbdown=None, rmbup=None, keydown=None, keyup=None,
          mousemove=None):
     """ Start the VTK event loop.
 
-    Opens a window for rendering and starts the VTK event loop.
+    Open window for rendering and start the VTK event loop.
 
     Parameters
     ----------
@@ -1607,22 +1634,31 @@ def show(width=1200, height=600, title=None, info=False, lmbdown=None,
     mousemove : list[callable]
         Mouse move callbacks.
 
-    Raises
-    ------
-    RuntimeError
-        When there is an active render window from a previous call.
+    Note
+    ----
+    This is a blocking function, a script will not advance beyond it until
+    the event loop stops. Interaction with displayed objects has to be
+    triggered by mouse and keyboard events and corresponding event handlers,
+    see below.
 
 
-    This is a blocking function, i.e., a script will not advance beyond this
-    function until the event loop is stopped, i.e., the render window is
-    closed. Interaction with the scene and displayed objects has to be
-    triggered by mouse and keyboard events and corresponding event handlers.
+    .. rubric:: Mouse and keyboard events
 
-    A callback function has to be declared in the following way:
+    Button press and release events as well as mouse move events are
+    recognized. Key press and release events are recognized. Assign a list
+    of callbacks to the corresponding keyword argument.
+
+    Note
+    ----
+    If more than one callback is registered to an event, callbacks are
+    executed in the given order.
+
+
+    .. rubric:: Callback functions
+
+    A callback function's signature has to be defined in the following way:
 
         .. py:function:: callback(iren, x, y, **kwargs)
-
-           Signature of a generic callback function.
 
            :param iren: Identifies the render window.
            :type iren: vtkRenderWindowInteractor
@@ -1631,40 +1667,19 @@ def show(width=1200, height=600, title=None, info=False, lmbdown=None,
            :param y: Display coordinates of the mouse cursor.
            :type y: int
 
-           :kwarg vtkActor obj: The active actor object.
-           :kwarg int pid: The active point identifier.
-           :kwarg ndarray p3d: Current world coordinates of the active point.
 
-           When activated the callback receives a handle to the affected
-           render window via the corresponding render window interactor
-           ``iren`` as well as the mouse cursor postition inside this
-           windows in pixels.
+    When activated the callback receives a handle to the affected render
+    window via the corresponding render window interactor `iren` as well
+    as the mouse cursor position inside this windows in pixels.
 
-           The ``iren`` argument can be used to query the status of
-           modifier keys via ``GetShiftKey()``, ``GetAltKey()``, and
-           ``GetControlKey()``.
-
-           During point dragging callbacks receive the listed additional
-           keyword arguments.
+    The `iren` argument can also be used to query the status of modifier
+    keys via its :meth:`GetShiftKey()`, :meth:`GetAltKey()`, and
+    :meth:`GetControlKey()` methods.
 
     Note
     ----
-    Object attributes can be used as callbacks. An object itself can be used
-    as callback when it implements a ``__call__`` method.
-
-
-    More than one callback can be registered to the same event. In this
-    case callbacks are executed in the given order. The following events
-    are recognized:
-
-       Mouse events
-          Left and right mouse button press and release events as well as
-          mouse move events. Assign callbacks to the arguments ``LMBDown``,
-          ``LMBUp``, ``RMBDown``, ``RMBUp``, and ``MMove``.
-
-       Keyboard events
-          Key press and release events. Assign callbacks to the arguments
-          ``KEYDown`` and ``KEYUp``.
+    An object itself can be used  as callback when it implements the
+    :meth:`__call__` special method.
     """
     # Global state variables that are modified in this function. Should
     # be reset when show() terminates.
@@ -1752,7 +1767,7 @@ def show(width=1200, height=600, title=None, info=False, lmbdown=None,
         else:
             canvas(renderer=_splash)
 
-        display(f"VTK Version {vtk.vtkVersion.GetVTKVersion()}\n" +
+        _display(f"VTK Version {vtk.vtkVersion.GetVTKVersion()}\n" +
                 f"OpenGL support {_renwin.SupportsOpenGL()}\n" +
                 f"Hardware acceleration {_renwin.IsDirect()}",
                 y=.15, shadow=True)
@@ -2960,7 +2975,7 @@ class _MouseInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
             iren.Render()
 
         if key == 'h':
-            commands()
+            _commands()
 
         for cb in self._key_down_cbs:
             cb(iren, x, y, event=event)
