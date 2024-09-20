@@ -308,6 +308,8 @@ def read(filename, *args):
     if len(args) == 1:
         return args_arr[args[0]]
 
+    # This works as intended because dictionary values are iterated over
+    # in insertion order (guaranteed since version 3.7 of Python).
     return tuple(args_arr.values())
 
 

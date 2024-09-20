@@ -321,7 +321,7 @@ class Mesh:
                 sum(1 for _ in self._fiter()))
 
     @classmethod
-    def read(cls, filename, *args, quiet=False):
+    def read(cls, filename, *args, quiet=True):
         """ Read mesh from file.
 
         Read mesh combinatorics (face definitions) and vertex coordinates
@@ -340,14 +340,15 @@ class Mesh:
         -------
         mesh : Mesh
             Mesh object.
-        data : object or tuple(object, ...)
-            Data blocks as requested via `args`.
+        data : ndarray or tuple(ndarray, ...)
+            Data blocks as requested via `args`. If a data block could
+            not be read, a :obj:`None` value is returned.
 
 
         Vertex normals or texture coordinates stored in a file can be
         read via
 
-        >>> mesh, normals, uvs = Mesh.read(filename, 'vn', 'vt')
+        >>> mesh, vecs, uvs = Mesh.read(filename, 'vn', 'vt')
 
         Note
         ----
@@ -380,7 +381,7 @@ class Mesh:
 
         return cls(verts, faces)
 
-    def write(self, filename, quiet=False, **data):
+    def write(self, filename, quiet=True, **data):
         """ Write mesh to file.
 
         Data arrays, like vertex normals and texture coordinates, can be
@@ -393,16 +394,25 @@ class Mesh:
         quiet : bool, optional
             Suppress console output.
         **data
-            Keyword arguments.
+            Arbitrary keyword arguments.
 
 
-        Data blocks can be written with
+        User defined data blocks can be written with
 
         >>> mesh.write('output-file.obj', line_tag=data)
 
         This assumes that ``data`` can be interpreted as a 2-dimensional
         array. The contents of each row are written to a line that starts
-        with the given tag.
+        with the given tag. If vertex normals are available, they can
+        be stored via
+
+        >>> mesh.write('outfile-file.obj', vn=normals)
+
+        Note
+        ----
+        The standard OBJ tags 'v' and 'f' may not be used as keywords
+        since they are implicitly used when writing mesh data to an OBJ
+        file.
         """
         CBOLD = '\33[1m'                    # bold text, white on black
         CEND = '\33[0m'
