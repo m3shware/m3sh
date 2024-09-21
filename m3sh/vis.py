@@ -22,7 +22,13 @@
 
 Wrapper functions for `VTK <https://vtk.org/doc/nightly/html>`_ functionality.
 This is not meant as a full featured set of visualization routines but should
-serve as a quick and convenient way to achieve basic visualization tasks.
+serve as a quick and convenient way to achieve basic visualization tasks. It
+can also be used as a stand-alone OBJ viewer:
+
+>>> python vis.py file.obj --edges
+
+opens a graphics window and displays the contents of `file.obj`. Omitting
+the '--edges' argument will not render mesh edges.
 """
 
 import numpy as np
@@ -1721,7 +1727,7 @@ def show(width=1200, height=600, title=None, *, info=False, lmbdown=None,
     Note
     ----
     An object itself can be used  as callback when it implements the
-    :meth:`__call__` special method.
+    :meth:`__call__` method.
     """
     # Global state variables that are modified in this function. Should
     # be reset when show() terminates.
@@ -1842,32 +1848,37 @@ def pick(x, y, type='cell', iren=None):
         Pick position in display coordinates.
     y : int
         Pick position in display coordinates.
+    type : str, optional
+        Either 'cell' or 'point'.
 
     Returns
     -------
     actor : vtkActor
-        Results in :py:obj:`None` if nothing was picked.
+        Results in :obj:`None` if nothing was picked.
     cell_id : int
-        Numerical cell identifier. Results in ``-1`` if no cell was picked.
-        Only returned when ``'cell'`` is specified.
+        Cell identifier, -1 if no cell was picked.
     point_id : int
-        Numerical point identifier. Results in ``-1`` if no point was picked.
+        Point identifier, -1 if no point was picked.
     point : ndarray
-        World coordinates of the picked point. Only meaningful if an actor
-        was picked.
+        World coordinates of the picked point.
 
 
-    By default all render objects created by functions in this module are not
-    pickable. To make an actor available for picking its ``SetPickable()``
-    method needs to be called with argument :py:obj:`True`.
+    By default all render objects created by functions in this module are
+    not pickable. To make an actor available for picking, modify its
+    :attr:`~Actor.pickable` attribute.
 
     A successful pick operation returns the picked actor and information about
     the picked cell or point, respectively.
 
     When picking cells the coordinates of the intersection of the pick ray
-    and the picked cell is returned in ``point``. In addition to the index
-    ``cell_id`` of the picked cell, the index of the closest vertex of the
-    picked cells to this location is also returned in ``point_id``.
+    and the picked cell is returned in `point`. In addition to the index
+    `cell_id` of the picked cell, the index of the closest vertex of the
+    picked cells to this location is returned as `point_id`.
+
+    Note
+    ----
+    This function returns three values when picking points and four values
+    when picking cells.
     """
     # Get the viewport that corresponds to the given location. What happens
     # if window coordinates are out of bounds?
@@ -1945,7 +1956,7 @@ def _show_cell_labels(actor):
 
 
 class Actor:
-    """ Base class for VTK wrappers.
+    """ Base class for all VTK wrappers.
 
     Wraps vtkActor instances and manages basic display properties.
 
@@ -1967,6 +1978,9 @@ class Actor:
     def actor(self):
         """ Actor access.
 
+        Access the wrapped vtkActor instance. Exposes all low-level
+        interaction with this actor.
+
         :type: vtkActor
         """
         return self._actor
@@ -1974,6 +1988,8 @@ class Actor:
     @property
     def mapper(self):
         """ Mapper access.
+
+        Equivalent to ``self.actor.GetMapper()``.
 
         :type: vtkMapper
         """
@@ -1997,7 +2013,8 @@ class Actor:
     def pickable(self):
         """ Pickable property.
 
-        Query and toggle whether actor geometry can be picked.
+        Query and toggle whether actor geometry can be picked. By default,
+        all managed actors are not pickable.
 
         :type: bool
         """
@@ -2045,8 +2062,8 @@ class Shape(Actor):
     def color(self):
         """ Object color.
 
-        Setting the color attribute disables coloring using previously
-        set scalar values.
+        Setting the global color attribute disables coloring using previously
+        set scalars with :meth:`colorize`.
 
         :type: array_like, shape (3, )
         """
@@ -2103,7 +2120,7 @@ class Shape(Actor):
         range : (float, float)
             Accpeted range of scalar values.
         gradient : str
-            Color scheme.
+            Color scheme identifier, see below.
         logscale : bool
             Switch between linear and logarithmic scale.
         below : array_like, shape (4, )
@@ -2113,7 +2130,17 @@ class Shape(Actor):
         nan : array_like, shape (4, )
             Special color for NaN scalar values.
         size : int
-            Size of lookup table.
+            Size of lookup table. Has no effect when a discrete
+            color series is used to define the lookup table.
+
+
+        Smooth color gradients are defined by the color scheme identifiers
+        'hot', 'jet', and 'grey'. The color schemes 'spectral', 'diverging',
+        'blue', 'orange', and 'purple' define a discrete color series.
+
+        If provied, out of range values are marked with the `below`,
+        `above`, and `nan` colors. Not that those colors also have an alpha
+        intensity value to control opacity.
 
         Note
         ----
@@ -2201,7 +2228,8 @@ class Shape(Actor):
         Parameters
         ----------
         scalars : ~numpy.ndarray
-            Scalar values.
+            Scalar values. Either one scalar per item or one RGB color
+            triple per item.
         items : str, optional
             Either 'points' or 'cells'.
         range : (float, float), optional
@@ -2212,10 +2240,19 @@ class Shape(Actor):
         logscale : bool, optional
             Toggle logarithmic scaling.
 
+
+        Mapping scalars to colors uses a lookup table managed by the
+        :attr:`mapper` instance of an actor. The `range`, `gradient`, and
+        `logscale` arguments directly influence the lookup table. Lookup
+        tables can be further customized via the :meth:`lookuptable` method.
+
+        Use the :func:`colorbar` function to display a visual representation
+        of a lookup table.
+
         Note
         ----
         The `range`, `gradient`, and `logscale` arguments are ignored when
-        specifying colors directly.
+        specifying colors directly by RGB triples.
         """
         if scalars is not None:
             if items == 'points':

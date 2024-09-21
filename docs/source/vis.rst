@@ -2,13 +2,7 @@ Visualization
 =============
 
 The :mod:`~m3sh.vis` module provides wrapper functions and classes around
-low-level VTK functionality. It can also be used as a stand-alone OBJ
-viewer:
-
->>> python vis.py file.obj --edges
-
-opens a graphics window and displays the contents of `file.obj`. Omitting
-the '--edges' argument will not render mesh edges.
+low-level VTK functionality.
 
 .. currentmodule:: m3sh
 
