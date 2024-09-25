@@ -493,7 +493,7 @@ def scatter(points, style='spheres', size=4, color=colors.dim_grey):
 
     Returns
     -------
-    actor : PointCloud
+    PointCloud
         The corresponding render object.
 
     Note
@@ -502,7 +502,7 @@ def scatter(points, style='spheres', size=4, color=colors.dim_grey):
     shared with VTK's data objects (use a copy of `points` to decouple
     storage).
     """
-    pc = PointCloud.from_array_like(points)
+    pc = PointCloud(points)
     pc.verts(style, size)
     pc.color = color
 
@@ -639,7 +639,7 @@ def mesh(mesh, normals=None, color=colors.snow):
 
     Returns
     -------
-    actor : PolyMesh
+    PolyMesh
         The visual appearance of a mesh can be modified by using the
         methods and attributes of the returned render object.
 
@@ -648,7 +648,7 @@ def mesh(mesh, normals=None, color=colors.snow):
     The data buffer of the vertex normal array is shared with VTK. This
     may have unwanted side effects. Use a copy to dicouple storage.
     """
-    renmesh = PolyMesh.from_mesh(mesh)
+    renmesh = PolyMesh(mesh)
     renmesh.color = color
 
     if normals is not None:
@@ -677,7 +677,7 @@ def colorbar(object, x=0.8, y=0.1):
 
     Returns
     -------
-    actor : LookupTable
+    LookupTable
         Color bar representation of lookup table.
     """
     colorbar = LookupTable(object)
@@ -705,8 +705,13 @@ def aabb(points, opacity=0.15, edges=True, color=colors.grey):
 
     Returns
     -------
-    Shape
+    box : PolyData
         Bounding box shape.
+
+    Note
+    ----
+    Visual properties of the bounding box edges have to be changed via
+    the returned :class:`PolyData` instance.
     """
     a = np.min(points, axis=0)
     b = np.max(points, axis=0)
@@ -718,19 +723,30 @@ def aabb(points, opacity=0.15, edges=True, color=colors.grey):
     cube.SetBounds(a[0], b[0],
                    a[1], b[1],
                    a[2], b[2])
+    cube.Update()
 
-    mapper = vtk.vtkPolyDataMapper()
-    mapper.SetInputConnection(cube.GetOutputPort())
+    box = PolyData(cube.GetOutput())
+    box.color = color
+    box.opacity = opacity
 
-    actor = vtk.vtkActor()
-    actor.SetMapper(mapper)
-    actor.GetProperty().SetColor(color)
-    actor.GetProperty().SetOpacity(opacity)
-    actor.GetProperty().SetEdgeVisibility(edges)
-    actor.GetProperty().SetLineWidth(2.0)
+    if edges:
+        box.edges('lines')
 
-    add(actor)
-    return Shape(actor)
+    add(box)
+    return box
+
+    # mapper = vtk.vtkPolyDataMapper()
+    # mapper.SetInputConnection(cube.GetOutputPort())
+
+    # actor = vtk.vtkActor()
+    # actor.SetMapper(mapper)
+    # actor.GetProperty().SetColor(color)
+    # actor.GetProperty().SetOpacity(opacity)
+    # actor.GetProperty().SetEdgeVisibility(edges)
+    # actor.GetProperty().SetLineWidth(2.0)
+
+    # add(actor)
+    # return Shape(actor)
 
 
 def _contour(M, S, levels=10, width=2.0, style='-', color=(0.0, 0.0, 0.0)):
@@ -921,14 +937,15 @@ def quiver(points, vectors, scale=1.0, color=(0.5, 0.5, 0.5), *,
     """ Quiver plot.
 
     Display arrows at given locations pointing in given directions. For
-    each point exactly one direction vector has to be given.
+    each point exactly one direction vector has to be given. The glyphs
+    used to model arrow can be customized via keyword arguments.
 
     Parameters
     ----------
     points : array_like, shape (k, 3)
-        A sequence of :math:`(x,y,z)` point coordinates.
+        Point coordinates.
     vectors : array_like, shape (k, 3)
-        A sequence of vectors with coordinates :math:`(u,v,w)`.
+        Vector coordinates.
     scale : float or array_like, optional
         Scale of the displayed arrows. Either one global scale factor
         or one scalar per point/arrow pair.
@@ -945,8 +962,12 @@ def quiver(points, vectors, scale=1.0, color=(0.5, 0.5, 0.5), *,
 
     Returns
     -------
-    vktActor
-        Corresponding actor object.
+    Actor
+        Actor instance.
+
+    Note
+    ----
+    See vtkArrowSource for more details on glyph customization.
     """
     if np.shape(color) == (3, ):
         color_ = iter(lambda: color, None)
@@ -1013,9 +1034,8 @@ def quiver(points, vectors, scale=1.0, color=(0.5, 0.5, 0.5), *,
     mapper.ScalarVisibilityOn()
     mapper.SelectColorArray('glyph_color')
 
-    actor = vtk.vtkActor()
-    actor.SetMapper(mapper)
-    actor.SetPickable(False)
+    actor = Actor(vtk.vtkActor())
+    actor.actor.SetMapper(mapper)
 
     add(actor)
     return actor
@@ -1353,45 +1373,63 @@ def plot(P, width=2.0, size=6.0, style='-', color=(0.25, 0.25, 0.25)):
     return actor
 
 
-def _box(bb_min, bb_max, color=(0.8, 0.8, 0.8)):
-    """ Box.
+def box(a, b, opacity=1.0, edges=False, color=colors.grey):
+    """ Box shape.
 
-    Covenience function that displays an axis aligned box with given corner
-    vertices.
+    Display axis aligned box with given corner vertices.
 
     Parameters
     ----------
-    bb_min : array_like
+    a : array_like, shape (3, )
         Lower left corner of the box.
-    bb_max : array_like
+    b : array_like, shape (3, )
         Upper right corner of the box.
+    opacity : float, optional
+        Opacity of box.
+    edges : bool, optional
+        Toggle edges of the box.
     color : array_like, shape (3, ), optional
         Color.
 
     Returns
     -------
-    vtkActor
-        The corresponding actor object.
+    PolyData
+        The corresponding polygonal shape representation.
+
+    Note
+    ----
+    Visual properties of the box edges can be further customized via
+    the returned :class:`PolyData` instance.
     """
     cube = vtk.vtkCubeSource()
-    cube.SetBounds(bb_min[0], bb_max[0],
-                   bb_min[1], bb_max[1],
-                   bb_min[2], bb_max[2])
+    cube.SetBounds(a[0], b[0],
+                   a[1], b[1],
+                   a[2], b[2])
     cube.Update()
 
-    mapper = vtk.vtkPolyDataMapper()
-    mapper.SetInputConnection(cube.GetOutputPort())
+    box = PolyData(cube.GetOutput())
+    box.color = color
+    box.opacity = opacity
 
-    actor = vtk.vtkActor()
-    actor.SetMapper(mapper)
-    actor.SetPickable(False)
-    actor.GetProperty().SetColor(color[0], color[1], color[2])
-    actor.GetProperty().SetOpacity(0.15)
-    actor.GetProperty().SetEdgeVisibility(True)
-    actor.GetProperty().SetLineWidth(2.0)
+    if edges:
+        box.edges('lines')
 
-    add(actor)
-    return actor
+    add(box)
+    return box
+
+    # mapper = vtk.vtkPolyDataMapper()
+    # mapper.SetInputConnection(cube.GetOutputPort())
+
+    # actor = vtk.vtkActor()
+    # actor.SetMapper(mapper)
+    # actor.SetPickable(False)
+    # actor.GetProperty().SetColor(color[0], color[1], color[2])
+    # actor.GetProperty().SetOpacity(0.15)
+    # actor.GetProperty().SetEdgeVisibility(True)
+    # actor.GetProperty().SetLineWidth(2.0)
+
+    # add(actor)
+    # return actor
 
 
 def _sphere(center, radius, color=(0.8, 0.8, 0.8)):
@@ -1958,7 +1996,8 @@ def _show_cell_labels(actor):
 class Actor:
     """ Base class for all VTK wrappers.
 
-    Wraps vtkActor instances and manages basic display properties.
+    Wraps vtkActor instances and manages their visual properties. The
+    :attr:`actor` property exposes an actors VTK interface.
 
     Parameters
     ----------
@@ -1986,14 +2025,42 @@ class Actor:
         return self._actor
 
     @property
-    def mapper(self):
-        """ Mapper access.
+    def color(self):
+        """ Color property.
 
-        Equivalent to ``self.actor.GetMapper()``.
+        Global color attribute of an actor.
 
-        :type: vtkMapper
+        :type: array_like, shape (3, )
+
+        Note
+        ----
+        Object color does not support alpha channel values, use
+        the :attr:`opacity` property to control object transparency.
         """
-        return self._actor.GetMapper()
+        return self._actor.GetProperty().GetColor()
+
+    @color.setter
+    def color(self, value):
+        self._actor.GetProperty().SetColor(value)
+
+    @property
+    def opacity(self):
+        """ Opacity property.
+
+        Value between 0.0 (fully transparent) and 1.0 (fully opaque).
+
+        :type: float
+
+        Note
+        ----
+        Opacity affects all parts of an actor, i.e., displayed faces
+        (cells), edges, and vertices.
+        """
+        self._actor.GetProperty().GetOpacity()
+
+    @opacity.setter
+    def opacity(self, value):
+        self._actor.GetProperty().SetOpacity(value)
 
     @property
     def visible(self):
@@ -2013,8 +2080,8 @@ class Actor:
     def pickable(self):
         """ Pickable property.
 
-        Query and toggle whether actor geometry can be picked. By default,
-        all managed actors are not pickable.
+        Query and toggle whether actor geometry can be picked. By
+        default, all managed actors are not pickable.
 
         :type: bool
         """
@@ -2025,26 +2092,38 @@ class Actor:
         self._actor.SetPickable(value)
 
 
-class Shape(Actor):
+class PolyData(Actor):
     """ Polygonal shape wrapper.
 
     Manages visual properties of a polygonal shape.
 
     Parameters
     ----------
-    actor : vtkActor
-        Managed actor instance.
+    polydata : vtkPolyData
+        Managed data instance.
 
     Note
     ----
-    Polygonal shapes include point clouds.
+    Point clouds are polygonal shapes that only define 0-dimensional
+    cells.
     """
 
-    def __init__(self, actor):
+    def __init__(self, polydata):
+        mapper = vtk.vtkPolyDataMapper()
+        mapper.SetInputData(polydata)
+
+        # Create standard lookup table and how this table is used
+        # by the mapper.
+        mapper.SetLookupTable(_generic_lut())
+        mapper.SetUseLookupTableScalarRange(True)
+
+        actor = vtk.vtkActor()
+        actor.SetMapper(mapper)
+
         # Initialize base class.
         super().__init__(actor)
 
-        # Initialize scalar array.
+        # Initialize private properties.
         self._scalars = None
         self._draggable = None
 
@@ -2060,7 +2139,7 @@ class Shape(Actor):
 
     @property
     def color(self):
-        """ Object color.
+        """ Color property.
 
         Setting the global color attribute disables coloring using previously
         set scalars with :meth:`colorize`.
@@ -2075,20 +2154,6 @@ class Shape(Actor):
         self._actor.GetProperty().SetColor(value)
 
     @property
-    def opacity(self):
-        """ Object opacity.
-
-        Value between 0.0 (fully transparent) and 1.0 (fully opaque).
-
-        :type: float
-        """
-        self._actor.GetProperty().GetOpacity()
-
-    @opacity.setter
-    def opacity(self, value):
-        self._actor.GetProperty().SetOpacity(value)
-
-    @property
     def scalars(self):
         """ Scalar access.
 
@@ -2099,13 +2164,145 @@ class Shape(Actor):
         self.modified()
         return self._scalars
 
-    @property
-    def draggable(self):
-        return self._draggable
+    # @property
+    # def draggable(self):
+    #     return self._draggable
 
-    @draggable.setter
-    def draggable(self, value):
-        self._draggable = value
+    # @draggable.setter
+    # def draggable(self, value):
+    #     self._draggable = value
+
+    def colorize(self, scalars, *, items='points', range=(None, None),
+                 gradient='spectral', logscale=False):
+        """ Colorize polygonal data.
+
+        Colorize by assinging vertex colors or face colors. Vertex colors
+        are interpolated across faces. Colors can be specified directly as
+        RGB intensity triples or via a color map that maps scalar values
+        to RGB values.
+
+        Parameters
+        ----------
+        scalars : ~numpy.ndarray
+            Scalar values. Either one scalar per item or one RGB color
+            triple per item.
+        items : str, optional
+            Either 'points' or 'cells'.
+        range : (float, float), optional
+            Lookup table range. Defaults to the range given by the
+            smallest and largest scalar value.
+        gradient : str, optional
+            Color scheme identifier.
+        logscale : bool, optional
+            Toggle logarithmic scaling.
+
+
+        Mapping scalars to colors uses a lookup table managed by the
+        :attr:`mapper` instance of an actor. The `range`, `gradient`, and
+        `logscale` arguments directly influence the lookup table. Lookup
+        tables can be further customized via the :meth:`lookuptable` method.
+
+        Use the :func:`colorbar` function to display a visual representation
+        of a lookup table.
+
+        Note
+        ----
+        The `range`, `gradient`, and `logscale` arguments are ignored when
+        specifying colors directly by RGB triples.
+        """
+        if scalars is not None:
+            if items == 'points':
+                self._set_point_scalars(scalars)
+            elif items == 'cells':
+                self._set_cell_scalars(scalars)
+            else:
+                raise ValueError(f"invalid item argument '{items}'")
+
+            if self._scalars.ndim == 1:
+                lo = self._scalars.min() if range[0] is None else range[0]
+                hi = self._scalars.max() if range[1] is None else range[1]
+
+                self.lookuptable((lo, hi), gradient, logscale)
+        else:
+            self._reset_scalars()
+
+    def verts(self, style=None, size=None, color=None):
+        """ Vertex display.
+
+        Set visual properties of vertices.
+
+        Parameters
+        ----------
+        style : str, optional
+            Either 'points' or 'spheres'. :obj:`False` to disable.
+        size : int, optional
+            Size in pixels.
+        color : array_like, shape (3, ), optional
+            Vertex color.
+
+        Note
+        ----
+        Parameters with a :obj:`None` value do not affect the corresponding
+        vertex display property.
+
+        Important
+        ---------
+        On some rendering backends vertex display only works when edges
+        are displayed. This might get fixed in future VTK releases. For
+        now use :func:`scatter` as a work-around.
+        """
+        if style == 'points':
+            self._actor.GetProperty().SetRenderPointsAsSpheres(False)
+            self._actor.GetProperty().SetVertexVisibility(True)
+        elif style == 'spheres':
+            self._actor.GetProperty().SetRenderPointsAsSpheres(True)
+            self._actor.GetProperty().SetVertexVisibility(True)
+        elif style == '' or style is False:
+            self._actor.GetProperty().SetVertexVisibility(False)
+        else:
+            self._actor.GetProperty().SetVertexVisibility(True)
+
+        if size is not None:
+            self._actor.GetProperty().SetPointSize(size)
+
+        if color is not None:
+            self._actor.GetProperty().SetVertexColor(color)
+
+    def edges(self, style=None, width=None, color=None):
+        """ Edge display.
+
+        Set visual properties of edges.
+
+        Parameters
+        ----------
+        style : str, optional
+            Either 'lines' or 'tubes'. :obj:`False` to disable.
+        width : int, optional
+            Edge width in pixels.
+        color : array_like, shape (3, ), optional
+            Edge color.
+
+        Note
+        ----
+        Parameters with a :obj:`None` value do not affect the corresponding
+        edge display property.
+        """
+        if style == 'lines':
+            self._actor.GetProperty().SetRenderLinesAsTubes(False)
+            self._actor.GetProperty().SetEdgeVisibility(True)
+        elif style == 'tubes':
+            self._actor.GetProperty().SetRenderLinesAsTubes(True)
+            self._actor.GetProperty().SetEdgeVisibility(True)
+        elif style == '' or style is False:
+            self._actor.GetProperty().SetEdgeVisibility(False)
+        else:
+            self._actor.GetProperty().SetEdgeVisibility(True)
+
+        if width is not None:
+            self._actor.GetProperty().SetLineWidth(width)
+
+        if color is not None:
+            self._actor.GetProperty().SetEdgeColor(color)
 
     def lookuptable(self, range=None, gradient=None, logscale=None,
                     below=None, above=None, nan=None, size=None):
@@ -2216,66 +2413,23 @@ class Shape(Actor):
             else:
                 lut.SetScaleToLinear()
 
-    def colorize(self, scalars, *, items='points', range=(None, None),
-                 gradient='spectral', logscale=False):
-        """ Colorize polygonal data.
+    def modified(self):
+        """ Update notification.
 
-        Colorize by assinging vertex colors or face colors. Vertex colors
-        are interpolated across faces. Colors can be specified directly as
-        RGB intensity triples or via a color map that maps scalar values
-        to RGB values.
-
-        Parameters
-        ----------
-        scalars : ~numpy.ndarray
-            Scalar values. Either one scalar per item or one RGB color
-            triple per item.
-        items : str, optional
-            Either 'points' or 'cells'.
-        range : (float, float), optional
-            Lookup table range. Defaults to the range given by the
-            smallest and largest scalar value.
-        gradient : str, optional
-            Color scheme identifier.
-        logscale : bool, optional
-            Toggle logarithmic scaling.
-
-
-        Mapping scalars to colors uses a lookup table managed by the
-        :attr:`mapper` instance of an actor. The `range`, `gradient`, and
-        `logscale` arguments directly influence the lookup table. Lookup
-        tables can be further customized via the :meth:`lookuptable` method.
-
-        Use the :func:`colorbar` function to display a visual representation
-        of a lookup table.
+        Should be called when the contents of a shared data buffer are
+        modified.
 
         Note
         ----
-        The `range`, `gradient`, and `logscale` arguments are ignored when
-        specifying colors directly by RGB triples.
+        Changing the **shape** of a shared data buffer is likely to
+        result in a segmentation fault or other undefined behavior.
         """
-        if scalars is not None:
-            if items == 'points':
-                self._set_point_scalars(scalars)
-            elif items == 'cells':
-                self._set_cell_scalars(scalars)
-            else:
-                raise ValueError(f"invalid item argument '{items}'")
-
-            if self._scalars.ndim == 1:
-                lo = self._scalars.min() if range[0] is None else range[0]
-                hi = self._scalars.max() if range[1] is None else range[1]
-
-                self.lookuptable((lo, hi), gradient, logscale)
-        else:
-            self._reset_scalars()
-
-    def modified(self):
-        """
-
-        Set modified time of
-        """
+        self._actor.GetMapper().GetInput().GetPoints().Modified()
         self._actor.GetMapper().GetInput().GetPointData().Modified()
+
+        # There are cells that define vertices and lines. None of the
+        # wrapped shapes use them.
+        self._actor.GetMapper().GetInput().GetPolys().Modified()
         self._actor.GetMapper().GetInput().GetCellData().Modified()
 
     def _set_point_scalars(self, value):
@@ -2345,7 +2499,7 @@ class Shape(Actor):
         self._scalars = None
 
 
-class PointCloud(Shape):
+class PointCloud(PolyData):
     """ Point cloud shape.
 
     Wrapper class for point cloud visualization. Instances of this class
@@ -2353,124 +2507,62 @@ class PointCloud(Shape):
 
     Parameters
     ----------
-    points : array_like, shape (k, 3), k > 1
-        Point coordinates, converted to :class:`~np.ndarray` if not
-        a :class:`~numpy.ndarray` instance.
-    copy : bool, optional
-        Making a copy of `points` will detach the scene object's data
-        buffer from `points`. A copy is always made when `point` is not
-        a :class:`~numpy.ndarray` instance.
+    points : array_like, shape (n, k)
+        Coordinate container.
+
+
+    If `points` is not of type :class:`~numpy.ndarray` an equivalent
+    representation is created. The :class:`~numpy.ndarray` used for
+    visualization is accessible via the :attr:`points` attribute.
+
+    Note
+    ----
+    The data buffer of the coordinate array is shared with VTK.
     """
 
-    def __init__(self, polydata):
-        mapper = vtk.vtkPolyDataMapper()
-        mapper.SetInputData(polydata)
-
-        # Create standard lookup table and how this table is used
-        # by the mapper.
-        mapper.SetLookupTable(_generic_lut())
-        mapper.SetUseLookupTableScalarRange(True)
-
-        actor = vtk.vtkActor()
-        actor.SetMapper(mapper)
-
-        # Initialize base class.
-        super().__init__(actor)
-
-    # def __init__(self, points, copy=False):
-    #     # A copy is always made when points is not an array because
-    #     # we turn it into an array.
-    #     if isinstance(points, np.ndarray) and copy:
-    #         self._points = points.copy()
-    #     else:
-    #         self._points = np.asarray(points)
-
-    #     points = vtk.vtkPoints()
-    #     points.SetData(numpy_to_vtk(self._points))
-
-    #     polydata = vtk.vtkPolyData()
-    #     polydata.SetPoints(points)
-
-    #     vertices = vtk.vtkCellArray()
-
-    #     for i in range(len(self._points)):
-    #         vertices.InsertNextCell(1, [i])
-
-    #     polydata.SetVerts(vertices)
-
-    #     mapper = vtk.vtkPolyDataMapper()
-    #     mapper.SetInputData(polydata)
-
-    #     # Create standard lookup table and how this table is used
-    #     # by the mapper.
-    #     mapper.SetLookupTable(_lut())
-    #     mapper.SetUseLookupTableScalarRange(True)
-
-    #     actor = vtk.vtkActor()
-    #     actor.SetMapper(mapper)
-
-    #     # Initialize base class.
-    #     super().__init__(actor)
-
-    @classmethod
-    def from_mesh(cls, mesh):
-        return cls.from_array_like(mesh.points)
-
-    @classmethod
-    def from_array_like(cls, array):
-        array = np.asarray(array)
+    def __init__(self, points):
+        self._points = np.asarray(points)
 
         points = vtk.vtkPoints()
-        points.SetData(numpy_to_vtk(array))
+        points.SetData(numpy_to_vtk(self._points))
 
         polydata = vtk.vtkPolyData()
         polydata.SetPoints(points)
 
         vertices = vtk.vtkCellArray()
 
-        for i in range(len(array)):
+        for i in range(len(self._points)):
             vertices.InsertNextCell(1, [i])
 
         polydata.SetVerts(vertices)
-
-        pc = cls(polydata)
-        pc._points = array
-
-        return pc
+        super().__init__(polydata)
 
     @property
     def points(self):
-        """ Point array access.
+        """ Point coordinate array access.
 
-        Changing the size of this array will automatically resize the
-        currently set scalar array.
+        :type: ~numpy.ndarray
         """
         return self._points
 
-    # @points.setter
-    # def points(self, value):
-    #     self._points = np.asarray(value)
-    #     self._resize_scalars(len(self._points))
-
-    #     polydata = self._actor.GetMapper().GetInput()
-    #     polydata.GetPoints().SetData(numpy_to_vtk(self._points))
-    #     polydata.GetPoints().Modified()
-
-    #     vertices = vtk.vtkCellArray()
-
-    #     for i in range(len(self._points)):
-    #         vertices.InsertNextCell(1, [i])
-
-    #     polydata.SetVerts(vertices)
-    #     polydata.GetVerts().Modified()
-
     def verts(self, style=None, size=None, color=None):
-        """ Set vertex visuals.
+        """ Vertex display.
+
+        Set visual properties of vertices.
 
         Parameters
         ----------
-        size : float, optional
         style : str, optional
+            Either 'points' or 'spheres'. :obj:`False` to disable.
+        size : int, optional
+            Size in pixels.
+        color : array_like, shape (3, ), optional
+            Vertex color.
+
+        Note
+        ----
+        Parameters with a :obj:`None` value do not affect the corresponding
+        vertex display property.
         """
         if style == 'points':
             self._actor.GetProperty().SetRenderPointsAsSpheres(False)
@@ -2483,17 +2575,8 @@ class PointCloud(Shape):
         if color is not None:
             self.color = color
 
-    def modified(self):
-        """
 
-        Set modified time of
-        """
-        super().modified()
-
-        self._actor.GetMapper().GetInput().GetPoints().Modified()
-
-
-class PolyMesh(Shape):
+class PolyMesh(PolyData):
     """ Polygonal mesh shape.
 
     Wrapper class managing the visual properties of a mesh. Instances of
@@ -2501,53 +2584,18 @@ class PolyMesh(Shape):
 
     Parameters
     ----------
-    polydata : vtkPolyData
-        Polygonal data that specifies points and polygons.
+    mesh : Mesh
+        A mesh instance.
+
+    Note
+    ----
+    The generated :class:`PolyMesh` instance and `mesh` share their
+    vertex coordinate data buffers.
     """
 
-    def __init__(self, polydata):
-        self._mesh = None
+    def __init__(self, mesh):
+        self._mesh = mesh
 
-        mapper = vtk.vtkPolyDataMapper()
-        mapper.SetInputData(polydata)
-        mapper.SetLookupTable(_generic_lut())
-        mapper.SetUseLookupTableScalarRange(True)
-
-        actor = vtk.vtkActor()
-        actor.SetMapper(mapper)
-
-        super().__init__(actor)
-
-    @property
-    def mesh(self):
-        """ Mesh access.
-
-        :type: Mesh
-
-        Note
-        ----
-        Property evalutes to :obj:`None` if the :class:`PolyMesh` instance
-        was not initialized from a :class:`~m3sh.hds.Mesh` object.
-        """
-        return self._mesh
-
-    @classmethod
-    def from_mesh(cls, mesh):
-        """ Initialize from mesh.
-
-        The generated :class:`PolyMesh` instance and `mesh` share their
-        vertex coordinate data buffers.
-
-        Parameters
-        ----------
-        mesh : Mesh
-            A mesh instance.
-
-        Returns
-        -------
-        actor : PolyMesh
-            Visual representation of `mesh` geometry.
-        """
         points = vtk.vtkPoints()
         points.SetData(numpy_to_vtk(mesh.points))
 
@@ -2563,69 +2611,18 @@ class PolyMesh(Shape):
             polys.InsertNextCell(face)
 
         polydata.SetPolys(polys)
+        super().__init__(polydata)
 
-        renmesh = cls(polydata)
-        renmesh._mesh = mesh
+    @property
+    def mesh(self):
+        """ Mesh access.
 
-        return renmesh
-
-    # @classmethod
-    # def from_edges(cls, mesh):
-    #     raise NotImplementedError()
-
-    @classmethod
-    def from_grid(cls, x, y, z):
-        raise NotImplementedError()
-
-    @classmethod
-    def from_index(cls, verts, faces):
-        raise NotImplementedError()
-
-    def verts(self, style=None, size=None, color=None):
-        """ Mesh vertex display.
-
-        Set visual properties of mesh vertex display.
-
-        Parameters
-        ----------
-        style : str, optional
-            Either 'points' or 'spheres'. :obj:`False` to disable.
-        size : int, optional
-            Size in pixels.
-        colors : array_like, shape (3, ), optional
-            Vertex color.
-
-        Note
-        ----
-        Parameters with a :obj:`None` value do not affect the corresponding
-        vertex display property.
-
-        Warning
-        -------
-        Vertex display only works when edges are displayed. Use
-        :func:`scatter` as a work-around.
+        :type: Mesh
         """
-        if style == 'points':
-            self._actor.GetProperty().SetRenderPointsAsSpheres(False)
-            self._actor.GetProperty().SetVertexVisibility(True)
-        elif style == 'spheres':
-            self._actor.GetProperty().SetRenderPointsAsSpheres(True)
-            self._actor.GetProperty().SetVertexVisibility(True)
-        elif style == '' or style is False:
-            self._actor.GetProperty().SetVertexVisibility(False)
-        else:
-            self._actor.GetProperty().SetVertexVisibility(True)
+        return self._mesh
 
-        if size is not None:
-            self._actor.GetProperty().SetPointSize(size)
-
-        if color is not None:
-            self._actor.GetProperty().SetVertexColor(color)
-
-    def edges(self, style=None, width=None, color=None):
-        """ Mesh edge display.
-
-        Set visual properties of mesh edge display.
+    def silhouette(self, style=None, width=None, color=None):
+        """ Silhouette display.
 
         Parameters
         ----------
@@ -2639,32 +2636,12 @@ class PolyMesh(Shape):
         Note
         ----
         Parameters with a :obj:`None` value do not affect the corresponding
-        edge display property.
-        """
-        if style == 'lines':
-            self._actor.GetProperty().SetRenderLinesAsTubes(False)
-            self._actor.GetProperty().SetEdgeVisibility(True)
-        elif style == 'tubes':
-            self._actor.GetProperty().SetRenderLinesAsTubes(True)
-            self._actor.GetProperty().SetEdgeVisibility(True)
-        elif style == '' or style is False:
-            self._actor.GetProperty().SetEdgeVisibility(False)
-        else:
-            self._actor.GetProperty().SetEdgeVisibility(True)
-
-        if width is not None:
-            self._actor.GetProperty().SetLineWidth(width)
-
-        if color is not None:
-            self._actor.GetProperty().SetEdgeColor(color)
-
-    def silhouette(self, width=None, style=None, color=None):
-        """ Mesh silhouette display.
+        silhouette display property.
         """
         if not hasattr(self, '_silhouette'):
             self._silhouette = None
 
-        if style == '':
+        if style == '' or style is False:
             delete(self._silhouette)
             self._silhouette = None
             return
@@ -2690,7 +2667,6 @@ class PolyMesh(Shape):
                 actor.GetProperty().SetLineWidth(2)
 
             add(actor)
-
             self._silhouette = actor
         else:
             actor = self._silhouette
@@ -2706,10 +2682,9 @@ class PolyMesh(Shape):
         if color is not None:
             actor.GetProperty().SetColor(color)
 
-    def contour(self, scalars=None, *, levels=None, range=(None, None),
+    def _contour(self, scalars=None, *, levels=None, range=(None, None),
                 width=None, style=None, color=None):
         """
-        color parameter can be RGB triple or 'scalars'
         """
         if scalars is None and self._scalars is None:
             raise ValueError("required argument 'scalars' is missing")
@@ -2741,7 +2716,6 @@ class PolyMesh(Shape):
             actor.SetPickable(False)
 
             add(actor)
-
             self._contour = actor
         else:
             actor = self._contour
@@ -2763,34 +2737,28 @@ class PolyMesh(Shape):
             mapper.SetScalarVisibility(False)
             actor.GetProperty().SetColor(color)
 
-    def modified(self):
-        """ Notify of geometry changes.
-
-        Update representation according to base geometry.
-        """
-        super().modified()
-
-        self._actor.GetMapper().GetInput().GetPoints().Modified()
-        self._actor.GetMapper().GetInput().GetPolys().Modified()
-
 
 class LookupTable(Actor):
     """ Color bar.
 
     Visual representation of a lookup table associated with a displayed
-    polygonal shape (this includes point clouds).
+    shape.
 
     Parameters
     ----------
-    object : Shape or vtkActor
+    actor : Actor or vtkActor
         A render object.
+
+    Note
+    ----
+    The wrapped actor is a 2-dimensional actor.
     """
 
-    def __init__(self, object):
+    def __init__(self, actor):
         try:
-            actor = object.actor
+            actor = actor.actor
         except AttributeError:
-            actor = object
+            pass
 
         lut = actor.GetMapper().GetLookupTable()
 
@@ -2810,6 +2778,9 @@ class LookupTable(Actor):
     @property
     def position(self):
         """ Position property.
+
+        Location of the lower left corner in normalized screen
+        coordinates.
         """
         return self.actor.GetPosition()
 
@@ -2818,7 +2789,7 @@ class LookupTable(Actor):
         self.actor.SetPosition(value)
         self.actor.Modified()
 
-    def modified(self, object=None):
+    def _modified(self, object=None):
         """ Update representation.
 
         Update lookup table representation from `object`.

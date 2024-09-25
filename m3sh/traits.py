@@ -30,19 +30,23 @@ import numpy as np
 import m3sh.linalg as linalg
 
 
-def _aabb(points):
-    """ Axis-aligned bounding box.
+def bounds(points):
+    """ Bounding box vertices.
 
     Corner vertices of the axis-aligned bounding box.
 
     Parameters
     ----------
-    points : ~numpy.ndarray
+    points : array_like, shape (n, k)
+        Coordinates of :math:`n` points in :math:`\mathbb{R}^k`,
+        one point per row.
 
     Returns
     -------
     a : ~numpy.ndarray
+        Holds the minimum value for each dimension.
     b : ~numpy.ndarray
+        Holds the maximum value for each dimension.
     """
     return np.min(points, axis=0), np.max(points, axis=0)
 
