@@ -1,0 +1,6 @@
+copy
+====
+
+.. currentmodule:: m3sh.hds
+
+.. automethod:: Mesh.copy

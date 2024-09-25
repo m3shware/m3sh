@@ -1,0 +1,46 @@
+PolyMesh
+========
+
+.. currentmodule:: m3sh.vis
+ 
+.. autoclass:: PolyMesh
+   :show-inheritance:
+   :no-inherited-members:
+    
+   
+   
+   .. rubric:: Attributes
+ 
+   .. autosummary::
+      :toctree:
+      :template: attribute.rst
+   
+      ~PolyMesh.actor
+      ~PolyMesh.color
+      ~PolyMesh.mesh
+      ~PolyMesh.opacity
+      ~PolyMesh.pickable
+      ~PolyMesh.polydata
+      ~PolyMesh.scalars
+      ~PolyMesh.visible
+   
+   
+ 
+   
+   
+   .. rubric:: Methods
+ 
+   .. autosummary::
+      :toctree: 
+      :template: function.rst
+   
+      ~PolyMesh.colorize
+      ~PolyMesh.edges
+      ~PolyMesh.lookuptable
+      ~PolyMesh.modified
+      ~PolyMesh.silhouette
+      ~PolyMesh.verts
+   
+   
+   
+   

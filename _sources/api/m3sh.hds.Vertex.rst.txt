@@ -1,0 +1,44 @@
+Vertex
+======
+
+.. currentmodule:: m3sh.hds
+ 
+.. autoclass:: Vertex
+   :no-inherited-members:
+    
+   
+   
+   .. rubric:: Attributes
+ 
+   .. autosummary::
+      :toctree:
+      :template: attribute.rst
+   
+      ~Vertex.boundary
+      ~Vertex.degree
+      ~Vertex.deleted
+      ~Vertex.flags
+      ~Vertex.halfedge
+      ~Vertex.index
+      ~Vertex.isolated
+      ~Vertex.point
+   
+   
+ 
+   
+   
+   
+   
+   
+   
+   .. rubric:: Special methods
+ 
+   .. autosummary::
+      :toctree: 
+      :template: function.rst
+   
+         ~Vertex.__index__
+         ~Vertex.__int__
+   
+   
+   

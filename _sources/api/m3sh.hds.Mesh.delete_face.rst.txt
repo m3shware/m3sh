@@ -1,0 +1,6 @@
+delete\_face
+============
+
+.. currentmodule:: m3sh.hds
+
+.. automethod:: Mesh.delete_face

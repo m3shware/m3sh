@@ -1,0 +1,6 @@
+point
+=====
+
+.. currentmodule:: m3sh.hds
+
+.. autoproperty:: Vertex.point
