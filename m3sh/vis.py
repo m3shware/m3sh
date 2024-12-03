@@ -2682,6 +2682,29 @@ class PolyMesh(PolyData):
         if color is not None:
             actor.GetProperty().SetColor(color)
 
+    def texture(self, img, uv):
+        """ Texture mapping.
+
+        Parameters
+        ----------
+        img : str
+            Name of image file.
+        uv : ~numpy.ndarray
+            Texture coordinates.
+        """
+        self.polydata.GetPointData().SetTCoords(numpy_to_vtk(uv))
+
+        factory = vtk.vtkImageReader2Factory()
+        reader = factory.CreateImageReader2(img)
+        reader.SetFileName(img)
+        reader.Update()
+
+        texture = vtk.vtkTexture()
+        texture.InterpolateOn()
+        texture.SetInputConnection(reader.GetOutputPort())
+
+        self.actor.SetTexture(texture)
+
     def _contour(self, scalars=None, *, levels=None, range=(None, None),
                 width=None, style=None, color=None):
         """
