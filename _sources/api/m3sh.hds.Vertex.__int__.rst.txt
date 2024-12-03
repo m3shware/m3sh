@@ -1,0 +1,6 @@
+\_\_int\_\_
+===========
+
+.. currentmodule:: m3sh.hds
+
+.. automethod:: Vertex.__int__

@@ -1,0 +1,45 @@
+PointCloud
+==========
+
+.. currentmodule:: m3sh.vis
+ 
+.. autoclass:: PointCloud
+   :show-inheritance:
+   :no-inherited-members:
+    
+   
+   
+   .. rubric:: Attributes
+ 
+   .. autosummary::
+      :toctree:
+      :template: attribute.rst
+   
+      ~PointCloud.actor
+      ~PointCloud.color
+      ~PointCloud.opacity
+      ~PointCloud.pickable
+      ~PointCloud.points
+      ~PointCloud.polydata
+      ~PointCloud.scalars
+      ~PointCloud.visible
+   
+   
+ 
+   
+   
+   .. rubric:: Methods
+ 
+   .. autosummary::
+      :toctree: 
+      :template: function.rst
+   
+      ~PointCloud.colorize
+      ~PointCloud.edges
+      ~PointCloud.lookuptable
+      ~PointCloud.modified
+      ~PointCloud.verts
+   
+   
+   
+   
