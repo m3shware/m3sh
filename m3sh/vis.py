@@ -1596,7 +1596,7 @@ def _display(message, x=0.05, y=0.95, size=12, color=colors.white, bold=False,
     textActor.GetPositionCoordinate().SetValue(x, y)
 
     add(textActor)
-    return Shape(textActor)
+    return Actor(textActor)
 
 
 def _annotate(point, string, size=1.0, color=(0.25, 0.25, 0.25)):
