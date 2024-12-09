@@ -1,0 +1,6 @@
+degree
+======
+
+.. currentmodule:: m3sh.hds
+
+.. autoproperty:: Vertex.degree

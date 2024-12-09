@@ -1,0 +1,47 @@
+Face
+====
+
+.. currentmodule:: m3sh.hds
+ 
+.. autoclass:: Face
+   :no-inherited-members:
+    
+   
+   
+   .. rubric:: Attributes
+ 
+   .. autosummary::
+      :toctree:
+      :template: attribute.rst
+   
+      ~Face.barycenter
+      ~Face.boundary
+      ~Face.deleted
+      ~Face.flags
+      ~Face.halfedge
+      ~Face.index
+      ~Face.valence
+   
+   
+ 
+   
+   
+   
+   
+   
+   
+   .. rubric:: Special methods
+ 
+   .. autosummary::
+      :toctree: 
+      :template: function.rst
+   
+         ~Face.__contains__
+         ~Face.__getitem__
+         ~Face.__index__
+         ~Face.__int__
+         ~Face.__iter__
+         ~Face.__len__
+   
+   
+   

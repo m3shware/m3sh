@@ -1,0 +1,6 @@
+add
+===
+
+.. currentmodule:: m3sh.vis
+
+.. autofunction:: add

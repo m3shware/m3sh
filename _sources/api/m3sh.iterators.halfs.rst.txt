@@ -1,0 +1,6 @@
+halfs
+=====
+
+.. currentmodule:: m3sh.iterators
+
+.. autofunction:: halfs
