@@ -127,9 +127,9 @@ class _Heap:
         Only `hashable <https://docs.python.org/3/glossary.html#term-hashable>`_
         objects can be added to a heap. All user defined types are hashable.
         """
-        if data in self._hpos:
+        try:
             self.update(data, priority)
-        else:
+        except KeyError:
             self._hpos[data] = len(self._heap)
             self._heap.append((data, priority))
             self._fixup(len(self._heap)-1)
