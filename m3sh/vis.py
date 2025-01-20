@@ -1838,7 +1838,7 @@ def show(width=1200, height=600, title=None, *, info=False, lmbdown=None,
         iren.axes_widget.SetCurrentRenderer(_renderer)
         iren.axes_widget.SetInteractor(iren)
         iren.axes_widget.SetViewport(0.0, 0.0, 0.2, 0.2)
-        iren.axes_widget.SetSizeConstraintDimensionSizes(128, 256)
+        # iren.axes_widget.SetSizeConstraintDimensionSizes(128, 256)
         # iren.axes_widget.SetShouldConstrainSize(True)
         iren.axes_widget.SetInteractive(False)
         iren.axes_widget.SetEnabled(True)
