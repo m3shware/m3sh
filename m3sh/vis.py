@@ -622,7 +622,7 @@ def _icon(window, file='m3sh.png'):
         window.SetIcon(reader.GetOutput())
 
 
-def mesh(mesh, normals=None, color=colors.snow):
+def mesh(mesh, normals=None, color=colors.snow, share=True):
     """ Mesh visualization.
 
     Vertex normals are merely a visualization hint and result in smooth
@@ -632,10 +632,12 @@ def mesh(mesh, normals=None, color=colors.snow):
     ----------
     mesh : Mesh
         A mesh instance.
-    normals : ~numpy.ndarray.
+    normals : ~numpy.ndarray, optional
         Array of unit vertex normals, one vector per row.
-    color : array_like, shape (3, )
+    color : array_like, shape (3, ), optional
         RGB color triple.
+    share : bool, optional
+        If :obj:`True` the points array of `mesh` is shared with VTK.
 
     Returns
     -------
@@ -645,10 +647,11 @@ def mesh(mesh, normals=None, color=colors.snow):
 
     Note
     ----
-    The data buffer of the vertex normal array is shared with VTK. This
-    may have unwanted side effects. Use a copy to dicouple storage.
+    The `share` argument only applies to `mesh`, the data buffer of the
+    vertex normal array is always shared with VTK. This may have unwanted
+    side effects. Use a copy to decouple storage.
     """
-    renmesh = PolyMesh(mesh)
+    renmesh = PolyMesh(mesh, share)
     renmesh.color = color
 
     if normals is not None:
@@ -1764,7 +1767,7 @@ def show(width=1200, height=600, title=None, *, info=False, lmbdown=None,
 
     Note
     ----
-    An object itself can be used  as callback when it implements the
+    An object itself can be used as callback when it implements the
     :meth:`__call__` method.
     """
     # Global state variables that are modified in this function. Should
@@ -2586,18 +2589,25 @@ class PolyMesh(PolyData):
     ----------
     mesh : Mesh
         A mesh instance.
+    share : bool, optional
+        If :obj:`True` the points array of `mesh` is shared with VTK.
 
     Note
     ----
     The generated :class:`PolyMesh` instance and `mesh` share their
-    vertex coordinate data buffers.
+    vertex coordinate data buffers if not disabled explicitly.
     """
 
-    def __init__(self, mesh):
+    def __init__(self, mesh, share=True):
         self._mesh = mesh
 
         points = vtk.vtkPoints()
-        points.SetData(numpy_to_vtk(mesh.points))
+
+        if share:
+            points.SetData(numpy_to_vtk(mesh.points))
+        else:
+            for p in mesh.points:
+                points.InsertNextPoint(p[0], p[1], p[2])
 
         polydata = vtk.vtkPolyData()
         polydata.SetPoints(points)
