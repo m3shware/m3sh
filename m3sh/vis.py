@@ -999,7 +999,7 @@ def quiver(points, vectors, scale=1.0, color=(0.5, 0.5, 0.5), *,
 
     # Starting with Python 3.10 zip supports the 'strict' keyword argument.
     # Helps to check consistency of points and vectors argument.
-    for pt, vec in zip(points, vectors): # strict=True):
+    for pt, vec in zip(points, vectors, strict=True):
         if np.all(np.isfinite(vec)):
             points_.InsertNextPoint(pt[0], pt[1], pt[2])
             vectors_.InsertNextTuple3(vec[0], vec[1], vec[2])
@@ -1042,6 +1042,16 @@ def quiver(points, vectors, scale=1.0, color=(0.5, 0.5, 0.5), *,
 
     add(actor)
     return actor
+
+
+def _quiver(points, vectors, scale=1.0, color=(0.5, 0.5, 0.5), *,
+           shaft_radius=0.025, tip_radius=0.05, tip_length=0.5,
+           resolution=6):
+    vecfield = VectorField(points, vectors, scale, color, shaft_radius,
+                           tip_radius, tip_length, resolution)
+
+    add(vecfield)
+    return vecfield
 
 
 def _splat(P, N, *args, scale=1.0, color=(1.0, 1.0, 1.0), **kwargs):
@@ -2093,6 +2103,82 @@ class Actor:
     @pickable.setter
     def pickable(self, value):
         self._actor.SetPickable(value)
+
+
+class VectorField(Actor):
+
+    def __init__(self, points, vectors, scale=1.0, color=(0.5, 0.5, 0.5),
+                 shaft_radius=0.025, tip_radius=0.05, tip_length=0.5,
+                 resolution=6):
+        # Prepare the data buffers used by VTK and fill them with the data
+        # provided.
+        self._points = vtk.vtkPoints()
+        self._points.SetData(numpy_to_vtk(points))
+
+        scalars = vtk.vtkFloatArray()
+        scalars.SetNumberOfComponents(1)
+        scalars.SetName('glyph_scale')
+
+        colors = vtk.vtkFloatArray()
+        colors.SetNumberOfComponents(3)
+        colors.SetName('glyph_color')
+
+        if np.shape(color) == (3, ):
+            color_ = iter(lambda: color, None)
+        else:
+            color_ = iter(color)
+
+        if isinstance(scale, int) or isinstance(scale, float):
+            scale_ = iter(lambda: scale, None)
+        else:
+            scale_ = iter(scale)
+
+        # Starting with Python 3.10 zip supports the 'strict' keyword argument.
+        # Helps to check consistency of points and vectors argument.
+        for _, vec in zip(points, vectors, strict=True):
+            if np.all(np.isfinite(vec)):
+                scalars.InsertNextTuple1(next(scale_))
+                colors.InsertNextTuple3(*next(color_))
+
+        self._polydata = vtk.vtkPolyData()
+        self._polydata.SetPoints(self._points)
+        self._polydata.GetPointData().SetVectors(numpy_to_vtk(vectors))
+        self._polydata.GetPointData().AddArray(scalars)
+        self._polydata.GetPointData().AddArray(colors)
+        self._polydata.GetPointData().SetActiveScalars('glyph_scale')
+
+        # The source shape used for glyphs. If rendering is too slow when there
+        # is a large number of glyphs, the resolution of each can be reduced.
+        arrow = vtk.vtkArrowSource()
+        arrow.SetTipRadius(tip_radius)
+        arrow.SetTipLength(tip_length)
+        arrow.SetTipResolution(resolution)
+        arrow.SetShaftRadius(shaft_radius)
+        arrow.SetShaftResolution(resolution)
+
+        glyph = vtk.vtkGlyph3D()
+        glyph.SetInputData(self._polydata)
+        glyph.SetSourceConnection(arrow.GetOutputPort())
+        glyph.OrientOn()
+        glyph.SetVectorModeToUseVector()
+        glyph.ScalingOn()
+        glyph.SetScaleModeToScaleByScalar()
+
+        mapper = vtk.vtkPolyDataMapper()
+        mapper.SetInputConnection(glyph.GetOutputPort())
+        mapper.SetScalarModeToUsePointFieldData()
+        mapper.SetColorModeToDirectScalars()
+        mapper.ScalarVisibilityOn()
+        mapper.SelectColorArray('glyph_color')
+
+        actor = vtk.vtkActor()
+        actor.SetMapper(mapper)
+
+        super().__init__(actor)
+
+    def modified(self):
+        self._polydata.GetPoints().Modified()
+        self._polydata.GetPointData().Modified()
 
 
 class PolyData(Actor):
