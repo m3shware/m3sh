@@ -510,8 +510,8 @@ def scatter(points, style='spheres', size=4, color=colors.dim_grey):
     return pc
 
 
-def _generic_lut(range=(0.0, 1.0), gradient='spectral', logscale=False,
-                 below=None, above=None, nan=None, size=128):
+def _generic_lut(range=(0.0, 1.0), gradient='default', logscale=False,
+                 size=128, below=None, above=None, nan=None):
     """ Generate lookup table.
 
     Lookup table with `size` values in the given `range`. Gradient
@@ -535,25 +535,25 @@ def _generic_lut(range=(0.0, 1.0), gradient='spectral', logscale=False,
         Name of color gradient.
     logscale : bool, optional
         Toggle logarithmic scaling.
+    size : int, optional
+        Number of table values.
     below : array_like, shape (4, )
         RGBA color for values below table range.
     above : array_like, shape (4, )
         RGBA color for values above table range.
     nan : array_like, shape (4, )
         RGBA color for NaN values.
-    size : int, optional
-        Number of table values.
 
     Returns
     -------
-    lut : VtkLookupTable
+    VtkLookupTable
         The generated lookup table.
 
     Note
     ----
-    Passing :obj:`None` as `gradient` will use VTK's default color gradient.
+    Passing 'default' as `gradient` will use VTK's default color gradient.
     """
-    if gradient in {None, 'hot', 'jet', 'grey', 'gray'}:
+    if gradient in {'default', 'hot', 'jet', 'grey', 'gray'}:
         lut = vtk.vtkLookupTable()
         lut.SetNumberOfTableValues(size)
 
@@ -587,23 +587,19 @@ def _generic_lut(range=(0.0, 1.0), gradient='spectral', logscale=False,
 
     lut.SetTableRange(range[0], range[1])
 
+    if logscale:
+        lut.SetScaleToLog10()
+
     if nan is not None:
         lut.SetNanColor(nan)
 
     if below is not None:
         lut.SetBelowRangeColor(below)
         lut.SetUseBelowRangeColor(True)
-    else:
-        lut.SetUseBelowRangeColor(False)
 
     if above is not None:
         lut.SetAboveRangeColor(above)
         lut.SetUseAboveRangeColor(True)
-    else:
-        lut.SetUseAboveRangeColor(False)
-
-    if logscale:
-        lut.SetScaleToLog10()
 
     return lut
 
@@ -2261,8 +2257,8 @@ class PolyData(Actor):
     # def draggable(self, value):
     #     self._draggable = value
 
-    def colorize(self, scalars, *, items='points', range=(None, None),
-                 gradient='spectral', logscale=False):
+    def colorize(self, scalars, items, range=None, gradient=None,
+                 logscale=None, size=None):
         """ Colorize polygonal data.
 
         Colorize by assinging vertex colors or face colors. Vertex colors
@@ -2275,7 +2271,7 @@ class PolyData(Actor):
         scalars : ~numpy.ndarray
             Scalar values. Either one scalar per item or one RGB color
             triple per item.
-        items : str, optional
+        items : str
             Either 'points' or 'cells'.
         range : (float, float), optional
             Lookup table range. Defaults to the range given by the
@@ -2284,6 +2280,8 @@ class PolyData(Actor):
             Color scheme identifier.
         logscale : bool, optional
             Toggle logarithmic scaling.
+        size : int, optional
+            Size of lookup table.
 
 
         Mapping scalars to colors uses a lookup table managed by the
@@ -2296,8 +2294,8 @@ class PolyData(Actor):
 
         Note
         ----
-        The `range`, `gradient`, and `logscale` arguments are ignored when
-        specifying colors directly by RGB triples.
+        When specifying colors directly by RGB triples, all arguments
+        except `scalars` and `items` are ignored.
         """
         if scalars is not None:
             if items == 'points':
@@ -2307,11 +2305,7 @@ class PolyData(Actor):
             else:
                 raise ValueError(f"invalid item argument '{items}'")
 
-            if self._scalars.ndim == 1:
-                lo = self._scalars.min() if range[0] is None else range[0]
-                hi = self._scalars.max() if range[1] is None else range[1]
-
-                self.lookuptable((lo, hi), gradient, logscale)
+            self.lookuptable(range, gradient, logscale, size)
         else:
             self._reset_scalars()
 
@@ -2394,7 +2388,7 @@ class PolyData(Actor):
             self._actor.GetProperty().SetEdgeColor(color)
 
     def lookuptable(self, range=None, gradient=None, logscale=None,
-                    below=None, above=None, nan=None, size=None):
+                    size=None, **kwargs):
         """ Modify lookup table properties.
 
         An objects lookup tables determines how entries of the scalar
@@ -2409,15 +2403,18 @@ class PolyData(Actor):
             Color scheme identifier, see below.
         logscale : bool
             Switch between linear and logarithmic scale.
+        size : int
+            Size of lookup table. Has no effect when a discrete
+            color series is used to define the lookup table.
+
+        Keyword arguments
+        -----------------
         below : array_like, shape (4, )
             Color for scalars below the specified range.
         above: array_like, shape (4, )
             Color for scalars above the specified range.
         nan : array_like, shape (4, )
             Special color for NaN scalar values.
-        size : int
-            Size of lookup table. Has no effect when a discrete
-            color series is used to define the lookup table.
 
 
         Smooth color gradients are defined by the color scheme identifiers
@@ -2430,9 +2427,8 @@ class PolyData(Actor):
 
         Note
         ----
-        Every object starts with a default lookup table. Arguments holding
-        a :obj:`None` value will not affect the corresponding lookup table
-        property.
+        Every object starts with a default lookup table. Arguments not
+        provided have no affect on the corresponding lookup table property.
         """
         # The current lookup table. Properties are modified according to the
         # given parameters. None values preserve the corresponding property.
@@ -2452,9 +2448,6 @@ class PolyData(Actor):
                 lut.SetSaturationRange(0, 0)
                 lut.SetValueRange(0, 1)
 
-            if size is not None:
-                lut.SetNumberOfTableValues(size)
-
             lut.ForceBuild()
         elif gradient in {'spectral', 'diverging', 'blue', 'orange',
                           'purple'}:
@@ -2468,12 +2461,14 @@ class PolyData(Actor):
                    'orange': series.BREWER_SEQUENTIAL_YELLOW_ORANGE_BROWN_9,
                    'purple': series.BREWER_SEQUENTIAL_BLUE_PURPLE_9}
 
-            if size is not None:
-                raise ValueError(f"size argument invalid for '{gradient}'")
-
             series.SetColorScheme(map[gradient])
             series.BuildLookupTable(lut, series.ORDINAL)
+        elif gradient == 'default':
+            # This should reset the color gradient to some default value.
+            # Currently does nothing.
+            pass
         elif gradient is None:
+            # Nothing to do, no gradient argument defined.
             pass
         else:
             raise ValueError(f"unknown color scheme '{gradient}'")
@@ -2481,26 +2476,33 @@ class PolyData(Actor):
         if range is not None:
             lut.SetTableRange(range[0], range[1])
 
-        if nan is not None:
-            lut.SetNanColor(nan)
-
-        if below is not None:
-            lut.SetBelowRangeColor(below)
-            lut.SetUseBelowRangeColor(True)
-        else:
-            lut.SetUseBelowRangeColor(False)
-
-        if above is not None:
-            lut.SetAboveRangeColor(above)
-            lut.SetUseAboveRangeColor(True)
-        else:
-            lut.SetUseAboveRangeColor(False)
-
         if logscale is not None:
             if logscale:
                 lut.SetScaleToLog10()
             else:
                 lut.SetScaleToLinear()
+
+        if size is not None:
+            # Setting the size of a lookup table has no effect when using
+            # a discrete color scheme.
+            lut.SetNumberOfTableValues(size)
+
+        if 'below' in kwargs:
+            if (below := kwargs['below']) is not None:
+                lut.SetBelowRangeColor(below)
+                lut.SetUseBelowRangeColor(True)
+            else:
+                lut.SetUseBelowRangeColor(False)
+
+        if 'above' in kwargs:
+            if (above := kwargs['above']) is not None:
+                lut.SetAboveRangeColor(above)
+                lut.SetUseAboveRangeColor(True)
+            else:
+                lut.SetUseAboveRangeColor(False)
+
+        if (nan := kwargs.get('nan')) is not None:
+            lut.SetNanColor(nan)
 
     def modified(self):
         """ Update notification.
