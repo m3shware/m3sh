@@ -1050,6 +1050,19 @@ def _quiver(points, vectors, scale=1.0, color=(0.5, 0.5, 0.5), *,
     return vecfield
 
 
+def _cones(points, vectors, height, angle, color=colors.snow,
+           capping=False, resolution=24):
+    """ Cone rendering.
+    """
+    # The given vector field is not required to have unit length vectors.
+    conefield = ConeField(points, vectors, height, angle,
+                          capping, resolution)
+    conefield.color = color
+
+    add(conefield)
+    return conefield
+
+
 def _splat(P, N, *args, scale=1.0, color=(1.0, 1.0, 1.0), **kwargs):
     """
     Point cloud splatting.
@@ -2166,6 +2179,62 @@ class VectorField(Actor):
         mapper.SetColorModeToDirectScalars()
         mapper.ScalarVisibilityOn()
         mapper.SelectColorArray('glyph_color')
+
+        actor = vtk.vtkActor()
+        actor.SetMapper(mapper)
+
+        super().__init__(actor)
+
+    def modified(self):
+        self._polydata.GetPoints().Modified()
+        self._polydata.GetPointData().Modified()
+
+
+class ConeField(Actor):
+
+    def __init__(self, points, vectors, height, angle, capping, resolution):
+        # Prepare the data buffers used by VTK and fill them with the data
+        # provided.
+        self._points = vtk.vtkPoints()
+        self._points.SetData(numpy_to_vtk(points))
+
+        indices = vtk.vtkFloatArray()
+        indices.SetNumberOfComponents(1)
+        indices.SetName('cone_index')
+
+        for id, (pt, vec) in enumerate(zip(points, vectors, strict=True)):
+            indices.InsertNextTuple1(id)
+
+        self._polydata = vtk.vtkPolyData()
+        self._polydata.SetPoints(self._points)
+        self._polydata.GetPointData().SetVectors(numpy_to_vtk(vectors))
+        self._polydata.GetPointData().AddArray(indices)
+
+        glyph = vtk.vtkGlyph3D()
+        glyph.SetInputData(self._polydata)
+
+        # The source shape used for glyphs. If rendering is too slow when
+        # there is a large number of glyphs, the resolution can be reduced.
+        for id, (h, alpha) in enumerate(zip(height, angle)):
+            cone = vtk.vtkConeSource()
+            cone.SetResolution(resolution)
+            cone.SetCapping(capping)
+            cone.SetHeight(h)
+            cone.SetAngle(alpha)
+            cone.SetCenter(-0.5 * h, 0.0, 0.0)
+
+            glyph.SetSourceConnection(id, cone.GetOutputPort())
+
+        glyph.SetRange(0, len(points)-1)
+        glyph.SetIndexModeToScalar()
+        glyph.SetInputArrayToProcess(0, 0, 0, 0, 'cone_index')
+        glyph.OrientOn()
+        glyph.SetVectorModeToUseVector()
+        glyph.ScalingOff()
+
+        mapper = vtk.vtkPolyDataMapper()
+        mapper.SetInputConnection(glyph.GetOutputPort())
+        mapper.SetScalarModeToUsePointFieldData()
 
         actor = vtk.vtkActor()
         actor.SetMapper(mapper)
