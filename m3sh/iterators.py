@@ -270,7 +270,7 @@ def _edges_frozen(mesh):
 
 
 def faces(obj):
-    """ Face iterator.
+    r""" Face iterator.
 
     A vertex :math:`v` and a face :math:`f` are incident if
     :math:`v \in f`. Two faces are incident if they share a common edge.

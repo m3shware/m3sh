@@ -31,7 +31,7 @@ import m3sh.linalg as linalg
 
 
 def bounds(points):
-    """ Bounding box vertices.
+    r""" Bounding box vertices.
 
     Corner vertices of the axis-aligned bounding box.
 

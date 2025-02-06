@@ -30,7 +30,7 @@ import numpy as np
 
 
 def cross(u, v):
-    """ Cross product.
+    r""" Cross product.
 
     Alternative to NumPy's vectorized function :func:`numpy.cross` of the
     same name.
@@ -84,7 +84,7 @@ def dot(u, v):
 
 
 def norm(u):
-    """ Length of vector.
+    r""" Length of vector.
 
     Alternative to NumPy's :func:`numpy.linalg.norm`, specialized for
     the case of vectors in 3-space.
@@ -109,7 +109,7 @@ def norm(u):
 
 
 def unit(u):
-    """ In-place vector normalization.
+    r""" In-place vector normalization.
 
     Convenience function to normalize a vector. Modifies the input
     argument!
