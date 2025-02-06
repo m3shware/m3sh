@@ -22,8 +22,9 @@
 
 Wrapper functions for `VTK <https://vtk.org/doc/nightly/html>`_ functionality.
 This is not meant as a full featured set of visualization routines but should
-serve as a quick and convenient way to achieve basic visualization tasks. It
-can also be used as a stand-alone OBJ viewer:
+serve as a quick and convenient way to achieve basic visualization tasks.
+
+This module can also be used as a stand-alone OBJ viewer:
 
 >>> python vis.py file.obj --edges
 
@@ -373,19 +374,11 @@ def add(actor, renderer=None):
         # no longer holds a None value.
         renderer = _renderer
 
-    # Get the wrapped vtkActor from an Actor instance.
+    # Get the wrapped vtkProp from an Actor instance.
     if isinstance(actor, Actor):
-        actor = actor.actor
+        actor = actor.prop
 
-    # Check if the actor is a 3D prop or 2D. Different functions are used
-    # to add them to the viewport.
-    if isinstance(actor, vtk.vtkActor2D):
-        renderer.AddActor2D(actor)
-    elif isinstance(actor, vtk.vtkActor):
-        renderer.AddActor(actor)
-    else:
-        raise ValueError("cannot handle 'actor'")
-
+    renderer.AddViewProp(actor)
     return renderer
 
 
@@ -414,15 +407,15 @@ def delete(*actors, renderer=None):
             for renderer in renderers:
                 for actor in actors:
                     if isinstance(actor, Actor):
-                        actor = actor.actor
+                        actor = actor.prop
 
-                    renderer.RemoveActor(actor)
+                    renderer.RemoveViewProp(actor)
     else:
         for actor in actors:
             if isinstance(actor, Actor):
-                actor = actor.actor
+                actor = actor.prop
 
-            renderer.RemoveActor(actor)
+            renderer.RemoveViewProp(actor)
 
 
 def update(*args, **kwargs):
@@ -682,7 +675,7 @@ def colorbar(object, x=0.8, y=0.1):
     colorbar = LookupTable(object)
     colorbar.position = x, y
 
-    add(colorbar.actor)
+    add(colorbar.prop)
     return colorbar
 
 
@@ -1050,13 +1043,82 @@ def _quiver(points, vectors, scale=1.0, color=(0.5, 0.5, 0.5), *,
     return vecfield
 
 
-def _cones(points, vectors, height, angle, color=colors.snow,
-           capping=False, resolution=24):
+def cones(points, vectors, angle=None, radius=None, height=None,
+          color=colors.snow, double=False, cap=False, resolution=24):
     """ Cone rendering.
+
+    Render cones with apices at the specified locations using the given
+    vectors as cone axis. Cone shapes are defined by two sequences
+    specifiying either cone angles, base radius, or cone height.
+
+    Parameters
+    ----------
+    points : array_like, shape (n, 3)
+        Array of cone apices.
+    vectors : array_like, shape (n, 3)
+        Array of cone axes.
+    angle : array_like of shape (n, ) or float
+    radius : array_like of shape (n, ) or float
+    height : array_like of shape (n, ) or float
+    color : array_like, shape (3, ), optional
+        Object color.
+    double : bool, optional
+        :obj:`True` to generate double cones.
+    cap : bool, optional
+        :obj:`True` to close cones along their base.
+    resolution : int, optional
+        Number of vertices of base polygon.
+
+    Returns
+    -------
+    ConeField
+        The generated assembly of cones.
+
+    Note
+    ----
+    In contrast to cone geometry, color cannot be specified on a per cone
+    level, there is only one color for all cones in the assembly.
     """
-    # The given vector field is not required to have unit length vectors.
-    conefield = ConeField(points, vectors, height, angle,
-                          capping, resolution)
+    if len(points) != len(vectors):
+        raise ValueError("array shapes don't match")
+
+    if angle is not None:
+        if np.ndim(angle) == 0:
+            angle = len(points) * [angle]
+        else:
+            if len(angle) != len(points):
+                raise ValueError("array shapes don't match")
+
+        # If there is an angle greater than 90 degrees the corresponding
+        # axis should be inverted and the angle replaced by 180 - angle.
+        for i, alpha in enumerate(angle):
+            if alpha > 0.5 * np.pi:
+                raise ValueError(f'angle out of range, got {alpha}')
+
+                # This fix messes with the input data and produces side
+                # effects. The data should be prepared properly before
+                # visualization.
+                angle[i] = np.pi - alpha
+                vectors[i] *= -1.0
+            elif alpha < 0.0:
+                raise ValueError('angle has to be non-negative')
+
+    if radius is not None:
+        if np.ndim(radius) == 0:
+            radius = len(points) * [radius]
+        else:
+            if len(radius) != len(points):
+                raise ValueError("array shapes don't match")
+
+    if height is not None:
+        if np.ndim(height) == 0:
+            height = len(points) * [height]
+        else:
+            if len(height) != len(points):
+                raise ValueError("array shapes don't match")
+
+    conefield = ConeField(points, vectors, angle, radius, height,
+                          double, cap, resolution)
     conefield.color = color
 
     add(conefield)
@@ -2018,39 +2080,48 @@ def _show_cell_labels(actor):
 class Actor:
     """ Base class for all VTK wrappers.
 
-    Wraps vtkActor instances and manages their visual properties. The
-    :attr:`actor` property exposes an actors VTK interface.
+    Wraps render objects and manages their visual properties. The
+    :attr:`prop` property exposes its VTK interface.
 
     Parameters
     ----------
-    actor : vtkActor
-        Managed actor instance.
+    prop : vtkProp
+        Instance of a render object.
 
     Note
     ----
-    Wrapped actors are not pickable by default.
+    Wrapped objects are not pickable by default.
     """
 
-    def __init__(self, actor):
-        self._actor = actor
-        self._actor.SetPickable(False)
+    def __init__(self, prop):
+        self._prop = prop
+        self._prop.SetPickable(False)
 
     @property
-    def actor(self):
-        """ Actor access.
+    def prop(self):
+        """ Wrapped VTK instance.
 
-        Access the wrapped vtkActor instance. Exposes all low-level
-        interaction with this actor.
+        Access the wrapped render object. Exposes all low-level
+        interaction with this object.
 
-        :type: vtkActor
+        :type: vtkProp
+
+        Note
+        ----
+        Currently supports :class:`vtkActor`, :class:`vtkActor2D`, and
+        :class:`vtkPropAssembly` (the latter is used to model more complex
+        compound objects).
         """
-        return self._actor
+        return self._prop
 
     @property
     def color(self):
         """ Color property.
 
-        Global color attribute of an actor.
+        Global color attribute of an object. Predefined colors are
+        available in the :mod:`colors` namespace. A preview can be found
+        `here <https://htmlpreview.github.io/?https://github.com/
+        Kitware/vtk-examples/blob/gh-pages/VTKNamedColorPatches.html>`_.
 
         :type: array_like, shape (3, )
 
@@ -2059,11 +2130,19 @@ class Actor:
         Object color does not support alpha channel values, use
         the :attr:`opacity` property to control object transparency.
         """
-        return self._actor.GetProperty().GetColor()
+        try:
+            return [prop.GetProperty().GetColor()
+                    for prop in self._prop.GetParts()]
+        except AttributeError:
+            return self._prop.GetProperty().GetColor()
 
     @color.setter
     def color(self, value):
-        self._actor.GetProperty().SetColor(value)
+        try:
+            for prop in self._prop.GetParts():
+                prop.GetProperty().SetColor(value)
+        except AttributeError:
+            self._prop.GetProperty().SetColor(value)
 
     @property
     def opacity(self):
@@ -2075,43 +2154,183 @@ class Actor:
 
         Note
         ----
-        Opacity affects all parts of an actor, i.e., displayed faces
+        Opacity affects all parts of an object, i.e., displayed faces
         (cells), edges, and vertices.
         """
-        self._actor.GetProperty().GetOpacity()
+        try:
+            return [prop.GetProperty().GetOpacity()
+                    for prop in self._prop.GetParts()]
+        except AttributeError:
+            return self._prop.GetProperty().GetOpacity()
 
     @opacity.setter
     def opacity(self, value):
-        self._actor.GetProperty().SetOpacity(value)
+        try:
+            for prop in self._prop.GetParts():
+                prop.GetProperty().SetOpacity(value)
+        except AttributeError:
+            self._prop.GetProperty().SetOpacity(value)
 
     @property
     def visible(self):
         """ Visibility property.
 
-        Query and toggle actor visibility.
+        Query and toggle object visibility.
 
         :type: bool
         """
-        return self._actor.GetVisibility()
+        return self._prop.GetVisibility()
 
     @visible.setter
     def visible(self, value):
-        self._actor.SetVisibility(value)
+        self._prop.SetVisibility(value)
 
     @property
     def pickable(self):
         """ Pickable property.
 
-        Query and toggle whether actor geometry can be picked. By
-        default, all managed actors are not pickable.
+        Query and toggle whether object geometry can be picked. By
+        default, all managed objects are not pickable.
 
         :type: bool
         """
-        return self._actor.GetPickable()
+        return self._prop.GetPickable()
 
     @pickable.setter
     def pickable(self, value):
-        self._actor.SetPickable(value)
+        self._prop.SetPickable(value)
+
+
+class ConeField(Actor):
+    """ Family of cones.
+
+    Visual representation of a family of (double) cones. Individual cones
+    are defined by their apex, height, and base radius. Either the height
+    or radius may be replaced by an angle. Specifiying all three values is
+    considered as invalid input.
+
+    Parameters
+    ----------
+    points : array_like
+        Point cloud in 3-space, one point per row. Each point defines
+        the apex of a cone.
+    vectors : array_like
+        Vector field in 3-space, one vector per row. Vectors define
+        cone axis directions and don't have to be normalized.
+    angle : array_like
+        One angle per cone. Angles are measured in radians.
+    radius : array_like
+        One positive radius per cone.
+    height : array_like
+        One non-negative height per cone.
+    double : bool
+        :obj:`True` will generate double cones.
+    cap : bool
+        :obj:`True` to close the cone along its base.
+    resolution : int
+        The number of vertices along the base circle.
+
+    Note
+    ----
+    One of `angle`, `height`, `radius` has to be explicitly set the
+    :obj:`None` during initialization. Note that `angle` refers to half the
+    opening angle of a cone.
+    """
+
+    def __init__(self, points, vectors, angle, radius, height, double,
+                 cap, resolution):
+        # Convert to ndarray. The data buffers of the resulting arrays
+        # are then shared with VTK. If the arguments are already of type
+        # ndarray no data duplication happens.
+        self.points = np.asarray(points)
+        self.vecpos = np.asarray(vectors)
+
+        # This will be shared by both polydata objects when displaying
+        # double cones.
+        self._points = vtk.vtkPoints()
+        self._points.SetData(numpy_to_vtk(self.points))
+
+        # The index array is also only needed once and shared in case of
+        # double cones.
+        indices = vtk.vtkIntArray()
+        indices.SetNumberOfComponents(1)
+        indices.SetName('index')
+
+        for id in range(len(self.points)):
+            indices.InsertNextTuple1(id)
+
+        self._indices = indices
+
+        # We define cones from radius and height. If one of those is missing
+        # it is computed using the angle value (required in this case).
+        if (radius is None
+                and (angle is not None and height is not None)):
+            angle = np.atleast_1d(angle)
+            height = np.atleast_1d(height)
+            radius = height * np.tan(angle)
+        elif (height is None
+                and (angle is not None and radius is not None)):
+            angle = np.atleast_1d(angle)
+            radius = np.atleast_1d(radius)
+            height = radius / np.tan(angle)
+        else:
+            raise ValueError('wrong number of arguments')
+
+        if double:
+            self.vecneg = -self.vecpos
+
+            prop = vtk.vtkPropAssembly()
+            prop.AddPart(self._build(self.vecpos, radius, height,
+                                     cap, resolution))
+            prop.AddPart(self._build(self.vecneg, radius, height,
+                                     cap, resolution))
+        else:
+            prop = self._build(self.vecpos, radius, height, cap, resolution)
+
+        super().__init__(prop)
+
+    def _build(self, axis, radius, height, capping, resolution):
+        """ Build glyph representation.
+        """
+        self._polydata = vtk.vtkPolyData()
+        self._polydata.SetPoints(self._points)
+        self._polydata.GetPointData().SetVectors(numpy_to_vtk(axis))
+        self._polydata.GetPointData().AddArray(self._indices)
+
+        glyph = vtk.vtkGlyph3D()
+        glyph.SetInputData(self._polydata)
+
+        # The source shape used for glyphs. If rendering is too slow when
+        # there is a large number of glyphs, the resolution can be reduced.
+        for id, (h, r) in enumerate(zip(height, radius, strict=True)):
+            cone = vtk.vtkConeSource()
+            cone.SetResolution(resolution)
+            cone.SetCapping(capping)
+
+            # Cone source objects only accepts non-negative values for height
+            # and radius, angles have to be in the range [0.0, 90.0]. In all
+            # other cases no shape is displayed without any error message.
+            cone.SetHeight(h)
+            cone.SetRadius(r)
+            cone.SetCenter(-0.5 * h, 0.0, 0.0)
+
+            glyph.SetSourceConnection(id, cone.GetOutputPort())
+
+        glyph.SetRange(0, len(self.points) - 1)
+        glyph.SetIndexModeToScalar()
+        glyph.SetInputArrayToProcess(0, 0, 0, 0, 'index')
+        glyph.OrientOn()
+        glyph.SetVectorModeToUseVector()
+        glyph.ScalingOff()
+
+        mapper = vtk.vtkPolyDataMapper()
+        mapper.SetInputConnection(glyph.GetOutputPort())
+        mapper.SetScalarModeToUsePointFieldData()
+
+        actor = vtk.vtkActor()
+        actor.SetMapper(mapper)
+
+        return actor
 
 
 class VectorField(Actor):
@@ -2190,62 +2409,6 @@ class VectorField(Actor):
         self._polydata.GetPointData().Modified()
 
 
-class ConeField(Actor):
-
-    def __init__(self, points, vectors, height, angle, capping, resolution):
-        # Prepare the data buffers used by VTK and fill them with the data
-        # provided.
-        self._points = vtk.vtkPoints()
-        self._points.SetData(numpy_to_vtk(points))
-
-        indices = vtk.vtkFloatArray()
-        indices.SetNumberOfComponents(1)
-        indices.SetName('cone_index')
-
-        for id, (pt, vec) in enumerate(zip(points, vectors, strict=True)):
-            indices.InsertNextTuple1(id)
-
-        self._polydata = vtk.vtkPolyData()
-        self._polydata.SetPoints(self._points)
-        self._polydata.GetPointData().SetVectors(numpy_to_vtk(vectors))
-        self._polydata.GetPointData().AddArray(indices)
-
-        glyph = vtk.vtkGlyph3D()
-        glyph.SetInputData(self._polydata)
-
-        # The source shape used for glyphs. If rendering is too slow when
-        # there is a large number of glyphs, the resolution can be reduced.
-        for id, (h, alpha) in enumerate(zip(height, angle)):
-            cone = vtk.vtkConeSource()
-            cone.SetResolution(resolution)
-            cone.SetCapping(capping)
-            cone.SetHeight(h)
-            cone.SetAngle(alpha)
-            cone.SetCenter(-0.5 * h, 0.0, 0.0)
-
-            glyph.SetSourceConnection(id, cone.GetOutputPort())
-
-        glyph.SetRange(0, len(points)-1)
-        glyph.SetIndexModeToScalar()
-        glyph.SetInputArrayToProcess(0, 0, 0, 0, 'cone_index')
-        glyph.OrientOn()
-        glyph.SetVectorModeToUseVector()
-        glyph.ScalingOff()
-
-        mapper = vtk.vtkPolyDataMapper()
-        mapper.SetInputConnection(glyph.GetOutputPort())
-        mapper.SetScalarModeToUsePointFieldData()
-
-        actor = vtk.vtkActor()
-        actor.SetMapper(mapper)
-
-        super().__init__(actor)
-
-    def modified(self):
-        self._polydata.GetPoints().Modified()
-        self._polydata.GetPointData().Modified()
-
-
 class PolyData(Actor):
     """ Polygonal shape wrapper.
 
@@ -2289,7 +2452,7 @@ class PolyData(Actor):
 
         :type: vtkPolyData
         """
-        return self._actor.GetMapper().GetInput()
+        return self._prop.GetMapper().GetInput()
 
     @property
     def color(self):
@@ -2300,12 +2463,12 @@ class PolyData(Actor):
 
         :type: array_like, shape (3, )
         """
-        return self._actor.GetProperty().GetColor()
+        return self._prop.GetProperty().GetColor()
 
     @color.setter
     def color(self, value):
-        self._actor.GetMapper().SetScalarVisibility(False)
-        self._actor.GetProperty().SetColor(value)
+        self._prop.GetMapper().SetScalarVisibility(False)
+        self._prop.GetProperty().SetColor(value)
 
     @property
     def scalars(self):
@@ -2404,21 +2567,21 @@ class PolyData(Actor):
         now use :func:`scatter` as a work-around.
         """
         if style == 'points':
-            self._actor.GetProperty().SetRenderPointsAsSpheres(False)
-            self._actor.GetProperty().SetVertexVisibility(True)
+            self._prop.GetProperty().SetRenderPointsAsSpheres(False)
+            self._prop.GetProperty().SetVertexVisibility(True)
         elif style == 'spheres':
-            self._actor.GetProperty().SetRenderPointsAsSpheres(True)
-            self._actor.GetProperty().SetVertexVisibility(True)
+            self._prop.GetProperty().SetRenderPointsAsSpheres(True)
+            self._prop.GetProperty().SetVertexVisibility(True)
         elif style == '' or style is False:
-            self._actor.GetProperty().SetVertexVisibility(False)
+            self._prop.GetProperty().SetVertexVisibility(False)
         else:
-            self._actor.GetProperty().SetVertexVisibility(True)
+            self._prop.GetProperty().SetVertexVisibility(True)
 
         if size is not None:
-            self._actor.GetProperty().SetPointSize(size)
+            self._prop.GetProperty().SetPointSize(size)
 
         if color is not None:
-            self._actor.GetProperty().SetVertexColor(color)
+            self._prop.GetProperty().SetVertexColor(color)
 
     def edges(self, style=None, width=None, color=None):
         """ Edge display.
@@ -2440,21 +2603,21 @@ class PolyData(Actor):
         edge display property.
         """
         if style == 'lines':
-            self._actor.GetProperty().SetRenderLinesAsTubes(False)
-            self._actor.GetProperty().SetEdgeVisibility(True)
+            self._prop.GetProperty().SetRenderLinesAsTubes(False)
+            self._prop.GetProperty().SetEdgeVisibility(True)
         elif style == 'tubes':
-            self._actor.GetProperty().SetRenderLinesAsTubes(True)
-            self._actor.GetProperty().SetEdgeVisibility(True)
+            self._prop.GetProperty().SetRenderLinesAsTubes(True)
+            self._prop.GetProperty().SetEdgeVisibility(True)
         elif style == '' or style is False:
-            self._actor.GetProperty().SetEdgeVisibility(False)
+            self._prop.GetProperty().SetEdgeVisibility(False)
         else:
-            self._actor.GetProperty().SetEdgeVisibility(True)
+            self._prop.GetProperty().SetEdgeVisibility(True)
 
         if width is not None:
-            self._actor.GetProperty().SetLineWidth(width)
+            self._prop.GetProperty().SetLineWidth(width)
 
         if color is not None:
-            self._actor.GetProperty().SetEdgeColor(color)
+            self._prop.GetProperty().SetEdgeColor(color)
 
     def lookuptable(self, range=None, gradient=None, logscale=None,
                     size=None, **kwargs):
@@ -2501,7 +2664,7 @@ class PolyData(Actor):
         """
         # The current lookup table. Properties are modified according to the
         # given parameters. None values preserve the corresponding property.
-        lut = self._actor.GetMapper().GetLookupTable()
+        lut = self._prop.GetMapper().GetLookupTable()
 
         if gradient in {'hot', 'jet', 'grey', 'gray'}:
             if gradient == 'hot':
@@ -2584,16 +2747,16 @@ class PolyData(Actor):
         Changing the **shape** of a shared data buffer is likely to
         result in a segmentation fault or other undefined behavior.
         """
-        self._actor.GetMapper().GetInput().GetPoints().Modified()
-        self._actor.GetMapper().GetInput().GetPointData().Modified()
+        self._prop.GetMapper().GetInput().GetPoints().Modified()
+        self._prop.GetMapper().GetInput().GetPointData().Modified()
 
         # There are cells that define vertices and lines. None of the
         # wrapped shapes use them.
-        self._actor.GetMapper().GetInput().GetPolys().Modified()
-        self._actor.GetMapper().GetInput().GetCellData().Modified()
+        self._prop.GetMapper().GetInput().GetPolys().Modified()
+        self._prop.GetMapper().GetInput().GetCellData().Modified()
 
     def _set_point_scalars(self, value):
-        polydata = self._actor.GetMapper().GetInput()
+        polydata = self._prop.GetMapper().GetInput()
 
         self._set_scalars(polydata.GetPointData(),
                           polydata.GetNumberOfPoints(), value)
@@ -2601,10 +2764,10 @@ class PolyData(Actor):
         polydata.GetCellData().SetScalars(None)
         polydata.GetCellData().Modified()
 
-        self._actor.GetMapper().SetScalarModeToUsePointData()
+        self._prop.GetMapper().SetScalarModeToUsePointData()
 
     def _set_cell_scalars(self, value):
-        polydata = self._actor.GetMapper().GetInput()
+        polydata = self._prop.GetMapper().GetInput()
 
         self._set_scalars(polydata.GetCellData(),
                           polydata.GetNumberOfCells(), value)
@@ -2612,7 +2775,7 @@ class PolyData(Actor):
         polydata.GetPointData().SetScalars(None)
         polydata.GetPointData().Modified()
 
-        self._actor.GetMapper().SetScalarModeToUseCellData()
+        self._prop.GetMapper().SetScalarModeToUseCellData()
 
     def _set_scalars(self, data, size, value):
         """ Set scalar array.
@@ -2623,7 +2786,7 @@ class PolyData(Actor):
         size :
         value : ~numpy.ndarray
         """
-        mapper = self._actor.GetMapper()
+        mapper = self._prop.GetMapper()
 
         if np.shape(value) == (size, ):
             self._scalars = np.asarray(value)
@@ -2645,7 +2808,7 @@ class PolyData(Actor):
             raise ValueError('wrong size of scalar array')
 
     def _reset_scalars(self):
-        polydata = self._actor.GetMapper().GetInput()
+        polydata = self._prop.GetMapper().GetInput()
 
         data = polydata.GetPointData()
         data.SetScalars(None)
@@ -2655,7 +2818,7 @@ class PolyData(Actor):
         data.SetScalars(None)
         data.Modified()
 
-        self._actor.GetMapper().SetScalarVisibility(False)
+        self._prop.GetMapper().SetScalarVisibility(False)
         self._scalars = None
 
 
@@ -2725,12 +2888,12 @@ class PointCloud(PolyData):
         vertex display property.
         """
         if style == 'points':
-            self._actor.GetProperty().SetRenderPointsAsSpheres(False)
+            self._prop.GetProperty().SetRenderPointsAsSpheres(False)
         elif style == 'spheres':
-            self._actor.GetProperty().SetRenderPointsAsSpheres(True)
+            self._prop.GetProperty().SetRenderPointsAsSpheres(True)
 
         if size is not None:
-            self._actor.GetProperty().SetPointSize(size)
+            self._prop.GetProperty().SetPointSize(size)
 
         if color is not None:
             self.color = color
@@ -2870,7 +3033,7 @@ class PolyMesh(PolyData):
         texture.InterpolateOn()
         texture.SetInputConnection(reader.GetOutputPort())
 
-        self.actor.SetTexture(texture)
+        self.prop.SetTexture(texture)
 
     def _contour(self, scalars=None, *, levels=None, range=(None, None),
                 width=None, style=None, color=None):
@@ -2946,7 +3109,7 @@ class LookupTable(Actor):
 
     def __init__(self, actor):
         try:
-            actor = actor.actor
+            actor = actor.prop
         except AttributeError:
             pass
 
@@ -2972,36 +3135,36 @@ class LookupTable(Actor):
         Location of the lower left corner in normalized screen
         coordinates.
         """
-        return self.actor.GetPosition()
+        return self.prop.GetPosition()
 
     @position.setter
     def position(self, value):
-        self.actor.SetPosition(value)
-        self.actor.Modified()
+        self.prop.SetPosition(value)
+        self.prop.Modified()
 
-    def _modified(self, object=None):
-        """ Update representation.
+    # def _modified(self, object=None):
+    #     """ Update representation.
 
-        Update lookup table representation from `object`.
+    #     Update lookup table representation from `object`.
 
-        Parameters
-        ----------
-        object : Shape, optional
-            Polygonal shape instance.
-        """
-        if object is None:
-            lut = self.actor.GetLookupTable()
-        else:
-            try:
-                actor = object.actor
-            except AttributeError:
-                actor = object
+    #     Parameters
+    #     ----------
+    #     object : Shape, optional
+    #         Polygonal shape instance.
+    #     """
+    #     if object is None:
+    #         lut = self.prop.GetLookupTable()
+    #     else:
+    #         try:
+    #             actor = object.actor
+    #         except AttributeError:
+    #             actor = object
 
-            lut = actor.GetMapper().GetLookupTable()
-            self.actor.SetLookupTable(lut)
+    #         lut = actor.GetMapper().GetLookupTable()
+    #         self.actor.SetLookupTable(lut)
 
-        self.actor.SetDrawBelowRangeSwatch(lut.GetUseBelowRangeColor())
-        self.actor.SetDrawAboveRangeSwatch(lut.GetUseAboveRangeColor())
+    #     self.actor.SetDrawBelowRangeSwatch(lut.GetUseBelowRangeColor())
+    #     self.actor.SetDrawAboveRangeSwatch(lut.GetUseAboveRangeColor())
 
 
 # class RenderMesh(RenderObject):
