@@ -1,0 +1,6 @@
+\_\_iter\_\_
+============
+
+.. currentmodule:: m3sh.heap
+
+.. automethod:: MaxHeap.__iter__

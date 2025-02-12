@@ -1,0 +1,30 @@
+ConeField
+=========
+
+.. currentmodule:: m3sh.vis
+ 
+.. autoclass:: ConeField
+   :show-inheritance:
+   :no-inherited-members:
+    
+   
+   
+   .. rubric:: Attributes
+ 
+   .. autosummary::
+      :toctree:
+      :template: attribute.rst
+   
+      ~ConeField.color
+      ~ConeField.opacity
+      ~ConeField.pickable
+      ~ConeField.prop
+      ~ConeField.visible
+   
+   
+ 
+   
+   
+   
+   
+   

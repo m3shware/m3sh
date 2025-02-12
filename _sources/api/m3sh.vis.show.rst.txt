@@ -1,0 +1,6 @@
+show
+====
+
+.. currentmodule:: m3sh.vis
+
+.. autofunction:: show

@@ -1,0 +1,6 @@
+vertices
+========
+
+.. currentmodule:: m3sh.hds
+
+.. autoproperty:: Mesh.vertices
