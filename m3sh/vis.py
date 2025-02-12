@@ -2666,11 +2666,15 @@ class PolyData(Actor):
         # given parameters. None values preserve the corresponding property.
         lut = self._prop.GetMapper().GetLookupTable()
 
-        if gradient in {'hot', 'jet', 'grey', 'gray'}:
+        if gradient in {'hot', 'cool', 'jet', 'grey', 'gray'}:
             if gradient == 'hot':
                 lut.SetHueRange(0, 1/6)
                 lut.SetSaturationRange(1, 0.5)
                 lut.SetValueRange(1, 1)
+            elif gradient == 'cool':
+                lut.SetHueRange(0.49, 0.6)
+                lut.SetSaturationRange(1, 0.1)
+                lut.SetValueRange(0.55, 1)
             elif gradient == 'jet':
                 lut.SetHueRange(2/3, 0)
                 lut.SetSaturationRange(1, 1)
