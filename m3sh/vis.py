@@ -679,8 +679,8 @@ def colorbar(object, x=0.8, y=0.1):
     return colorbar
 
 
-def aabb(points, opacity=0.15, edges=True, color=colors.grey):
-    """ Axis aligned bounding box.
+def aabb(points, opacity=0.15, edges=True, labels='dim', color=colors.snow):
+    r""" Axis aligned bounding box.
 
     Axis aligned bounding box with annotation.
 
@@ -692,8 +692,12 @@ def aabb(points, opacity=0.15, edges=True, color=colors.grey):
         Opacity of bounding box.
     edges : bool, optional
         Toggle edges of the bounding box.
+    labels : str, optional
+        :obj:`None` for no labels, 'dim' to label box dimensions,
+        'minmax' to show minimal and maximal coordinates along all
+        axes, or 'both' to show all labels.
     colors : array_like, shape (3, )
-        Bounding box color.
+        Bounding box color, does not influence edge color.
 
     Returns
     -------
@@ -702,14 +706,23 @@ def aabb(points, opacity=0.15, edges=True, color=colors.grey):
 
     Note
     ----
-    Visual properties of the bounding box edges have to be changed via
-    the returned :class:`PolyData` instance.
+    Visual properties of the bounding box edges can be further customized
+    via the returned :class:`PolyData` instance.
     """
     a = np.min(points, axis=0)
     b = np.max(points, axis=0)
 
-    _caption(a, f'({a[0]:.1f}, {a[1]:.1f}, {a[2]:.1f})', 11)
-    _caption(b, f'({b[0]:.1f}, {b[1]:.1f}, {b[2]:.1f})', 11)
+    if labels == 'both' or labels == 'minmax':
+        label(a, f'({a[0]:.1f}, {a[1]:.1f}, {a[2]:.1f})', size=18)
+        label(b, f'({b[0]:.1f}, {b[1]:.1f}, {b[2]:.1f})', size=18)
+
+    if labels == 'both' or labels == 'dim':
+        scale = 0.075 * np.min(b-a)
+        dx, dy, dz = b-a
+
+        _put([b[0], b[1], a[2]], dx, f'{dx:.2f}', scale, axis='-x')
+        _put([b[0], a[1], a[2]], dy, f'{dy:.2f}', scale, axis='y')
+        _put([a[0], b[1], a[2]], dz, f'{dz:.2f}', scale, axis='z')
 
     cube = vtk.vtkCubeSource()
     cube.SetBounds(a[0], b[0],
@@ -722,23 +735,10 @@ def aabb(points, opacity=0.15, edges=True, color=colors.grey):
     box.opacity = opacity
 
     if edges:
-        box.edges('lines')
+        box.edges(style='lines', width=2, color=colors.ivory_black)
 
     add(box)
     return box
-
-    # mapper = vtk.vtkPolyDataMapper()
-    # mapper.SetInputConnection(cube.GetOutputPort())
-
-    # actor = vtk.vtkActor()
-    # actor.SetMapper(mapper)
-    # actor.GetProperty().SetColor(color)
-    # actor.GetProperty().SetOpacity(opacity)
-    # actor.GetProperty().SetEdgeVisibility(edges)
-    # actor.GetProperty().SetLineWidth(2.0)
-
-    # add(actor)
-    # return Shape(actor)
 
 
 def _contour(M, S, levels=10, width=2.0, style='-', color=(0.0, 0.0, 0.0)):
@@ -1683,45 +1683,87 @@ def _display(message, x=0.05, y=0.95, size=12, color=colors.white, bold=False,
     return Actor(textActor)
 
 
-def _annotate(point, string, size=1.0, color=(0.25, 0.25, 0.25)):
-    """ Display 3D text annotation.
+def _put(pos, dim, text, scale=1.0, opacity=0.75, axis='x', follow=False,
+         color=colors.black):
+    """ Text annotation.
 
-    Puts the given text at a certain location such that it always faces the
-    camera.
+    Puts the given text at a certain location. The text orientation
+    remains static or it can follow the camera.
 
     Parameters
     ----------
-    point : array_like
-        3D text location.
-    string : str
-        The text to be displayed.
-    size : float, optional
-        Size of the text.
-    color : array_like, optional
+    pos : array_like, shape (3, )
+        Text location.
+    dim : float
+        Text dimension.
+    text : str
+        Text to be displayed.
+    scale : float, optional
+        Scale factor.
+    opacity : float, optional
+        Text opacity.
+    axis : str, optional
+        Text orientation, no effect when `follow` evaluates to :obj:`True`.
+    follow : bool, optional
+        :obj:`True` orients the text such that is always faces the camera.
+    color : array_like, shape (3, ), optional
         RGB triplet of color intensities.
 
     Returns
     -------
-    vtkFollower
-        The corresponding actor.
+    Actor
+        The created :class:`Actor` instance.
     """
-    vecText = vtk.vtkVectorText()
-    vecText.SetText(string)
+    vector_text = vtk.vtkVectorText()
+    vector_text.SetText(text)
+    vector_text.Update()
 
-    textMapper = vtk.vtkPolyDataMapper()
-    textMapper.SetInputConnection(vecText.GetOutputPort())
+    mapper = vtk.vtkPolyDataMapper()
+    mapper.SetInputData(vector_text.GetOutput())
 
-    textActor = vtk.vtkFollower()
-    textActor.SetMapper(textMapper)
-    textActor.SetPosition(point[0], point[1], point[2])
-    textActor.SetScale(size, size, size)
-    # textActor.SetTextScaleModeToViewport()
-    textActor.SetPickable(False)
-    textActor.GetProperty().SetColor(color[0], color[1], color[2])
-    textActor.SetCamera(_renderer.GetActiveCamera())
+    # An actor has its own GetBounds() method that takes the actor's
+    # transformation into account.
+    bounds = mapper.GetBounds()
 
-    add(textActor)
-    return textActor
+    # In its untransformed state the text is aligned along the positive
+    # x-axis in the z=0 plane starting at the origin.
+    dx = scale * (bounds[1] - bounds[0])
+    dy = scale * (bounds[3] - bounds[2])
+    dz = scale * (bounds[5] - bounds[4])
+
+    if follow:
+        actor = vtk.vtkFollower()
+        actor.SetMapper(mapper)
+        actor.SetCamera(_renderer.GetActiveCamera())
+
+        if axis == '-x':
+            actor.SetPosition(pos[0] - 0.5*dim, pos[1], pos[2])
+        elif axis == 'y':
+            actor.SetPosition(pos[0], pos[1] + 0.5*dim, pos[2])
+        elif axis == 'z':
+            actor.SetPosition(pos[0], pos[1], pos[2] + 0.5*dim)
+    else:
+        actor = vtk.vtkActor()
+        actor.SetMapper(mapper)
+
+        if axis == '-x':
+            actor.SetOrientation(90.0, 0.0, 180.0)
+            actor.SetPosition(pos[0] - 0.5*(dim-dx), pos[1], pos[2])
+        elif axis == 'y':
+            actor.SetOrientation(90.0, 0.0, 90.0)
+            actor.SetPosition(pos[0], pos[1] + 0.5*(dim-dx), pos[2])
+        elif axis == 'z':
+            actor.SetOrientation(0.0, -90.0, 270.0)
+            actor.SetPosition(pos[0], pos[1], pos[2] + 0.5*(dim-dx))
+
+    actor.SetScale(scale, scale, scale)
+    actor.GetProperty().SetColor(color)
+    actor.GetProperty().SetOpacity(opacity)
+
+    # The vtkFollower has to be modelled as Actor. Otherwise we could
+    # also use PolyData as final render object.
+    add(actor)
+    return Actor(actor)
 
 
 def _caption(pos, text, size=2.0, opacity=0.0, color=(1.0, 1.0, 1.0)):
@@ -1746,6 +1788,43 @@ def _caption(pos, text, size=2.0, opacity=0.0, color=(1.0, 1.0, 1.0)):
 
     add(textActor)
     return textActor
+
+
+def label(pos, text, size=12, opacity=1.0, color=colors.white):
+    """ Billboard text labels.
+
+    Label that always faces the camera.
+
+    Parameters
+    ----------
+    pos : array_like, shape (3, )
+        Label position in space.
+    text : str
+        Text to be displayed.
+    size : int, optional
+        Font size.
+    opacity : float, optional
+        Label opacity.
+    color : array_like, shape (3, ), optional
+        Label color.
+
+    Returns
+    -------
+    Actor
+        The created :class:`Actor` instance.
+    """
+    actor = vtk.vtkBillboardTextActor3D()
+    actor.SetInput(text)
+    actor.SetPosition(pos[0], pos[1], pos[2])
+    actor.GetTextProperty().SetFontSize(size)
+    actor.GetTextProperty().SetColor(color)
+    actor.GetTextProperty().SetJustificationToCentered()
+    actor.GetTextProperty().SetShadow(True)
+    actor.GetTextProperty().SetBold(True)
+    actor.GetTextProperty().SetOpacity(opacity)
+
+    add(actor)
+    return Actor(actor)
 
 
 def _commands():
