@@ -2278,21 +2278,34 @@ class Vertex:
     def __bool__(self):
         return True
 
-    # def __array__(self, dtype=None, copy=None):
-    #     """ Experimental NumPy support.
+    def __array__(self, dtype=None, copy=None):
+        """ Experimental NumPy support.
 
-    #     There has been a change in the signature of __array__ from
-    #     NumPy version 1.26 to 2.0 (the signature used here).
-    #     """
-    #     print(self._mesh._points.dtype, f'{dtype=}', f'{copy=}')
+        There has been a change in the signature of __array__ from
+        NumPy version 1.26 to 2.0 (the signature used here).
 
-    #     if dtype is not None:
-    #         raise ValueError('data type change is not supported')
+        Parameters
+        ----------
+        dtype : data-type, optional
+            The desired data type for the array.
+        copy : bool, optional
+            If :obj:`True` then the array data is copied. If :obj:`None`,
+            a copy will only be made if necessary. For :obj:`False` it
+            raises a :class:`ValueError` if a copy cannot be avoided.
 
-    #     if copy is True:
-    #         return self.point.copy()
+        Raises
+        ------
+        ValueError
+            If `copy` evaluates to :obj:`False` and a copy cannot be
+            avoided.
 
-    #     return self.point
+        Returns
+        -------
+        ~numpy.ndarray
+            Array of vertex coordinates.
+        """
+        return np.array(self._mesh._points[self._idx, ...],
+                        dtype=dtype, copy=copy)
 
     @property
     def index(self):
