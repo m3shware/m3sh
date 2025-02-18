@@ -2303,6 +2303,11 @@ class Vertex:
         -------
         ~numpy.ndarray
             Array of vertex coordinates.
+
+        Note
+        ----
+        If no copy is requested (or implied by data type conversion) the
+        returned value is a view of the mesh's vertex coordinate array.
         """
         return np.array(self._mesh._points[self._idx, ...],
                         dtype=dtype, copy=copy)
@@ -2628,6 +2633,34 @@ class Halfedge:
 
     def __bool__(self):
         return True
+
+    # def __array__(self, dtype=None, copy=None):
+    #     """ Experimental NumPy support.
+
+    #     There has been a change in the signature of __array__ from
+    #     NumPy version 1.26 to 2.0 (the signature used here).
+
+    #     Parameters
+    #     ----------
+    #     dtype : data-type, optional
+    #         The desired data type for the array.
+    #     copy : bool, optional
+    #         If :obj:`True` then the array data is copied. If :obj:`None`,
+    #         a copy will only be made if necessary. For :obj:`False` it
+    #         raises a :class:`ValueError` if a copy cannot be avoided.
+
+    #     Raises
+    #     ------
+    #     ValueError
+    #         If `copy` evaluates to :obj:`False` and a copy cannot be
+    #         avoided.
+
+    #     Returns
+    #     -------
+    #     ~numpy.ndarray
+    #         Coordinates of halfedge direction vector.
+    #     """
+    #     return self.vector
 
     def __contains__(self, vertex):
         """ Incidence test.
@@ -3140,6 +3173,34 @@ class Face:
 
     def __bool__(self):
         return True
+
+    def __array__(self, dtype=None, copy=None):
+        """ Experimental NumPy support.
+
+        There has been a change in the signature of __array__ from
+        NumPy version 1.26 to 2.0 (the signature used here).
+
+        Parameters
+        ----------
+        dtype : data-type, optional
+            The desired data type for the array.
+        copy : bool, optional
+            If :obj:`True` then the array data is copied. If :obj:`None`,
+            a copy will only be made if necessary. For :obj:`False` it
+            raises a :class:`ValueError` if a copy cannot be avoided.
+
+        Raises
+        ------
+        ValueError
+            If `copy` evaluates to :obj:`False` and a copy cannot be
+            avoided.
+
+        Returns
+        -------
+        ~numpy.ndarray
+            Array of vertex coordinates.
+        """
+        return np.array([v.point for v in self], dtype=dtype, copy=copy)
 
     def __contains__(self, item):
         """ Vertex and halfedge containment test.
