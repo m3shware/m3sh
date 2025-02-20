@@ -499,7 +499,7 @@ def scatter(points, style='spheres', size=4, color=colors.dim_grey):
     pc.verts(style, size)
     pc.color = color
 
-    add(pc.actor)
+    add(pc.prop)
     return pc
 
 
@@ -1516,7 +1516,7 @@ def box(a, b, opacity=1.0, edges=False, color=colors.grey):
     # return actor
 
 
-def _sphere(center, radius, color=(0.8, 0.8, 0.8)):
+def sphere(center, radius, opacity=1.0, color=colors.grey):
     """ Sphere.
 
     Covenience function that displays a sphere with given center and radius.
@@ -1529,11 +1529,6 @@ def _sphere(center, radius, color=(0.8, 0.8, 0.8)):
         Sphere radius.
     color : array_like, shape (3, ), optional
         Color.
-
-    Returns
-    -------
-    vtkActor
-        The corresponding actor object.
     """
     sphere = vtk.vtkSphereSource()
     sphere.SetCenter(center[0], center[1], center[2])
@@ -1542,19 +1537,12 @@ def _sphere(center, radius, color=(0.8, 0.8, 0.8)):
     sphere.SetPhiResolution(24)
     sphere.Update()
 
-    mapper = vtk.vtkPolyDataMapper()
-    mapper.SetInputConnection(sphere.GetOutputPort())
+    ball = PolyData(sphere.GetOutput())
+    ball.color = color
+    ball.opacity = opacity
 
-    actor = vtk.vtkActor()
-    actor.SetMapper(mapper)
-    actor.SetPickable(False)
-    actor.GetProperty().SetColor(color[0], color[1], color[2])
-    actor.GetProperty().SetOpacity(0.25)
-    # actor.GetProperty().SetEdgeVisibility(True)
-    # actor.GetProperty().SetLineWidth(2.0)
-
-    add(actor)
-    return actor
+    add(ball)
+    return ball
 
 
 def _spheres(C, r):
