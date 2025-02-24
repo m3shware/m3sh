@@ -1,0 +1,6 @@
+halfedges
+=========
+
+.. currentmodule:: m3sh.hds
+
+.. autoproperty:: Mesh.halfedges

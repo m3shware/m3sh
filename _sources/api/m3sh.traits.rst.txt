@@ -1,0 +1,33 @@
+﻿m3sh.traits
+===========
+
+.. automodule:: m3sh.traits
+
+   
+   
+   
+
+   
+   
+   
+
+   
+   
+   
+   
+   
+   
+   .. rubric:: Functions
+
+   .. autosummary::
+      :toctree:
+      :template: function.rst
+   
+      bounds
+      face_area
+      face_normal
+      face_normals
+      vertex_normal
+      vertex_normals
+   
+   

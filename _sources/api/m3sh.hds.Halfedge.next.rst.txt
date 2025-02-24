@@ -1,0 +1,6 @@
+next
+====
+
+.. currentmodule:: m3sh.hds
+
+.. autoproperty:: Halfedge.next
