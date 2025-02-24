@@ -1632,6 +1632,17 @@ def _spheres(C, r):
     return actor
 
 
+# def tree(boxes):
+#     tree = BoxArray(boxes)
+#     tree.opacity = 0.5
+
+#     for actor in tree.prop.GetParts():
+#         actor.GetProperty().SetEdgeVisibility(True)
+
+#     add(tree)
+#     return tree
+
+
 def _display(message, x=0.05, y=0.95, size=12, color=colors.white, bold=False,
             italic=False, shadow=False, frame=False):
     """ Display static text in the render window.
@@ -2266,6 +2277,32 @@ class Actor:
     @pickable.setter
     def pickable(self, value):
         self._prop.SetPickable(value)
+
+
+# class BoxArray(Actor):
+
+#     def __init__(self, boxes):
+#         prop = vtk.vtkPropAssembly()
+
+#         for box in boxes:
+#             prop.AddPart(self._build(box[0, :], box[1, :]))
+
+#         super().__init__(prop)
+
+#     def _build(self, a, b):
+#         cube = vtk.vtkCubeSource()
+#         cube.SetBounds(a[0], b[0],
+#                        a[1], b[1],
+#                        a[2], b[2])
+#         cube.Update()
+
+#         mapper = vtk.vtkPolyDataMapper()
+#         mapper.SetInputData(cube.GetOutput())
+
+#         actor = vtk.vtkActor()
+#         actor.SetMapper(mapper)
+
+#         return actor
 
 
 class ConeField(Actor):
