@@ -923,7 +923,7 @@ def _silhouette(M):
     return actor
 
 
-def quiver(points, vectors, scale=1.0, color=(0.5, 0.5, 0.5), *,
+def quiver(points, vectors, scale=1.0, color=colors.green_pale, *,
            shaft_radius=0.025, tip_radius=0.05, tip_length=0.5,
            resolution=6):
     """ Quiver plot.
@@ -1027,7 +1027,7 @@ def quiver(points, vectors, scale=1.0, color=(0.5, 0.5, 0.5), *,
     mapper.SelectColorArray('glyph_color')
 
     actor = Actor(vtk.vtkActor())
-    actor.actor.SetMapper(mapper)
+    actor.prop.SetMapper(mapper)
 
     add(actor)
     return actor

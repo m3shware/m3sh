@@ -161,6 +161,17 @@ def _map_orientation(forward, up):
     return np.stack((x, y, z))
 
 
+def merge(verts, faces, radius=1e-4):
+    """
+    """
+    from scipy.spatial import KDTree
+
+    kdtree = KDTree(verts)
+    neighbors = kdtree.query_ball_tree(kdtree, radius)
+
+    return [[(min(neighbors[v[0]]), v[1], v[2]) for v in f] for f in faces]
+
+
 def read(filename, *args):
     """ Read from file.
 
@@ -288,18 +299,18 @@ def read(filename, *args):
 
                 if blocks[0] in args:
                     if blocks[0] == 'f':
-                        face = [parse(block)[0] for block in blocks[1:]]
+                        f = [parse(block) for block in blocks[1:]]
 
-                        for i in range(len(face)):
+                        for i in range(len(f)):
                             # Negative vertex indices are more complicated
                             # to handle. One needs to know the number of
                             # vertices read up this point...
-                            if face[i] < 0:
-                                face[i] = vcnt + face[i]
+                            if f[i][0] < 0:
+                                f[i] = (f[i][0] + vcnt, f[i][1], f[i][2])
                             else:
-                                face[i] -= 1
+                                f[i] = (f[i][0] - 1, f[i][1], f[i][2])
 
-                        args_arr['f'].append(face)
+                        args_arr['f'].append(f)
                     else:
                         data = [float(block) for block in blocks[1:]]
                         arr = args_arr[blocks[0]]

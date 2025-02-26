@@ -321,7 +321,7 @@ class Mesh:
                 sum(1 for _ in self._fiter()))
 
     @classmethod
-    def read(cls, filename, *args, quiet=True):
+    def read(cls, filename, *args, merge=False, quiet=True):
         """ Read mesh from file.
 
         Read mesh combinatorics (face definitions) and vertex coordinates
@@ -369,17 +369,72 @@ class Mesh:
         if 'f' in args:
             raise ValueError("'f' cannot be used as argument")
 
+        # The *data expression will assign a list of all return values not
+        # assigned to a name to data.
         verts, faces, *data = obj.read(filename, 'v', 'f', *args)
+
+        # Convert list of data blocks to a dictionary. Since insertion
+        # order traversal is guaranteed, *data before conversion is equal
+        # to *data.values() after conversion.
+        data = {arg: block for arg, block in zip(args, data)}
 
         if not quiet:
             print(f' done ({time()-start:.3} sec)')
             print(f'\t\u251c\u2500 {len(verts)} vertices')
             print(f'\t\u2514\u2500 {len(faces)} faces')
 
-        if args:
-            return cls(verts, faces), *data
+        if merge:
+            faces = obj.merge(verts, faces)
 
-        return cls(verts, faces)
+        if 'vn' in args:
+            # Check if each vertex is assigned the normal with identical
+            # index value.
+            for face in faces:
+                for v, _, vn in face:
+                    if vn is not None and v != vn:
+                        break
+                else:
+                    continue
+
+                # Break outer loop. Only reached if break was executed
+                # in the inner loop.
+                break
+            else:
+                # All vertices are assigned the normal vector with
+                # identical index. This is fine for mesh generation.
+                mesh = cls(verts, [[v[0] for v in f] for f in faces])
+                return mesh, *data.values()
+
+            # Fix the normals data block such that there are as many
+            # normals as vertices and both blocks correponds by index.
+            # If normal indices are not specified explicitly in face
+            # definitions, none of this is executed!
+            idx = [set() for _ in verts]
+
+            for face in faces:
+                for v, _, vn in face:
+                    idx[v].add(vn)
+
+            # The set idx[v] now holds all indices of normals assigned
+            # to vertex v. If there there are multiple normals assigned
+            # (allowed by OBJ specifications) they will be averaged.
+            block = data['vn']
+            normals = np.empty(verts.shape)
+
+            for v, _ in enumerate(verts):
+                if len(idx[v]) > 1:
+                    print('normal average')
+
+                normals[v, :] = sum(block[j, :] for j in idx[v])
+                normals[v, :] /= np.linalg.norm(normals[v, :])
+
+            data['vn'] = normals
+
+        if args:
+            mesh = cls(verts, [[v[0] for v in f] for f in faces])
+            return mesh, *data.values()
+
+        return cls(verts, [[v[0] for v in f] for f in faces])
 
     def write(self, filename, quiet=True, **data):
         """ Write mesh to file.
