@@ -204,6 +204,16 @@ class Mesh:
     def __bool__(self):
         return True
 
+    def __getitem__(self, index):
+        # Treat a mesh like a tuple consisting of a list of goemetric
+        # vertices and face definitions.
+        if index == 0:
+            return self._points
+        elif index == 1:
+            return self._faces
+
+        raise IndexError(f'index must be 0 or 1, got {index}')
+
     @property
     def points(self):
         """ Vertex coordinate array.
@@ -379,12 +389,17 @@ class Mesh:
         data = {arg: block for arg, block in zip(args, data)}
 
         if not quiet:
-            print(f' done ({time()-start:.3} sec)')
+            print(f' done ({time()-start:.3f} sec)')
             print(f'\t\u251c\u2500 {len(verts)} vertices')
             print(f'\t\u2514\u2500 {len(faces)} faces')
 
         if merge:
+            start = time()
             faces = obj.merge(verts, faces)
+
+            if not quiet:
+                print(f'merged vertices of {CBOLD}{Path(filename).name}' +
+                      f'{CEND} by distance ({time()-start:.3f} sec)')
 
         if 'vn' in args:
             # Check if each vertex is assigned the normal with identical
@@ -405,6 +420,11 @@ class Mesh:
                 mesh = cls(verts, [[v[0] for v in f] for f in faces])
                 return mesh, *data.values()
 
+            if not quiet:
+                print(f'rebuilding normal data block of ', end='')
+                print(f'{CBOLD}{Path(filename).name}{CEND}')
+                print(f'\t\u251c\u2500 {len(data["vn"])} normals read')
+
             # Fix the normals data block such that there are as many
             # normals as vertices and both blocks correponds by index.
             # If normal indices are not specified explicitly in face
@@ -420,15 +440,24 @@ class Mesh:
             # (allowed by OBJ specifications) they will be averaged.
             block = data['vn']
             normals = np.empty(verts.shape)
+            num_avg = 0
 
             for v, _ in enumerate(verts):
-                if len(idx[v]) > 1:
-                    print('normal average')
+                cluster = idx[v]
 
-                normals[v, :] = sum(block[j, :] for j in idx[v])
-                normals[v, :] /= np.linalg.norm(normals[v, :])
+                if len(cluster) > 0:
+                    normals[v, :] = sum(block[j, :] for j in cluster)
+
+                    if len(cluster) > 1:
+                        normals[v, :] /= np.linalg.norm(normals[v, :])
+                        num_avg += 1
+                else:
+                    normals[v, :] = np.nan
 
             data['vn'] = normals
+
+            if not quiet:
+                print(f'\t\u2514\u2500 {num_avg} averages performed')
 
         if args:
             mesh = cls(verts, [[v[0] for v in f] for f in faces])

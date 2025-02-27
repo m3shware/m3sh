@@ -611,42 +611,56 @@ def _icon(window, file='m3sh.png'):
         window.SetIcon(reader.GetOutput())
 
 
-def mesh(mesh, normals=None, color=colors.snow, share=True):
+def mesh(mesh, normals=None, color=colors.snow, copy=None):
     """ Mesh visualization.
+
+    Visualization of a polygonal mesh represented as a :class:`Mesh`
+    instance or a 2-tuple holding an `array_like` vertex coordinate
+    representation and a list of face definitions.
 
     Vertex normals are merely a visualization hint and result in smooth
     shading of the mesh.
 
     Parameters
     ----------
-    mesh : Mesh
-        A mesh instance.
+    mesh : Mesh or tuple
+        Polygonal mesh representation.
     normals : ~numpy.ndarray, optional
         Array of unit vertex normals, one vector per row.
     color : array_like, shape (3, ), optional
         RGB color triple.
-    share : bool, optional
-        If :obj:`True` the points array of `mesh` is shared with VTK.
+    copy : bool, optional
+        If :obj:`True` the points array of `mesh` is **not** shared
+        with VTK. A :obj:`None` value allows to make a copy if needed.
+
+    Raises
+    ------
+    ValueError
+        When `copy` evaluates to :obj:`False` and a copy cannot be
+        avoided, e.g., when vertex coordinates are represented as a
+        nested list of floating point values.
 
     Returns
     -------
     PolyMesh
         The visual appearance of a mesh can be modified by using the
-        methods and attributes of the returned render object.
+        methods and attributes of the returned object.
 
     Note
     ----
-    The `share` argument only applies to `mesh`, the data buffer of the
-    vertex normal array is always shared with VTK. This may have unwanted
-    side effects. Use a copy to decouple storage.
+    The `copy` argument only applies to `mesh`, the data buffer of the
+    vertex normal array is always shared with VTK.
     """
-    renmesh = PolyMesh(mesh, share)
+    renmesh = PolyMesh(mesh, copy)
     renmesh.color = color
 
     if normals is not None:
-        pointdata = renmesh.polydata.GetPointData()
-        pointdata.SetNormals(numpy_to_vtk(normals))
-        pointdata.Modified()
+        if isinstance(normals, np.ndarray):
+            pointdata = renmesh.polydata.GetPointData()
+            pointdata.SetNormals(numpy_to_vtk(normals))
+            pointdata.Modified()
+        else:
+            raise ValueError('normals must be ndarray instance')
 
     add(renmesh)
     return renmesh
@@ -1385,6 +1399,10 @@ def _splat_alt(P, N, scale=1.0, color=(1.0, 1.0, 1.0)):
 
     add(actor)
     return actor
+
+
+def _plot(points):
+    pass
 
 
 def plot(P, width=2.0, size=6.0, style='-', color=(0.25, 0.25, 0.25)):
@@ -2520,8 +2538,12 @@ class PolyData(Actor):
 
     Parameters
     ----------
-    polydata : vtkPolyData
-        Managed data instance.
+    points : array_like
+        Point coordinate array. Converted to equivalent
+        :class:`~numpy.ndarray` instance.
+    verts : list, optional
+    lines : list, optional
+    faces : list, optional
 
     Note
     ----
@@ -2529,7 +2551,47 @@ class PolyData(Actor):
     cells.
     """
 
-    def __init__(self, polydata):
+    def __init__(self, points, *, verts=None, lines=None, faces=None):
+        self._points = np.asarray(points)
+        self._polydata = vtk.vtkPolyData()
+
+        points = vtk.vtkPoints()
+        points.SetData(numpy_to_vtk(self._points))
+
+        polydata = self._polydata
+        polydata.SetPoints(points)
+
+        if verts is not None:
+            cells = vtk.vtkCellArray()
+
+            for v in verts:
+                cells.InsertNextCell(1, [int(v)])
+
+            polydata.SetVerts(cells)
+
+        # if lines is not None:
+        #     cells = vtk.vtkCellArray()
+
+        #     for i in range(len(edges) - 1):
+        #         if lines[i] > -1 and lines[i+1] > -1:
+        #             line = vtk.vtkIdList()
+        #             line.InsertNextId(lines[i])
+        #             line.InsertNextId(lines[i+1])
+        #             cells.InsertNextCell(line)
+
+        #     polydata.SetLines(cells)
+
+        if faces is not None:
+            cells = vtk.vtkCellArray()
+
+            for f in faces:
+                face = vtk.vtkIdList()
+                for v in f:
+                    face.InsertNextId(int(v))
+                cells.InsertNextCell(face)
+
+            polydata.SetPolys(cells)
+
         mapper = vtk.vtkPolyDataMapper()
         mapper.SetInputData(polydata)
 
@@ -2545,8 +2607,35 @@ class PolyData(Actor):
         super().__init__(actor)
 
         # Initialize private properties.
-        self._scalars = None
         self._draggable = None
+        self._scalars = None
+
+    # def __init__(self, polydata):
+    #     mapper = vtk.vtkPolyDataMapper()
+    #     mapper.SetInputData(polydata)
+
+    #     # Create standard lookup table and how this table is used
+    #     # by the mapper.
+    #     mapper.SetLookupTable(_generic_lut())
+    #     mapper.SetUseLookupTableScalarRange(True)
+
+    #     actor = vtk.vtkActor()
+    #     actor.SetMapper(mapper)
+
+    #     # Initialize base class.
+    #     super().__init__(actor)
+
+    #     # Initialize private properties.
+    #     self._scalars = None
+    #     self._draggable = None
+
+    @property
+    def points(self):
+        """ Point coordinate array access.
+
+        :type: ~numpy.ndarray
+        """
+        return self._points
 
     @property
     def polydata(self):
@@ -2556,7 +2645,8 @@ class PolyData(Actor):
 
         :type: vtkPolyData
         """
-        return self._prop.GetMapper().GetInput()
+        return self._polydata
+        # return self._prop.GetMapper().GetInput()
 
     @property
     def color(self):
@@ -2952,29 +3042,31 @@ class PointCloud(PolyData):
     """
 
     def __init__(self, points):
-        self._points = np.asarray(points)
+        super().__init__(points, verts=range(len(points)))
 
-        points = vtk.vtkPoints()
-        points.SetData(numpy_to_vtk(self._points))
+        # self._points = np.asarray(points)
 
-        polydata = vtk.vtkPolyData()
-        polydata.SetPoints(points)
+        # points = vtk.vtkPoints()
+        # points.SetData(numpy_to_vtk(self._points))
 
-        vertices = vtk.vtkCellArray()
+        # polydata = vtk.vtkPolyData()
+        # polydata.SetPoints(points)
 
-        for i in range(len(self._points)):
-            vertices.InsertNextCell(1, [i])
+        # vertices = vtk.vtkCellArray()
 
-        polydata.SetVerts(vertices)
-        super().__init__(polydata)
+        # for i in range(len(self._points)):
+        #     vertices.InsertNextCell(1, [i])
 
-    @property
-    def points(self):
-        """ Point coordinate array access.
+        # polydata.SetVerts(vertices)
+        # super().__init__(polydata)
 
-        :type: ~numpy.ndarray
-        """
-        return self._points
+    # @property
+    # def points(self):
+    #     """ Point coordinate array access.
+
+    #     :type: ~numpy.ndarray
+    #     """
+    #     return self._points
 
     def verts(self, style=None, size=None, color=None):
         """ Vertex display.
@@ -3015,10 +3107,18 @@ class PolyMesh(PolyData):
 
     Parameters
     ----------
-    mesh : Mesh
-        A mesh instance.
-    share : bool, optional
-        If :obj:`True` the points array of `mesh` is shared with VTK.
+    mesh : Mesh or tuple
+        Polygonal mesh representation.
+    copy : bool, optional
+        If :obj:`True` the points array of `mesh` is **not** shared
+        with VTK. A :obj:`None` value allows to make a copy if needed.
+
+    Raises
+    ------
+    ValueError
+        When `copy` evaluates to :obj:`False` and a copy cannot be
+        avoided, e.g., when vertex coordinates are represented as a
+        nested list of floating point values.
 
     Note
     ----
@@ -3026,30 +3126,33 @@ class PolyMesh(PolyData):
     vertex coordinate data buffers if not disabled explicitly.
     """
 
-    def __init__(self, mesh, share=True):
+    def __init__(self, mesh, copy=None):
+        super().__init__(np.asarray(mesh[0], copy=copy), faces=mesh[1])
+
+        # Initialize private properties.
         self._mesh = mesh
 
-        points = vtk.vtkPoints()
+        # points = vtk.vtkPoints()
 
-        if share:
-            points.SetData(numpy_to_vtk(mesh.points))
-        else:
-            for p in mesh.points:
-                points.InsertNextPoint(p[0], p[1], p[2])
+        # if share:
+        #     points.SetData(numpy_to_vtk(mesh.points))
+        # else:
+        #     for p in mesh.points:
+        #         points.InsertNextPoint(p[0], p[1], p[2])
 
-        polydata = vtk.vtkPolyData()
-        polydata.SetPoints(points)
+        # polydata = vtk.vtkPolyData()
+        # polydata.SetPoints(points)
 
-        polys = vtk.vtkCellArray()
+        # polys = vtk.vtkCellArray()
 
-        for f in mesh:
-            face = vtk.vtkIdList()
-            for v in f:
-                face.InsertNextId(int(v))
-            polys.InsertNextCell(face)
+        # for f in mesh:
+        #     face = vtk.vtkIdList()
+        #     for v in f:
+        #         face.InsertNextId(int(v))
+        #     polys.InsertNextCell(face)
 
-        polydata.SetPolys(polys)
-        super().__init__(polydata)
+        # polydata.SetPolys(polys)
+        # super().__init__(polydata)
 
     @property
     def mesh(self):
