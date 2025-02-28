@@ -1047,7 +1047,7 @@ def quiver(points, vectors, scale=1.0, color=colors.green_pale, *,
     return actor
 
 
-def _quiver(points, vectors, scale=1.0, color=(0.5, 0.5, 0.5), *,
+def _quiver(points, vectors, scale=1.0, color=colors.green_pale, *,
            shaft_radius=0.025, tip_radius=0.05, tip_length=0.5,
            resolution=6):
     vecfield = VectorField(points, vectors, scale, color, shaft_radius,
@@ -2534,66 +2534,74 @@ class VectorField(Actor):
 class PolyData(Actor):
     """ Polygonal shape wrapper.
 
-    Manages visual properties of a polygonal shape.
+    Manages visual properties of a polygonal shape. Point clouds are
+    polygonal shapes that only define 0-dimensional cells.
 
     Parameters
     ----------
-    points : array_like
+    data : array_like or vtkPolyData
         Point coordinate array. Converted to equivalent
         :class:`~numpy.ndarray` instance.
     verts : list, optional
+        Combinatorial vertex definitions.
     lines : list, optional
+        Combinatorial line definitions.
     faces : list, optional
+        Combinatorial face definitions.
 
     Note
     ----
-    Point clouds are polygonal shapes that only define 0-dimensional
-    cells.
+     The `verts`, `lines`, and `faces` arguments are ignored when
+    `data` is a :class:`vtkPolyData` instance.
     """
 
-    def __init__(self, points, *, verts=None, lines=None, faces=None):
-        self._points = np.asarray(points)
-        self._polydata = vtk.vtkPolyData()
+    def __init__(self, data, *, verts=None, lines=None, faces=None):
+        if isinstance(data, vtk.vtkPolyData):
+            self._points = None
+            self._polydata = data
+        else:
+            self._points = np.asarray(data)
+            self._polydata = vtk.vtkPolyData()
 
-        points = vtk.vtkPoints()
-        points.SetData(numpy_to_vtk(self._points))
+            points = vtk.vtkPoints()
+            points.SetData(numpy_to_vtk(self._points))
 
-        polydata = self._polydata
-        polydata.SetPoints(points)
+            polydata = self._polydata
+            polydata.SetPoints(points)
 
-        if verts is not None:
-            cells = vtk.vtkCellArray()
+            if verts is not None:
+                cells = vtk.vtkCellArray()
 
-            for v in verts:
-                cells.InsertNextCell(1, [int(v)])
+                for v in verts:
+                    cells.InsertNextCell(1, [int(v)])
 
-            polydata.SetVerts(cells)
+                polydata.SetVerts(cells)
 
-        # if lines is not None:
-        #     cells = vtk.vtkCellArray()
+            # if lines is not None:
+            #     cells = vtk.vtkCellArray()
 
-        #     for i in range(len(edges) - 1):
-        #         if lines[i] > -1 and lines[i+1] > -1:
-        #             line = vtk.vtkIdList()
-        #             line.InsertNextId(lines[i])
-        #             line.InsertNextId(lines[i+1])
-        #             cells.InsertNextCell(line)
+            #     for i in range(len(edges) - 1):
+            #         if lines[i] > -1 and lines[i+1] > -1:
+            #             line = vtk.vtkIdList()
+            #             line.InsertNextId(lines[i])
+            #             line.InsertNextId(lines[i+1])
+            #             cells.InsertNextCell(line)
 
-        #     polydata.SetLines(cells)
+            #     polydata.SetLines(cells)
 
-        if faces is not None:
-            cells = vtk.vtkCellArray()
+            if faces is not None:
+                cells = vtk.vtkCellArray()
 
-            for f in faces:
-                face = vtk.vtkIdList()
-                for v in f:
-                    face.InsertNextId(int(v))
-                cells.InsertNextCell(face)
+                for f in faces:
+                    face = vtk.vtkIdList()
+                    for v in f:
+                        face.InsertNextId(int(v))
+                    cells.InsertNextCell(face)
 
-            polydata.SetPolys(cells)
+                polydata.SetPolys(cells)
 
         mapper = vtk.vtkPolyDataMapper()
-        mapper.SetInputData(polydata)
+        mapper.SetInputData(self._polydata)
 
         # Create standard lookup table and how this table is used
         # by the mapper.
@@ -2609,25 +2617,6 @@ class PolyData(Actor):
         # Initialize private properties.
         self._draggable = None
         self._scalars = None
-
-    # def __init__(self, polydata):
-    #     mapper = vtk.vtkPolyDataMapper()
-    #     mapper.SetInputData(polydata)
-
-    #     # Create standard lookup table and how this table is used
-    #     # by the mapper.
-    #     mapper.SetLookupTable(_generic_lut())
-    #     mapper.SetUseLookupTableScalarRange(True)
-
-    #     actor = vtk.vtkActor()
-    #     actor.SetMapper(mapper)
-
-    #     # Initialize base class.
-    #     super().__init__(actor)
-
-    #     # Initialize private properties.
-    #     self._scalars = None
-    #     self._draggable = None
 
     @property
     def points(self):
