@@ -280,9 +280,9 @@ def read(filename, *args):
     # on the corresponding tag.
     args_arr = {arg: [] if arg == 'f' else None for arg in args}
 
-    # The number of encountered vertex coordinates. Needed to resolve
-    # negative (relative) vertex indices.
-    vcnt = 0
+    # The number of encountered item definitions. Needed to resolve
+    # negative (relative) item indices.
+    vcnt, vtcnt, vncnt = 0, 0, 0
 
     with open(filename, 'r') as file:
         for line in file:
@@ -292,23 +292,36 @@ def read(filename, *args):
 
             # ... then process the contents of non-empty lines.
             if blocks:
-                # Unconditional increment of the number of vertices
+                # Unconditional increment of the number of mesh items
                 # encountered up to this point.
                 if blocks[0] == 'v':
                     vcnt += 1
+
+                if blocks[0] == 'vt':
+                    vtcnt += 1
+
+                if blocks[0] == 'vn':
+                    vncnt += 1
 
                 if blocks[0] in args:
                     if blocks[0] == 'f':
                         f = [parse(block) for block in blocks[1:]]
 
                         for i in range(len(f)):
-                            # Negative vertex indices are more complicated
-                            # to handle. One needs to know the number of
-                            # vertices read up this point...
-                            if f[i][0] < 0:
-                                f[i] = (f[i][0] + vcnt, f[i][1], f[i][2])
-                            else:
-                                f[i] = (f[i][0] - 1, f[i][1], f[i][2])
+                            # Unpack the i-th geometric vertex definition
+                            # of the current face.
+                            v, vt, vn = f[i]
+                            v += vcnt if v < 0 else -1
+
+                            if vt is not None:
+                                vt += vtcnt if vt < 0 else -1
+
+                            if vn is not None:
+                                vn += vncnt if vn < 0 else -1
+
+                            # Replace all indices in the vertex definition
+                            # by 0-based abolute indices.
+                            f[i] = (v, vt, vn)
 
                         args_arr['f'].append(f)
                     else:
