@@ -1051,8 +1051,8 @@ class Mesh:
 
         # Find the indices of vertices *not* marked for deletion. Calculate
         # the shape of the compressed coordinate array.
-        vidx = [i for i, _ in enumerate(self._verts) if not v._deleted]
-        fidx = [i for i, _ in enumerate(self._faces) if not f._deleted]
+        vidx = [i for i, v in enumerate(self._verts) if not v._deleted]
+        fidx = [i for i, f in enumerate(self._faces) if not f._deleted]
 
         # Move the coordinates of live vertices to the front of the point
         # array, preserving their relative order. Then compress the array
@@ -1212,7 +1212,9 @@ class Mesh:
         v = self._verts[vertex]
         assert not v._deleted
 
-        if not v._manifold:
+        if v.isolated:
+            v._deleted = True
+        elif not v._manifold:
             if fill is not None:
                 raise NonManifoldError('cannot fill hole formed by ' +
                                        'deleting a non-manifold vertex')
