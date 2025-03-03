@@ -70,6 +70,10 @@ def canvas(*args, color=None, color2=None, camera=None, transparent=None,
     the main render window. A viewport's size and position is defined
     relative to the size of the render window in normalized coordinates.
 
+    The variable length argument list `*args` may hold 0 (to create new
+    viewport), 1 (to make `renderer` current), 4 (to set viewport dimensions)
+    or 5 values as documented below.
+
     Parameters
     ----------
     renderer : vtkRenderer, optional
@@ -91,18 +95,17 @@ def canvas(*args, color=None, color2=None, camera=None, transparent=None,
     Note
     ----
     Passing a renderer as first positional argument makes it the current
-    viewport. All non-:obj:`None` keyword arguments modify the corresponding
-    properties of the current viewport.
+    viewport. All :obj:`None` keyword arguments do not modify the
+    corresponding property of the current viewport.
 
     Keyword Arguments
     -----------------
     color : array_like, shape (3, ), optional
-        Background color. Defaults to white.
+        Background color.
     color2 : array_like, shape (3, ), optional
-        Top background color for color gradient background. Pass
-        :obj:`False` to disable.
+        Top background color.
     camera : vtkRenderer or vtkCamera, optional
-        Shared camera, use to sync the view of different viewports.
+        Shared camera.
     transparent : bool, optional
         Toggle transparent background.
     interactive : bool, optional
@@ -130,8 +133,8 @@ def canvas(*args, color=None, color2=None, camera=None, transparent=None,
         args = args[1:]
     elif len(args) == 0 or len(args) == 4:
         # No renderer is given. Create a new one and set its properties
-         # to the given values or global defaults. The renderer becomes
-         # the active renderer.
+        # to the given values or global defaults. The renderer becomes
+        # the active renderer.
         _renderer = vtk.vtkRenderer()
         _renderer.SetUseDepthPeeling(1)
         _renderer.SetOcclusionRatio(0.1)
@@ -474,9 +477,8 @@ def scatter(points, style='spheres', size=4, color=colors.dim_grey):
 
     Parameters
     ----------
-    points : array_like, shape (k, 3), k > 1
-        Point coordinates, one point per row. Converted to an
-        equivalent :class:`~np.ndarray` if necessary.
+    points : array_like, shape (n, 3), n > 1
+        Point coordinates.
     style : str, optional
         Either 'points' or 'spheres'.
     size : float, optional
@@ -696,7 +698,7 @@ def colorbar(object, x=0.8, y=0.1):
 def aabb(points, opacity=0.15, edges=True, labels='dim', color=colors.snow):
     r""" Axis aligned bounding box.
 
-    Axis aligned bounding box with annotation.
+    Display axis aligned bounding box of `points` with annotation.
 
     Parameters
     ----------
@@ -707,11 +709,9 @@ def aabb(points, opacity=0.15, edges=True, labels='dim', color=colors.snow):
     edges : bool, optional
         Toggle edges of the bounding box.
     labels : str, optional
-        :obj:`None` for no labels, 'dim' to label box dimensions,
-        'minmax' to show minimal and maximal coordinates along all
-        axes, or 'both' to show all labels.
-    colors : array_like, shape (3, )
-        Bounding box color, does not influence edge color.
+        Either :obj:`None`, 'dim', 'minmax', or 'both'.
+    colors : array_like, shape (3, ), optional
+        Bounding box color.
 
     Returns
     -------
@@ -1057,7 +1057,7 @@ def _quiver(points, vectors, scale=1.0, color=colors.green_pale, *,
     return vecfield
 
 
-def cones(points, vectors, angle=None, radius=None, height=None,
+def _cones(points, vectors, angle=None, radius=None, height=None,
           color=colors.snow, double=False, cap=False, resolution=24):
     """ Cone rendering.
 
@@ -1131,7 +1131,7 @@ def cones(points, vectors, angle=None, radius=None, height=None,
             if len(height) != len(points):
                 raise ValueError("array shapes don't match")
 
-    conefield = ConeField(points, vectors, angle, radius, height,
+    conefield = _ConeField(points, vectors, angle, radius, height,
                           double, cap, resolution)
     conefield.color = color
 
@@ -1476,22 +1476,23 @@ def plot(P, width=2.0, size=6.0, style='-', color=(0.25, 0.25, 0.25)):
 
 
 def box(a, b, opacity=1.0, edges=False, color=colors.grey):
-    """ Box shape.
+    r""" Box shape.
 
-    Display axis aligned box with given corner vertices.
+    Display the cuboid
+    :math:`Q = [a_x, b_x] \times [a_y, b_y] \times [a_z, b_z]`.
 
     Parameters
     ----------
     a : array_like, shape (3, )
-        Lower left corner of the box.
+        Min corner of the box.
     b : array_like, shape (3, )
-        Upper right corner of the box.
+        Max corner of the box.
     opacity : float, optional
         Opacity of box.
     edges : bool, optional
         Toggle edges of the box.
     color : array_like, shape (3, ), optional
-        Color.
+        RGB color triplet.
 
     Returns
     -------
@@ -1534,25 +1535,35 @@ def box(a, b, opacity=1.0, edges=False, color=colors.grey):
     # return actor
 
 
-def sphere(center, radius, opacity=1.0, color=colors.grey):
-    """ Sphere.
+def sphere(center, radius, opacity=1.0, resolution=24, color=colors.grey):
+    """ Sphere shape.
 
-    Covenience function that displays a sphere with given center and radius.
+    Covenience function that displays a sphere with given center and
+    radius.
 
     Parameters
     ----------
-    center : array_like
+    center : array_like, shape (3, )
         Sphere center.
     radius : float
         Sphere radius.
+    opacity : float, optional
+        Opacity value.
+    resolution : int, optional
+        Angle discretization.
     color : array_like, shape (3, ), optional
-        Color.
+        RGB color triplet.
+
+    Returns
+    -------
+    PolyData
+        The corresponding polygonal shape representation.
     """
     sphere = vtk.vtkSphereSource()
     sphere.SetCenter(center[0], center[1], center[2])
     sphere.SetRadius(radius)
-    sphere.SetThetaResolution(24)
-    sphere.SetPhiResolution(24)
+    sphere.SetThetaResolution(resolution)
+    sphere.SetPhiResolution(resolution)
     sphere.Update()
 
     ball = PolyData(sphere.GetOutput())
@@ -2323,7 +2334,7 @@ class Actor:
 #         return actor
 
 
-class ConeField(Actor):
+class _ConeField(Actor):
     """ Family of cones.
 
     Visual representation of a family of (double) cones. Individual cones
@@ -2535,23 +2546,25 @@ class PolyData(Actor):
     """ Polygonal shape wrapper.
 
     Manages visual properties of a polygonal shape. Point clouds are
-    polygonal shapes that only define 0-dimensional cells.
+    polygonal shapes that only define 0-dimensional cells. If `data`
+    is an `array_like` representation of a point set, it is converted
+    to an equivalent :class:`~numpy.ndarray` instance. The created
+    array is then accessible via the :attr:`points` attribute.
 
     Parameters
     ----------
     data : array_like or vtkPolyData
-        Point coordinate array. Converted to equivalent
-        :class:`~numpy.ndarray` instance.
+        Point data.
     verts : list, optional
         Combinatorial vertex definitions.
     lines : list, optional
-        Combinatorial line definitions.
+        Not supported yet.
     faces : list, optional
         Combinatorial face definitions.
 
     Note
     ----
-     The `verts`, `lines`, and `faces` arguments are ignored when
+    The `verts`, `lines`, and `faces` arguments are ignored when
     `data` is a :class:`vtkPolyData` instance.
     """
 
@@ -2571,10 +2584,8 @@ class PolyData(Actor):
 
             if verts is not None:
                 cells = vtk.vtkCellArray()
-
                 for v in verts:
                     cells.InsertNextCell(1, [int(v)])
-
                 polydata.SetVerts(cells)
 
             # if lines is not None:
@@ -2591,13 +2602,11 @@ class PolyData(Actor):
 
             if faces is not None:
                 cells = vtk.vtkCellArray()
-
                 for f in faces:
                     face = vtk.vtkIdList()
                     for v in f:
                         face.InsertNextId(int(v))
                     cells.InsertNextCell(face)
-
                 polydata.SetPolys(cells)
 
         mapper = vtk.vtkPolyDataMapper()
@@ -2621,6 +2630,10 @@ class PolyData(Actor):
     @property
     def points(self):
         """ Point coordinate array access.
+
+        The contents of this array may be changed in place. Calling
+        :meth:`modified` will update the visual representation on the
+        next render pass.
 
         :type: ~numpy.ndarray
         """
@@ -3013,21 +3026,21 @@ class PointCloud(PolyData):
     """ Point cloud shape.
 
     Wrapper class for point cloud visualization. Instances of this class
-    are typically generated by the :func:`scatter` function.
+    are typically generated by the :func:`scatter` function. If `points`
+    is not of type :class:`~numpy.ndarray` an equivalent representation
+    is created.
 
     Parameters
     ----------
-    points : array_like, shape (n, k)
+    points : array_like, shape (n, 3)
         Coordinate container.
-
-
-    If `points` is not of type :class:`~numpy.ndarray` an equivalent
-    representation is created. The :class:`~numpy.ndarray` used for
-    visualization is accessible via the :attr:`points` attribute.
 
     Note
     ----
-    The data buffer of the coordinate array is shared with VTK.
+    The :class:`~numpy.ndarray` used for visualization is accessible via
+    the :attr:`points` attribute. Its data buffer is shared with VTK.
+    Changing point coordinates and calling :meth:`modified` updates the
+    displayed point cloud on the next render pass.
     """
 
     def __init__(self, points):
@@ -3065,7 +3078,7 @@ class PointCloud(PolyData):
         Parameters
         ----------
         style : str, optional
-            Either 'points' or 'spheres'. :obj:`False` to disable.
+            Either 'points' or 'spheres'.
         size : int, optional
             Size in pixels.
         color : array_like, shape (3, ), optional
