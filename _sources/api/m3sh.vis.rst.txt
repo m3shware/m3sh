@@ -1,0 +1,55 @@
+﻿m3sh.vis
+========
+
+.. automodule:: m3sh.vis
+
+   
+   
+   
+
+   
+   
+   .. rubric:: Classes
+
+   .. autosummary::
+      :toctree:
+      :template: class-toc-vtk.rst
+   
+      Actor
+      LookupTable
+      PointCloud
+      PolyData
+      PolyMesh
+      VectorField
+   
+   
+
+   
+   
+   
+   
+   
+   
+   .. rubric:: Functions
+
+   .. autosummary::
+      :toctree:
+      :template: function.rst
+   
+      aabb
+      add
+      box
+      canvas
+      colorbar
+      delete
+      label
+      mesh
+      pick
+      plot
+      quiver
+      scatter
+      show
+      sphere
+      update
+   
+   

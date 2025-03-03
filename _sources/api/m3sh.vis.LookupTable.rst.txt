@@ -1,0 +1,31 @@
+LookupTable
+===========
+
+.. currentmodule:: m3sh.vis
+ 
+.. autoclass:: LookupTable
+   :show-inheritance:
+   :no-inherited-members:
+    
+   
+   
+   .. rubric:: Attributes
+ 
+   .. autosummary::
+      :toctree:
+      :template: attribute.rst
+   
+      ~LookupTable.color
+      ~LookupTable.opacity
+      ~LookupTable.pickable
+      ~LookupTable.position
+      ~LookupTable.prop
+      ~LookupTable.visible
+   
+   
+ 
+   
+   
+   
+   
+   

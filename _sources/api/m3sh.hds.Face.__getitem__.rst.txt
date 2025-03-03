@@ -1,0 +1,6 @@
+\_\_getitem\_\_
+===============
+
+.. currentmodule:: m3sh.hds
+
+.. automethod:: Face.__getitem__

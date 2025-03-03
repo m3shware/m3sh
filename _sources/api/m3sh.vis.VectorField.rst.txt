@@ -1,0 +1,38 @@
+VectorField
+===========
+
+.. currentmodule:: m3sh.vis
+ 
+.. autoclass:: VectorField
+   :show-inheritance:
+   :no-inherited-members:
+    
+   
+   
+   .. rubric:: Attributes
+ 
+   .. autosummary::
+      :toctree:
+      :template: attribute.rst
+   
+      ~VectorField.color
+      ~VectorField.opacity
+      ~VectorField.pickable
+      ~VectorField.prop
+      ~VectorField.visible
+   
+   
+ 
+   
+   
+   .. rubric:: Methods
+ 
+   .. autosummary::
+      :toctree: 
+      :template: function.rst
+   
+      ~VectorField.modified
+   
+   
+   
+   
