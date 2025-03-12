@@ -1520,22 +1520,57 @@ def box(a, b, opacity=1.0, edges=False, color=colors.grey):
     add(box)
     return box
 
-    # mapper = vtk.vtkPolyDataMapper()
-    # mapper.SetInputConnection(cube.GetOutputPort())
 
-    # actor = vtk.vtkActor()
-    # actor.SetMapper(mapper)
-    # actor.SetPickable(False)
-    # actor.GetProperty().SetColor(color[0], color[1], color[2])
-    # actor.GetProperty().SetOpacity(0.15)
-    # actor.GetProperty().SetEdgeVisibility(True)
-    # actor.GetProperty().SetLineWidth(2.0)
+def cylinder(a, b, radius, opacity=1.0, resolution=64, cap=False,
+             color=colors.grey):
+    """ Cylinder shape.
 
-    # add(actor)
-    # return actor
+    Display cylinder with axis starting at point `a` and ending at
+    point `b`
+
+    Parameters
+    ----------
+    a : array_like, shape (3, )
+        First point on cylinder axis.
+    b : array_like, shape (3, )
+        Last point on cylinder axis.
+    radius : float
+        Cylinder radius.
+    opacity : float, optional
+        Cylinder opacity.
+    resolution : int, optional
+        Number of sides.
+    cap : bool, optional
+        If :obj:`True` the cylinder is closed.
+    color : array_like, shape (3, ), optional
+        RGB color triplet.
+
+    Returns
+    -------
+    PolyData
+        The corresponding polygonal shape representation.
+    """
+    line = vtk.vtkLineSource()
+    line.SetPoint1(a[0], a[1], a[2])
+    line.SetPoint2(b[0], b[1], b[2])
+
+    filter = vtk.vtkTubeFilter()
+    filter.SetInputConnection(line.GetOutputPort())
+    filter.SetRadius(radius)
+    filter.SetNumberOfSides(resolution)
+    filter.SetCapping(cap)
+    # filter.SetSidesShareVertices(False)
+    filter.Update()
+
+    tube = PolyData(filter.GetOutput())
+    tube.color = color
+    tube.opacity = opacity
+
+    add(tube)
+    return tube
 
 
-def sphere(center, radius, opacity=1.0, resolution=24, color=colors.grey):
+def sphere(center, radius, opacity=1.0, resolution=24, color=colors.snow):
     """ Sphere shape.
 
     Covenience function that displays a sphere with given center and
