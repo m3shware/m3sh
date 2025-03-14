@@ -37,6 +37,7 @@ import vtk
 
 from vtk.util import colors
 from vtk.util.numpy_support import numpy_to_vtk
+from vtk.util.numpy_support import vtk_to_numpy
 
 
 # Main render window. Always created show(). Windows created by window()
@@ -333,8 +334,8 @@ def _window(width=1200, height=600, title=None, color=colors.white,
     return renwin
 
 
-def add(actor, renderer=None):
-    """ Queue actor for display.
+def add(obj, renderer=None):
+    """ Queue object for display.
 
     The `renderer` argument should be a value returned by :func:`canvas`
     or a window instance returned by :func:`window`. If not specified,
@@ -343,10 +344,10 @@ def add(actor, renderer=None):
 
     Parameters
     ----------
-    actor : vtkActor or Actor
+    obj : vtkActor or Actor
         Instance of a renderable object.
     renderer : vtkRenderer or vtkRenderWindow, optional
-        The viewport or window to display the actor.
+        The viewport or window to display the object.
 
     Returns
     -------
@@ -377,11 +378,11 @@ def add(actor, renderer=None):
         # no longer holds a None value.
         renderer = _renderer
 
-    # Get the wrapped vtkProp from an Actor instance.
-    if isinstance(actor, Actor):
-        actor = actor.prop
+    # Get the wrapped vtkProp instance. This is the most general object
+    # type that can be added to the scene.
+    prop = obj.prop if isinstance(obj, (Actor, _ViewProp)) else obj
+    renderer.AddViewProp(prop)
 
-    renderer.AddViewProp(actor)
     return renderer
 
 
@@ -723,8 +724,11 @@ def aabb(points, opacity=0.15, edges=True, labels='dim', color=colors.snow):
     Visual properties of the bounding box edges can be further customized
     via the returned :class:`PolyData` instance.
     """
-    a = np.min(points, axis=0)
-    b = np.max(points, axis=0)
+    if isinstance(points, _ViewProp):
+        a, b = points.bounds
+    else:
+        a = np.min(points, axis=0)
+        b = np.max(points, axis=0)
 
     if labels == 'both' or labels == 'minmax':
         label(a, f'({a[0]:.1f}, {a[1]:.1f}, {a[2]:.1f})', size=18)
@@ -1050,7 +1054,9 @@ def quiver(points, vectors, scale=1.0, color=colors.green_pale, *,
 def _quiver(points, vectors, scale=1.0, color=colors.green_pale, *,
            shaft_radius=0.025, tip_radius=0.05, tip_length=0.5,
            resolution=6):
-    vecfield = VectorField(points, vectors, scale, color, shaft_radius,
+    """
+    """
+    vecfield = _VectorField((points, vectors), scale, color, shaft_radius,
                            tip_radius, tip_length, resolution)
 
     add(vecfield)
@@ -1475,7 +1481,7 @@ def plot(P, width=2.0, size=6.0, style='-', color=(0.25, 0.25, 0.25)):
     return actor
 
 
-def box(a, b, opacity=1.0, edges=False, color=colors.grey):
+def box(a, b, opacity=1.0, edges=True, color=colors.snow):
     r""" Box shape.
 
     Display the cuboid
@@ -2082,7 +2088,7 @@ def show(width=1200, height=600, title=None, *, info=False, lmbdown=None,
         _display(f"VTK Version {vtk.vtkVersion.GetVTKVersion()}\n" +
                 f"OpenGL support {_renwin.SupportsOpenGL()}\n" +
                 f"Hardware acceleration {_renwin.IsDirect()}",
-                y=.15, shadow=True)
+                x=0.8, y=.15, shadow=True)
 
         _renderer = ren
 
@@ -2172,23 +2178,44 @@ def pick(x, y, type='cell', iren=None):
 def _main():
     import argparse
 
-    parser = argparse.ArgumentParser()
-    parser.add_argument('file', type=str, help='OBJ input file')
+    parser = argparse.ArgumentParser(exit_on_error=False)
+    parser.add_argument('file', nargs='*', type=str, help='OBJ input file')
+    parser.add_argument('--bounds', action='store_true', help='show AABB')
     parser.add_argument('--edges', action='store_true', help='show edges')
+    parser.add_argument('--flat', action='store_true', help='flat shading')
+    parser.add_argument('--silhouette', action='store_true')
 
     args = parser.parse_args()
-
-    reader = vtk.vtkOBJReader()
-    reader.SetFileName(args.file)
-    reader.Update()
-
-    renmesh = PolyMesh(reader.GetOutput())
-
-    if args.edges:
-        renmesh.edges(color=colors.ivory_black)
-
     canvas(color2=colors.black)
-    add(renmesh)
+
+    for file in args.file:
+        reader = vtk.vtkOBJReader()
+        reader.SetFileName(file)
+        reader.Update()
+
+        add(mesh := _PolyData(reader.GetOutput()))
+
+        # Only for testing, remove later...
+        # scalars = mesh.points[:, 2]
+        # mesh.colorize(scalars, items='points', gradient='spectral',
+        #               range=(min(scalars), max(scalars)))
+
+        if mesh.normals is not None:
+            add(_VectorField(mesh._vtk_polydata,
+                             mesh._avg_edge_length()[0]))
+
+        if args.bounds:
+            aabb(mesh)
+
+        if args.flat:
+            mesh.prop.GetProperty().SetInterpolationToFlat()
+
+        if args.edges:
+            mesh.edges(width=1, color=colors.ivory_black)
+
+        if args.silhouette:
+            mesh.silhouette(width=6, color=colors.coral)
+
     show(title=args.file, info=True)
 
 
@@ -2341,6 +2368,351 @@ class Actor:
     @pickable.setter
     def pickable(self, value):
         self._prop.SetPickable(value)
+
+
+class _AppearanceMixin:
+    """ View prop appearance.
+
+    Relies on :attr:`prop` attribute of derived class. The returned
+    value has to be of type :class:`vtkActor`.
+    """
+
+    @property
+    def color(self):
+        """ Color property.
+
+        Global color attribute of an object. Predefined colors are
+        available in the :mod:`colors` namespace. A preview can be found
+        `here <https://htmlpreview.github.io/?https://github.com/
+        Kitware/vtk-examples/blob/gh-pages/VTKNamedColorPatches.html>`_.
+
+        :type: array_like, shape (3, )
+
+        Note
+        ----
+        Object color does not support alpha channel values, use
+        the :attr:`opacity` property to control object transparency.
+        """
+        return self.prop.GetProperty().GetColor()
+
+    @color.setter
+    def color(self, value):
+        self.prop.GetMapper().SetScalarVisibility(False)
+        self.prop.GetProperty().SetColor(value)
+
+    def colorize(self, scalars, range=None, gradient=None,
+                 logscale=None, size=None):
+        """ Colorize polygonal data.
+
+        Colorize by assinging vertex colors or face colors. Vertex colors
+        are interpolated across faces. Colors can be specified directly as
+        RGB intensity triples or via a color map that maps scalar values
+        to RGB values.
+
+        Parameters
+        ----------
+        scalars : ~numpy.ndarray
+            Scalar values. Either one scalar per item or one RGB color
+            triple per item.
+        range : (float, float), optional
+            Lookup table range. Defaults to the range given by the
+            smallest and largest scalar value.
+        gradient : str, optional
+            Color scheme identifier.
+        logscale : bool, optional
+            Toggle logarithmic scaling.
+        size : int, optional
+            Size of lookup table.
+
+
+        Mapping scalars to colors uses a lookup table managed by the
+        :attr:`mapper` instance of an actor. The `range`, `gradient`, and
+        `logscale` arguments directly influence the lookup table. Lookup
+        tables can be further customized via the :meth:`lookuptable` method.
+
+        Use the :func:`colorbar` function to display a visual representation
+        of a lookup table.
+
+        Note
+        ----
+        When specifying colors directly by RGB triples, all arguments
+        except `scalars` and `items` are ignored.
+        """
+        if scalars is not None:
+            self._set_point_scalars(scalars)
+            self.lookuptable(range, gradient, logscale, size)
+        else:
+            self._reset_scalars()
+
+    def lookuptable(self, range=None, gradient=None, logscale=None,
+                    size=None, **kwargs):
+        """ Modify lookup table properties.
+
+        An objects lookup tables determines how entries of the scalar
+        array are translated to color values. Lookup tables have no
+        effect when directly mapping RGB color values.
+
+        Parameters
+        ----------
+        range : (float, float)
+            Accpeted range of scalar values.
+        gradient : str
+            Color scheme identifier, see below.
+        logscale : bool
+            Switch between linear and logarithmic scale.
+        size : int
+            Size of lookup table. Has no effect when a discrete
+            color series is used to define the lookup table.
+
+        Keyword arguments
+        -----------------
+        below : array_like, shape (4, )
+            Color for scalars below the specified range.
+        above: array_like, shape (4, )
+            Color for scalars above the specified range.
+        nan : array_like, shape (4, )
+            Special color for NaN scalar values.
+
+
+        Smooth color gradients are defined by the color scheme identifiers
+        'hot', 'jet', and 'grey'. The color schemes 'spectral', 'diverging',
+        'blue', 'orange', and 'purple' define a discrete color series.
+
+        If provied, out of range values are marked with the `below`,
+        `above`, and `nan` colors. Not that those colors also have an alpha
+        intensity value to control opacity.
+
+        Note
+        ----
+        Every object starts with a default lookup table. Arguments not
+        provided have no affect on the corresponding lookup table property.
+        """
+        # The current lookup table. Properties are modified according to the
+        # given parameters. None values preserve the corresponding property.
+        lut = self.prop.GetMapper().GetLookupTable()
+
+        if gradient in {'hot', 'cool', 'jet', 'grey', 'gray'}:
+            if gradient == 'hot':
+                lut.SetHueRange(0, 1/6)
+                lut.SetSaturationRange(1, 0.5)
+                lut.SetValueRange(1, 1)
+            elif gradient == 'cool':
+                lut.SetHueRange(0.49, 0.6)
+                lut.SetSaturationRange(1, 0.1)
+                lut.SetValueRange(0.55, 1)
+            elif gradient == 'jet':
+                lut.SetHueRange(2/3, 0)
+                lut.SetSaturationRange(1, 1)
+                lut.SetValueRange(1, 1)
+            elif gradient == 'grey' or gradient == 'gray':
+                lut.SetHueRange(0, 0)
+                lut.SetSaturationRange(0, 0)
+                lut.SetValueRange(0, 1)
+
+            lut.ForceBuild()
+        elif gradient in {'spectral', 'diverging', 'blue', 'orange',
+                          'purple'}:
+            # Color series define a fixed number of colors. A given size
+            # parameter is ignored in this case.
+            series = vtk.vtkColorSeries()
+
+            map = {'spectral': series.BREWER_DIVERGING_SPECTRAL_11,
+                   'diverging': series.BREWER_DIVERGING_BROWN_BLUE_GREEN_10,
+                   'blue': series.BREWER_SEQUENTIAL_BLUE_GREEN_9,
+                   'orange': series.BREWER_SEQUENTIAL_YELLOW_ORANGE_BROWN_9,
+                   'purple': series.BREWER_SEQUENTIAL_BLUE_PURPLE_9}
+
+            series.SetColorScheme(map[gradient])
+            series.BuildLookupTable(lut, series.ORDINAL)
+        elif gradient == 'default':
+            # This should reset the color gradient to some default value.
+            # Currently does nothing.
+            pass
+        elif gradient is None:
+            # Nothing to do, no gradient argument defined.
+            pass
+        else:
+            raise ValueError(f"unknown color scheme '{gradient}'")
+
+        if range is not None:
+            lut.SetTableRange(range[0], range[1])
+
+        if logscale is not None:
+            if logscale:
+                lut.SetScaleToLog10()
+            else:
+                lut.SetScaleToLinear()
+
+        if size is not None:
+            # Setting the size of a lookup table has no effect when using
+            # a discrete color scheme.
+            lut.SetNumberOfTableValues(size)
+
+        if 'below' in kwargs:
+            if (below := kwargs['below']) is not None:
+                lut.SetBelowRangeColor(below)
+                lut.SetUseBelowRangeColor(True)
+            else:
+                lut.SetUseBelowRangeColor(False)
+
+        if 'above' in kwargs:
+            if (above := kwargs['above']) is not None:
+                lut.SetAboveRangeColor(above)
+                lut.SetUseAboveRangeColor(True)
+            else:
+                lut.SetUseAboveRangeColor(False)
+
+        if (nan := kwargs.get('nan')) is not None:
+            lut.SetNanColor(nan)
+
+    @property
+    def opacity(self):
+        """ Opacity property.
+
+        Value between 0.0 (fully transparent) and 1.0 (fully opaque).
+
+        :type: float
+
+        Note
+        ----
+        Opacity affects all parts of an object, i.e., displayed faces
+        (cells), edges, and vertices.
+        """
+        return self.prop.GetProperty().GetOpacity()
+
+    @opacity.setter
+    def opacity(self, value):
+        self.prop.GetProperty().SetOpacity(value)
+
+    @property
+    def scalars(self):
+        """ Scalar access.
+
+        Access scalar data set by the :meth:`colorize` method.
+
+        :type: ~numpy.ndarray
+        """
+        # self.modified()
+        return self._scalars
+
+    def _set_point_scalars(self, value):
+        polydata = self._vtk_polydata
+
+        self._set_scalars(polydata.GetPointData(),
+                          polydata.GetNumberOfPoints(), value)
+
+        polydata.GetCellData().SetScalars(None)
+        polydata.GetCellData().Modified()
+
+        self.prop.GetMapper().SetScalarModeToUsePointData()
+
+    def _set_scalars(self, data, size, value):
+        # data is either point data or cell data
+        mapper = self.prop.GetMapper()
+
+        if np.shape(value) == (size, ):
+            # One scalar value per point implies that the values
+            # should be mapped through the lookup table.
+            self._scalars = np.asarray(value)
+
+            data.SetScalars(numpy_to_vtk(self._scalars))
+            data.Modified()
+
+            mapper.SetColorModeToMapScalars()
+            mapper.SetScalarVisibility(True)
+        elif np.shape(value) == (size, 3):
+            # Three scalar values per point imply RGB color triplets
+            # that are directly applied without using a lookup table.
+            self._scalars = np.asarray(value)
+
+            data.SetScalars(numpy_to_vtk(self._scalars))
+            data.Modified()
+
+            mapper.SetColorModeToDirectScalars()
+            mapper.SetScalarVisibility(True)
+        else:
+            raise ValueError('wrong size of scalar array')
+
+    def _reset_scalars(self):
+        data = self._vtk_polydata.GetPointData()
+        data.SetScalars(None)
+        data.Modified()
+
+        data = self._vtk_polydata.GetCellData()
+        data.SetScalars(None)
+        data.Modified()
+
+        self.prop.GetMapper().SetScalarVisibility(False)
+        # self._scalars = None
+
+
+class _ViewProp:
+    """ Render object wrapper base.
+
+    Wraps render objects, so called props, and manages their properties.
+    The :attr:`prop` attribute exposes the wrapped object's VTK interface.
+
+    Parameters
+    ----------
+    prop : vtkProp
+        A vtkProp instance.
+    """
+
+    def __init__(self, prop):
+        self._prop = prop
+        self._prop.SetPickable(False)
+
+    @property
+    def prop(self):
+        """ Wrapped vtkProp instance.
+
+        Access the wrapped :class:`vtkProp` instance. Exposes all
+        low-level interaction with this object.
+
+        :type: vtkProp
+        """
+        return self._prop
+
+    @property
+    def name(self):
+        return self._prop.GetObjectName()
+
+    @property
+    def bounds(self):
+        bounds = self._prop.GetBounds()
+        return np.array(bounds[0::2]), np.array(bounds[1::2])
+
+    @property
+    def visible(self):
+        """ Visibility property.
+
+        Query and toggle object visibility.
+
+        :type: bool
+        """
+        return self._prop.GetVisibility()
+
+    @visible.setter
+    def visible(self, value):
+        self._prop.SetVisibility(bool(value))
+
+    @property
+    def pickable(self):
+        """ Pickable property.
+
+        Query and toggle whether object geometry can be picked. Objects
+        are not pickable by default.
+
+        :type: bool
+        """
+        return self._prop.GetPickable()
+
+    @pickable.setter
+    def pickable(self, value):
+        self._prop.SetPickable(bool(value))
+
+    def modified(self):
+        self._prop.Modified()
 
 
 # class BoxArray(Actor):
@@ -2501,6 +2873,122 @@ class _ConeField(Actor):
         return actor
 
 
+class _VectorField(_ViewProp):
+    """
+    """
+
+    def __init__(self, data, scale=1.0, color=colors.green_pale,
+                 shaft_radius=0.025, tip_radius=0.05, tip_length=0.5,
+                 resolution=6):
+        # The source shape used for glyphs. Reduce resolution if rendering
+        # is too slow when a large number of glyphs is displayed.
+        arrow = self.arrow_source(shaft_radius, tip_radius, tip_length,
+                                  resolution)
+
+        if isinstance(data, vtk.vtkPolyData):
+            self._points = vtk_to_numpy(data.GetPoints().GetData())
+            self._vectors = vtk_to_numpy(data.GetPointData().GetNormals())
+
+            self._vtk_polydata = data
+
+            glyph = vtk.vtkGlyph3D()
+            glyph.SetInputData(data)
+            glyph.SetSourceConnection(arrow.GetOutputPort())
+            glyph.OrientOn()
+            glyph.SetVectorModeToUseNormal()
+            glyph.SetScaleModeToDataScalingOff()
+            glyph.SetScaleFactor(scale)
+
+            mapper = vtk.vtkPolyDataMapper()
+            mapper.SetInputConnection(glyph.GetOutputPort())
+            mapper.ScalarVisibilityOff()
+
+            actor = vtk.vtkActor()
+            actor.SetMapper(mapper)
+            actor.GetProperty().SetColor(color)
+        else:
+            self._points = np.asarray(data[0])
+            self._vectors = np.asarray(data[1])
+
+            if not np.all(np.isfinite(self._vectors)):
+                raise ValueError('infinite vector coordinate(s)')
+
+            points = vtk.vtkPoints()
+            points.SetData(numpy_to_vtk(self._points))
+
+            scalars = vtk.vtkFloatArray()
+            scalars.SetNumberOfComponents(1)
+            scalars.SetName('glyph_scale')
+
+            colors = vtk.vtkFloatArray()
+            colors.SetNumberOfComponents(3)
+            colors.SetName('glyph_color')
+
+            if np.shape(color) == (3, ):
+                color_ = iter(lambda: color, None)
+            else:
+                color_ = iter(color)
+
+            if isinstance(scale, int) or isinstance(scale, float):
+                scale_ = iter(lambda: scale, None)
+            else:
+                scale_ = iter(scale)
+
+            # Starting with Python 3.10 zip supports the 'strict' keyword
+            # argument. Helps to check consistency of points and vectors.
+            for _ in zip(self._points, self._vectors, strict=True):
+                scalars.InsertNextTuple1(next(scale_))
+                colors.InsertNextTuple3(*next(color_))
+
+            self._vtk_polydata = vtk.vtkPolyData()
+            self._vtk_polydata.SetPoints(points)
+
+            point_data = self._vtk_polydata.GetPointData()
+            point_data.SetVectors(numpy_to_vtk(self._vectors))
+            point_data.AddArray(scalars)
+            point_data.AddArray(colors)
+            point_data.SetActiveScalars('glyph_scale')
+
+            glyph = vtk.vtkGlyph3D()
+            glyph.SetInputData(self._vtk_polydata)
+            glyph.SetSourceConnection(arrow.GetOutputPort())
+            glyph.OrientOn()
+            glyph.SetVectorModeToUseVector()
+            glyph.ScalingOn()
+            glyph.SetScaleModeToScaleByScalar()
+
+            mapper = vtk.vtkPolyDataMapper()
+            mapper.SetInputConnection(glyph.GetOutputPort())
+            mapper.SetScalarModeToUsePointFieldData()
+            mapper.SetColorModeToDirectScalars()
+            mapper.ScalarVisibilityOn()
+            mapper.SelectColorArray('glyph_color')
+
+            actor = vtk.vtkActor()
+            actor.SetMapper(mapper)
+
+        super().__init__(actor)
+
+    @staticmethod
+    def arrow_source(shaft_radius, tip_radius, tip_length, resolution):
+        """
+        """
+        arrow = vtk.vtkArrowSource()
+        arrow.SetTipRadius(tip_radius)
+        arrow.SetTipLength(tip_length)
+        arrow.SetTipResolution(resolution)
+        arrow.SetShaftRadius(shaft_radius)
+        arrow.SetShaftResolution(resolution)
+
+        return arrow
+
+    def modified(self):
+        """
+        """
+        self._vtk_polydata.GetPoints().Modified()
+        self._vtk_polydata.GetPointData().Modified()
+
+
 class VectorField(Actor):
 
     def __init__(self, points, vectors, scale=1.0, color=(0.5, 0.5, 0.5),
@@ -2575,6 +3063,313 @@ class VectorField(Actor):
     def modified(self):
         self._polydata.GetPoints().Modified()
         self._polydata.GetPointData().Modified()
+
+
+class _PointCloud(_ViewProp, _AppearanceMixin):
+    def __init__(self, points):
+        self._points = np.asarray(points)
+
+        self._vtk_points = vtk.vtkPoints()
+        self._vtk_points.SetData(numpy_to_vtk(self._points))
+
+        self._vtk_polydata = vtk.vtkPolyData()
+        self._vtk_polydata.SetPoints(self._vtk_points)
+
+        mapper = vtk.vtkPolyDataMapper()
+        mapper.SetInputData(self._vtk_polydata)
+        mapper.SetLookupTable(_generic_lut())
+        mapper.SetUseLookupTableScalarRange(True)
+
+        actor = vtk.vtkActor()
+        actor.SetMapper(mapper)
+
+        super().__init__(actor)
+
+        self._draggable = None
+        self._scalars = None
+
+    @property
+    def points(self):
+        """ Point coordinate array access.
+
+        The contents of this array may be changed in place. Calling
+        :meth:`modified` will update the visual representation on the
+        next render pass.
+
+        :type: ~numpy.ndarray
+        """
+        return self._points
+
+    @property
+    def normals(self):
+        """ Point cloud normals.
+        """
+        return vtk_to_numpy(self._vtk_polydata.GetPointData().GetNormals())
+
+    def modified(self):
+        self._vtk_points.Modified()
+        super().Modified()
+
+
+class _PolyData(_ViewProp, _AppearanceMixin):
+    def __init__(self, data, *, verts=None, lines=None, faces=None):
+        if isinstance(data, vtk.vtkPolyData):
+            self._points = vtk_to_numpy(data.GetPoints().GetData())
+            self._vtk_points = data.GetPoints()
+            self._vtk_polydata = data
+        else:
+            self._points = np.asarray(data)
+
+            self._vtk_points = vtk.vtkPoints()
+            self._vtk_points.SetData(numpy_to_vtk(self._points))
+
+            self._vtk_polydata = vtk.vtkPolyData()
+            self._vtk_polydata.SetPoints(self._vtk_points)
+
+            if verts is not None:
+                cells = vtk.vtkCellArray()
+                for v in verts:
+                    cells.InsertNextCell(1, [int(v)])
+                self._vtk_polydata.SetVerts(cells)
+
+            # if lines is not None:
+            #     cells = vtk.vtkCellArray()
+            #     for i in range(len(edges) - 1):
+            #         if lines[i] > -1 and lines[i+1] > -1:
+            #             line = vtk.vtkIdList()
+            #             line.InsertNextId(lines[i])
+            #             line.InsertNextId(lines[i+1])
+            #             cells.InsertNextCell(line)
+            #     self._vtk_polydata.SetLines(cells)
+
+            if faces is not None:
+                cells = vtk.vtkCellArray()
+                for f in faces:
+                    face = vtk.vtkIdList()
+                    for v in f:
+                        face.InsertNextId(int(v))
+                    cells.InsertNextCell(face)
+                self._vtk_polydata.SetPolys(cells)
+
+        mapper = vtk.vtkPolyDataMapper()
+        mapper.SetInputData(self._vtk_polydata)
+        mapper.SetLookupTable(_generic_lut())
+        mapper.SetUseLookupTableScalarRange(True)
+
+        actor = vtk.vtkActor()
+        actor.SetMapper(mapper)
+
+        super().__init__(actor)
+
+        self._draggable = None
+        self._scalars = None
+
+    @property
+    def points(self):
+        """ Point coordinate array access.
+
+        The contents of this array may be changed in place. Calling
+        :meth:`modified` will update the visual representation on the
+        next render pass.
+
+        :type: ~numpy.ndarray
+        """
+        return self._points
+
+    @property
+    def normals(self):
+        """
+        """
+        return vtk_to_numpy(self._vtk_polydata.GetPointData().GetNormals())
+
+    def colorize(self, scalars, items, range=None, gradient=None,
+                 logscale=None, size=None):
+        """ Colorize polygonal data.
+
+        Colorize by assinging vertex colors or face colors. Vertex colors
+        are interpolated across faces. Colors can be specified directly as
+        RGB intensity triples or via a color map that maps scalar values
+        to RGB values.
+
+        Parameters
+        ----------
+        scalars : ~numpy.ndarray
+            Scalar values. Either one scalar per item or one RGB color
+            triple per item.
+        items : str
+            Either 'points' or 'cells'.
+        range : (float, float), optional
+            Lookup table range. Defaults to the range given by the
+            smallest and largest scalar value.
+        gradient : str, optional
+            Color scheme identifier.
+        logscale : bool, optional
+            Toggle logarithmic scaling.
+        size : int, optional
+            Size of lookup table.
+
+
+        Mapping scalars to colors uses a lookup table managed by the
+        :attr:`mapper` instance of an actor. The `range`, `gradient`, and
+        `logscale` arguments directly influence the lookup table. Lookup
+        tables can be further customized via the :meth:`lookuptable` method.
+
+        Use the :func:`colorbar` function to display a visual representation
+        of a lookup table.
+
+        Note
+        ----
+        When specifying colors directly by RGB triples, all arguments
+        except `scalars` and `items` are ignored.
+        """
+        if scalars is not None:
+            if items == 'points':
+                self._set_point_scalars(scalars)
+            elif items == 'cells':
+                self._set_cell_scalars(scalars)
+            else:
+                raise ValueError(f"invalid item argument '{items}'")
+
+            self.lookuptable(range, gradient, logscale, size)
+        else:
+            self._reset_scalars()
+
+    def edges(self, style=None, width=None, color=None):
+        """ Edge display.
+
+        Set visual properties of edges.
+
+        Parameters
+        ----------
+        style : str, optional
+            Either 'lines' or 'tubes'. :obj:`False` to disable.
+        width : int, optional
+            Edge width in pixels.
+        color : array_like, shape (3, ), optional
+            Edge color.
+
+        Note
+        ----
+        Parameters with a :obj:`None` value do not affect the corresponding
+        edge display property.
+        """
+        if style == 'lines':
+            self.prop.GetProperty().SetRenderLinesAsTubes(False)
+            self.prop.GetProperty().SetEdgeVisibility(True)
+        elif style == 'tubes':
+            self.prop.GetProperty().SetRenderLinesAsTubes(True)
+            self.prop.GetProperty().SetEdgeVisibility(True)
+        elif style == '' or style is False:
+            self.prop.GetProperty().SetEdgeVisibility(False)
+        else:
+            self.prop.GetProperty().SetEdgeVisibility(True)
+
+        if width is not None:
+            self.prop.GetProperty().SetLineWidth(width)
+
+        if color is not None:
+            self.prop.GetProperty().SetEdgeColor(color)
+
+    def silhouette(self, style=None, width=None, color=None):
+        """ Silhouette display.
+
+        Parameters
+        ----------
+        style : str, optional
+            Either 'lines' or 'tubes'. :obj:`False` to disable.
+        width : int, optional
+            Edge width in pixels.
+        color : array_like, shape (3, ), optional
+            Edge color.
+
+        Note
+        ----
+        Parameters with a :obj:`None` value do not affect the corresponding
+        silhouette display property.
+        """
+        if not hasattr(self, '_silhouette'):
+            self._silhouette = None
+
+        if style == '' or style is False:
+            delete(self._silhouette)
+            self._silhouette = None
+            return
+
+        if self._silhouette is None:
+            outline = vtk.vtkPolyDataSilhouette()
+            outline.SetInputData(self._vtk_polydata)
+            outline.SetCamera(_renderer.GetActiveCamera())
+            outline.SetEnableFeatureAngle(False)
+            outline.SetBorderEdges(True)
+
+            mapper = vtk.vtkPolyDataMapper()
+            mapper.SetInputConnection(outline.GetOutputPort())
+
+            actor = vtk.vtkActor()
+            actor.SetMapper(mapper)
+            actor.SetPickable(False)
+
+            if color is None:
+                actor.GetProperty().SetColor(colors.black)
+
+            if width is None:
+                actor.GetProperty().SetLineWidth(2)
+
+            add(actor)
+            self._silhouette = actor
+        else:
+            actor = self._silhouette
+
+        if width is not None:
+            actor.GetProperty().SetLineWidth(width)
+
+        if style == 'lines':
+            actor.GetProperty().SetRenderLinesAsTubes(False)
+        elif style == 'tubes':
+            actor.GetProperty().SetRenderLinesAsTubes(True)
+
+        if color is not None:
+            actor.GetProperty().SetColor(color)
+
+    def modified(self):
+        self._vtk_points.Modified()
+        super().Modified()
+
+    def _avg_edge_length(self):
+        filter = vtk.vtkExtractEdges()
+        filter.SetInputData(self._vtk_polydata)
+        filter.Update()
+
+        points = vtk_to_numpy(filter.GetOutput().GetPoints().GetData())
+        edges = filter.GetOutput().GetLines()
+        edge_iter = edges.NewIterator()
+
+        min, max, sum = np.inf, 0.0, 0.0
+
+        while not edge_iter.IsDoneWithTraversal():
+            edge = edge_iter.GetCurrentCell()
+            i, j = edge.GetId(0), edge.GetId(1)
+
+            length = np.linalg.norm(points[i, :] - points[j, :])
+            sum += length
+
+            min = length if length < min else min
+            max = length if length > max else max
+
+            edge_iter.GoToNextCell()
+
+        return sum / edges.GetNumberOfCells(), min, max
+
+    def _set_cell_scalars(self, value):
+        polydata = self._vtk_polydata
+
+        self._set_scalars(polydata.GetCellData(),
+                          polydata.GetNumberOfCells(), value)
+
+        polydata.GetPointData().SetScalars(None)
+        polydata.GetPointData().Modified()
+
+        self.prop.GetMapper().SetScalarModeToUseCellData()
 
 
 class PolyData(Actor):
@@ -3972,6 +4767,7 @@ class _VertexDragger:
         self._vertex_drag = False
         self._picked_obj = None
         self._picked_fac = 1.0
+
 
 if __name__ == '__main__':
     _main()
