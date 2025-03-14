@@ -1,0 +1,6 @@
+pop
+===
+
+.. currentmodule:: m3sh.heap
+
+.. automethod:: MinHeap.pop

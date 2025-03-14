@@ -1,0 +1,6 @@
+silhouette
+==========
+
+.. currentmodule:: m3sh.vis
+
+.. automethod:: PolyMesh.silhouette
