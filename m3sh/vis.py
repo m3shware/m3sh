@@ -1145,9 +1145,8 @@ def _cones(points, vectors, angle=None, radius=None, height=None,
     return conefield
 
 
-def _splat(P, N, *args, scale=1.0, color=(1.0, 1.0, 1.0), **kwargs):
-    """
-    Point cloud splatting.
+def splat(P, N, *args, scale=1.0, color=colors.snow, **kwargs):
+    """ Point cloud splatting.
 
     Display disk at locations oriented orthogonal to prescribed directions.
     Scale can be a single value or a sequence of scalars that is either
@@ -1162,7 +1161,6 @@ def _splat(P, N, *args, scale=1.0, color=(1.0, 1.0, 1.0), **kwargs):
         A sequence of point locations.
     N : array_like, shape (k, 3)
         A sequence of unit direction vectors.
-        Upper and lower cutoff when using a color map.
     scale : float or array_like
         Scale of the displayed disk. Either one scalar or one scalar per
         disk.
