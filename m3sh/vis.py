@@ -1162,11 +1162,9 @@ def splat(P, N, *args, scale=1.0, color=colors.snow, **kwargs):
     N : array_like, shape (k, 3)
         A sequence of unit direction vectors.
     scale : float or array_like
-        Scale of the displayed disk. Either one scalar or one scalar per
-        disk.
+        Scale of the displayed disks.
     color : array_like
-        Color specification. Either one RGB triplet or one triplet per
-        disk or one scalar per disk for color mapping.
+        Color specification.
     """
     P = np.atleast_2d(P)
     N = np.atleast_2d(N)
@@ -1423,7 +1421,7 @@ def plot(P, width=2.0, size=6.0, style='-', color=(0.25, 0.25, 0.25)):
     style : string
         A combination of '.', 'o', '-', and '='.
     color : array_like, shape (3, )
-        Global RGB color triplet for all line segments and markers.
+        RGB color triplet for all line segments and markers.
 
     Returns
     -------
