@@ -1523,6 +1523,49 @@ def box(a, b, opacity=1.0, edges=True, color=colors.snow):
     return box
 
 
+def _circle(center, normal, radius):
+    """
+    """
+    points = vtk.vtkPoints()
+    points.SetData(numpy_to_vtk(center))
+
+    data = vtk.vtkPolyData()
+    data.SetPoints(points)
+    data.GetPointData().SetNormals(numpy_to_vtk(normal))
+    data.GetPointData().SetScalars(numpy_to_vtk(radius))
+
+    circle = vtk.vtkArcSource()
+    circle.SetCenter(0.0, 0.0, 0.0)
+    circle.SetNormal(1.0, 0.0, 0.0)
+    circle.SetPolarVector(0.0, 1.0, 0.0)
+    circle.SetAngle(360.0)
+    circle.SetUseNormalAndAngle(True)
+    circle.SetResolution(60)
+    # circle.Update()
+
+    glyph = vtk.vtkGlyph3D()
+    glyph.SetInputData(data)
+    glyph.SetSourceConnection(circle.GetOutputPort())
+
+    glyph.OrientOn()
+    glyph.SetVectorModeToUseNormal()
+
+    glyph.ScalingOn()
+    glyph.SetScaleModeToScaleByScalar()
+
+    mapper = vtk.vtkPolyDataMapper()
+    mapper.SetInputConnection(glyph.GetOutputPort())
+    mapper.SetScalarModeToUsePointData()
+    mapper.ScalarVisibilityOff()
+
+    actor = vtk.vtkActor()
+    actor.SetMapper(mapper)
+    actor.SetPickable(False)
+
+    add(actor)
+    return actor, data
+
+
 def cylinder(a, b, radius, opacity=1.0, resolution=64, cap=False,
              color=colors.grey):
     """ Cylinder shape.
