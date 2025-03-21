@@ -1,0 +1,6 @@
+remove
+======
+
+.. currentmodule:: m3sh.heap
+
+.. automethod:: MaxHeap.remove
