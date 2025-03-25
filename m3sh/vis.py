@@ -2145,6 +2145,204 @@ def show(width=1200, height=600, title=None, *, info=False, lmbdown=None,
     _splash = None
 
 
+def _show(width=1200, height=600, title=None, position=(0, 0), *, info=False,
+         lmbdown=None, lmbup=None, rmbdown=None, rmbup=None, keydown=None,
+         keyup=None, mousemove=None):
+    """ Start the VTK event loop.
+
+    Open window for rendering and start the VTK event loop.
+
+    Parameters
+    ----------
+    width : int, optional
+        Window width in pixels.
+    height : int, optional
+        Window height in pixels.
+    title : str, optional
+        Window title.
+    position : 2-tuple (int, int)
+        Window position.
+
+    Keyword Arguments
+    -----------------
+    lmbdown : list[callable]
+        Left button press callbacks.
+    lmbup : list[callable]
+        Left button release callbacks.
+    rmbdown : list[callable]
+        Right button press callbacks.
+    rmbup : list[callable]
+        Right button release callbacks.
+    keydown : list[callable]
+        Key press callbacks.
+    keyup : list[callable]
+        Key release callbacks.
+    mousemove : list[callable]
+        Mouse move callbacks.
+
+    Note
+    ----
+    This is a blocking function, a script will not advance beyond it until
+    the event loop stops. Interaction with displayed objects has to be
+    triggered by mouse and keyboard events and corresponding event handlers,
+    see below.
+
+
+    .. rubric:: Mouse and keyboard events
+
+    Button press and release events as well as mouse move events are
+    recognized. Key press and release events are recognized. Assign a list
+    of callbacks to the corresponding keyword argument.
+
+    Note
+    ----
+    If more than one callback is registered to an event, callbacks are
+    executed in the given order.
+
+
+    .. rubric:: Callback functions
+
+    A callback function's signature has to be defined in the following way:
+
+        .. py:function:: callback(iren, x, y, **kwargs)
+
+           :param iren: Identifies the render window.
+           :type iren: vtkRenderWindowInteractor
+           :param x: Display coordinates of the mouse cursor.
+           :type x: int
+           :param y: Display coordinates of the mouse cursor.
+           :type y: int
+
+
+    When activated the callback receives a handle to the affected render
+    window via the corresponding render window interactor `iren` as well
+    as the mouse cursor position inside this windows in pixels.
+
+    The `iren` argument can also be used to query the status of modifier
+    keys via its :meth:`GetShiftKey()`, :meth:`GetAltKey()`, and
+    :meth:`GetControlKey()` methods.
+
+    Note
+    ----
+    An object itself can be used as callback when it implements the
+    :meth:`__call__` method.
+    """
+    # Global state variables that are modified in this function. Should
+    # be reset when show() terminates.
+    global _renderer, _renwin, _splash
+
+    # This method should only be called once. It can be called again in
+    # a script if the active window has been closed.
+    if _interactors:
+        return
+
+    # Check if a previous window instance has been closed and should now
+    # be displayed again.
+    if _renwin is not None:
+        width, height = _renwin.GetSize()
+        title = _renwin.GetWindowName()
+        position = _renwin.GetPosition()
+    else:
+        # Only reset the camera if this is the first time the render
+        # window is displayed.
+        for renderer in _renderers:
+            renderer.ResetCamera()
+
+    # Create a window, set its size and title. Multisampling is turned
+    # off because of transparent objects.
+    _renwin = vtk.vtkRenderWindow()
+    _renwin.SetPosition(position)
+    _renwin.SetSize(width, height)
+    _renwin.SetWindowName(str(title))
+    _renwin.SetMultiSamples(0)
+    _renwin.SetAlphaBitPlanes(1)
+    _renwin.SetNumberOfLayers(2)
+
+    if _renderer is None:
+        # Create default viewport. The canvas() function adds the new
+        # viewport to the renderers of the _renwin render window.
+        canvas()
+
+    # Attach renderers to window. Each renderer is responsible for a
+    # viewport inside the main render window.
+    for renderer in _renderers:
+        if not _renwin.HasRenderer(renderer):
+            _renwin.AddRenderer(renderer)
+
+    # Set up the render window interactor with its customized trackball
+    # interactor style.
+    iren = vtk.vtkRenderWindowInteractor()
+    iren.SetRenderWindow(_renwin)
+    iren.SetInteractorStyle(_MouseInteractorStyle(lmbdown, lmbup,
+                                                  rmbdown, rmbup,
+                                                  keydown, keyup, mousemove))
+
+    # Add to the list of all render window interactors. If no windows
+    # are created by window(), this will be a 1-element list.
+    _interactors.append(iren)
+
+    # Calling this method later does not place the axes_widget at the
+    # correct spot.
+    _renwin.Render()
+
+    # Set application window taskbar and dock icon.
+    _icon(_renwin)
+
+    # Camera orientation widget was introduced in VTK 9.1, alterantively
+    # we can show an axis widget.
+    if (vtk.vtkVersion.GetVTKMajorVersion() > 8
+            and vtk.vtkVersion.GetVTKMinorVersion() > 0):
+        # A reference to the widget has to be maintained to prevent it
+        # from being garbage collected immediately.
+        iren.axes_widget = vtk.vtkCameraOrientationWidget()
+        iren.axes_widget.SetParentRenderer(_renderer)
+        iren.axes_widget.GetRepresentation().SetPadding(40, 40)
+        iren.axes_widget.SquareResize()
+        iren.axes_widget.SetEnabled(True)
+    else:
+        # Axes display in the lower left corner of each viewport. Only
+        # shown in the active viewport, i.e., the one with mouse focus.
+        iren.axes_widget = vtk.vtkOrientationMarkerWidget()
+        iren.axes_widget.SetOrientationMarker(vtk.vtkAxesActor())
+        iren.axes_widget.SetCurrentRenderer(_renderer)
+        iren.axes_widget.SetInteractor(iren)
+        iren.axes_widget.SetViewport(0.0, 0.0, 0.2, 0.2)
+        # iren.axes_widget.SetSizeConstraintDimensionSizes(128, 256)
+        # iren.axes_widget.SetShouldConstrainSize(True)
+        iren.axes_widget.SetInteractive(False)
+        iren.axes_widget.SetEnabled(True)
+
+    # Details about OpenGL support and hardware acceleration. Printed on
+    # the overlay viewport.
+    if info:
+        ren = _renderer
+
+        if _splash is None:
+            _splash = canvas(layer=1, interactive=False)
+        else:
+            canvas(_splash)
+
+        _display(f"VTK Version {vtk.vtkVersion.GetVTKVersion()}\n" +
+                f"OpenGL support {_renwin.SupportsOpenGL()}\n" +
+                f"Hardware acceleration {_renwin.IsDirect()}",
+                x=0.8, y=.15, shadow=True)
+
+        _renderer = ren
+
+    # Start the window interactor event loop. Closing the windows stops
+    # the loop. Alternatively a more expensive polling loop can be used.
+    iren.Start()
+
+    # This is helpful in an interactive sessions in IPython. Also allows
+    # us to call show() more than once in a script.
+    _interactors.clear()
+    # _renderers.clear()
+
+    # _renwin = None
+    # _renderer = None
+    # _splash = None
+
+
 def pick(x, y, type='cell', iren=None):
     """ Perform pick action.
 
