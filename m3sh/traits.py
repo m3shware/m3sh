@@ -415,3 +415,71 @@ def face_area(face):
         raise NotImplementedError('triangular face required')
 
     return 0.5 * linalg.norm(vector)
+
+
+def planarity_score(face, denom=0.0):
+    """ Planarity score of skew quadrilateral.
+
+    Distance of diagonals. Can be normalized to make the measure scale
+    independent.
+
+    Parameters
+    ----------
+    face : array_like, shape (4, 3)
+        Vertex coordinate array.
+    denom : float, optional
+        Zero divides by mean edge length.
+
+    Returns
+    -------
+    float
+        Planarity score. Can result in inf and nan values in case of
+        flipped or degenerate quadrilaterals.
+    """
+    f = np.asarray(face)
+
+    # Return 0.0 for triangular faces and NaN for faces of higher valence.
+    if len(f) < 4:
+        return 0.0
+    elif len(f) > 4:
+        return np.nan
+
+    # For bow tie shaped quadrilateral the vectors v and w can be linear
+    # depedent without one of them vanishing.
+    v = f[2] - f[0]
+    w = f[3] - f[1]
+
+    # Distance of diagnoals can result in inf and nan values in case of
+    # flipped or degenerate quadrilaterals.
+    n = linalg.cross(v, w)
+    d = abs(linalg.dot(f[1] - f[0], n) / linalg.norm(n))
+
+    if denom == 0.0:
+        denom = 0.25 * np.sum(np.linalg.norm([f[1]-f[0],
+                                              f[2]-f[1],
+                                              f[3]-f[2],
+                                              f[0]-f[3]], axis=1))
+
+    # Using 1.0 for normalization one gets the unscaled distance of
+    # diagonals in whatever unit one is computing.
+    return d / denom
+
+
+def planarity_scores(mesh, denom=0.0, offset=0.0):
+    """ Face planarity scores.
+
+    Parameters
+    ----------
+    mesh : Mesh
+        Mesh instance.
+    denom :  float, optional
+        Zero divides by mean edge length.
+    offset : float, optional
+        Added to each planarity score.
+
+    Returns
+    -------
+    list[float]
+        Face planarity scores plus an additional offset value.
+    """
+    return [offset + planarity_score(f, denom) for f in mesh]
