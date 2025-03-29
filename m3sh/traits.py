@@ -62,7 +62,7 @@ def vertex_normal(vertex):
     Parameters
     ----------
     vertex : Vertex
-        Non-isolated vertex of a mesh.
+        Vertex of a mesh.
 
     Returns
     -------
@@ -73,18 +73,64 @@ def vertex_normal(vertex):
     ----
     Vertex normals are not well defined for isolated vertices.
     """
+    # Triggers an assertion for deleted vertices. Alternative: quitely
+    # assign nan normal vector to deleted vertices.
+    if vertex.degree == 0:
+        return np.full_like(vertex.point, np.nan)
+
     normal = np.zeros_like(vertex.point)
 
+    # We checked for vanishing degree, hence this iterator cannot be
+    # empty.
     for h in vertex._hiter():
         if h._face is not None:
-            vector = linalg.unit(linalg.cross(h.prev.vector,
-                                              h.vector))
-            normal += vector
+            normal += linalg.unit(linalg.cross(h.prev.vector,
+                                               h.vector))
 
     return linalg.unit(normal)
 
 
-def vertex_normals(mesh):
+def vertex_normals(mesh, broadcast=False):
+    """ Vertex normals.
+
+    Compute vertex normals as average of face normals.
+
+    Parameters
+    ----------
+    mesh : Mesh
+        A mesh.
+    broadcast : bool, optional
+        Broadcast or gather face normals.
+
+    Returns
+    -------
+    ~numpy.ndarray, shape (n, 3)
+        Unit normal vectors for a mesh with n vertices.
+
+    Note
+    ----
+    Vertex normals are not well defined for isolated vertices. The
+    result includes :obj:`np.nan` values in this case.
+    """
+    if broadcast:
+        # Outer loop runs over faces. Each face broadcasts is normal
+        # vector to each incident vertex. This is typically faster.
+        normals = np.zeros_like(mesh.points)
+
+        for f in mesh.faces:
+            normals[f] += face_normal(f)
+
+        # Division by 0 results in nan entries for normal vectors of
+        # deleted and isolated vertices.
+        normals /= np.linalg.norm(normals, axis=-1)[:, None]
+        return normals
+    else:
+        # Outer loop runs over vertices. Gather normals of incident
+        # faces to compute the vertex normal.
+        return np.array([vertex_normal(v) for v in mesh.vertices])
+
+
+def _vertex_normals(mesh):
     """ Vertex normals.
 
     Parameters
@@ -130,6 +176,41 @@ def _vertex_angle(vertex):
 
 def _vertex_area(vertex):
     return sum(face_area(f) for f in vertex._fiter())
+
+
+def edge_length(item):
+    """ Edge length statistics.
+
+    Minimal, maximal, and average edge length for a mesh or an
+    individual face.
+
+    Parameters
+    ----------
+    item : Face or Mesh
+        Mesh or face of a mesh.
+
+    Returns
+    -------
+    min : float
+        Minimal edge length.
+    max : float
+        Maximal edge length.
+    avg : float
+        Average edge length.
+    """
+    min, max = np.inf, -np.inf
+    avg, cnt = 0.0, 0
+
+    for h in item._eiter():
+        length = linalg.norm(h.vector)
+
+        avg += length
+        cnt += 1
+
+        min = length if length < min else min
+        max = length if length > max else max
+
+    return min, max, avg / cnt
 
 
 def _angle_defect(vertex):
@@ -258,38 +339,52 @@ def face_normal(face):
     face : Face
         Face of a mesh.
 
-    Raises
-    ------
-    NotImplementedError
-        For non-triangular faces.
-
     Returns
     -------
     ~numpy.ndarray, shape (3, )
         Unit normal vector.
+
+    Note
+    ----
+    For a non-triangular face the normal is computed by averaging
+    vectors obtained as cross products of consecutive edges around
+    the faces.
     """
+    # Should deleted faces be quitely assigned a normal with nan
+    # entries? Currenlty this case triggers an assertion error.
     if len(face) == 3:
         vector = linalg.cross(face.halfedge.vector,
                               face.halfedge.next.vector)
     else:
-        raise NotImplementedError('triangular face required')
+        vector = np.zeros(3, dtype=float)
+
+        for h in face._hiter():
+            # For non-convex faces some normals computed in this
+            # way point to the wrong side.
+            vector += linalg.unit(linalg.cross(h.vector,
+                                               h.next.vector))
 
     return linalg.unit(vector)
 
 
 def face_normals(mesh):
-    """ Face normals.
+    """ Face normals estimate.
+
+    Estimate face normals by averaging the cross product of consecutive
+    edge vectors around each face.
 
     Parameters
     ----------
     mesh : Mesh
-        A triangle mesh.
+        Mesh with polygonal faces.
 
     Returns
     -------
-    ~numpy.ndarray, shape (n, 3)
-        Unit normal vectors for a mesh with n faces.
+    ~numpy.ndarray
+        Array of face normal vectors.
     """
+    # Should deleted faces be quitely assigned a normal with nan
+    # entries?
     return np.array([face_normal(f) for f in mesh.faces])
 
 
