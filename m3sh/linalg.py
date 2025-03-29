@@ -29,6 +29,29 @@ import math
 import numpy as np
 
 
+def clamp(val, lo, hi):
+    """ Clamp value to range.
+
+    Parameters
+    ----------
+    val : float
+        Value to clamp.
+    lo : float
+        Lower bound.
+    hi : float
+        Upper bound.
+
+    Returns
+    -------
+    float
+        Clamped value.
+    """
+    val = lo if val < lo else val
+    val = hi if val > hi else val
+
+    return val
+
+
 def cross(u, v):
     r""" Cross product.
 
