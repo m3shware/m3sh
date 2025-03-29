@@ -3513,6 +3513,12 @@ class Face:
             if h is self._halfedge:
                 return
 
+    def _eiter(self):
+        """ Generator expression.
+        """
+        return (h if h._origin._idx < h._target._idx else h.pair
+                for h in self._hiter())
+
     def _fiter(self):
         """ Edge-adjacent face iterator.
 
