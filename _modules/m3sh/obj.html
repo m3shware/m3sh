@@ -1,0 +1,529 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>m3sh.obj &mdash; m3sh 1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=e59714d7" />
+
+  
+    <link rel="shortcut icon" href="../../_static/ghems_red.ico"/>
+      <script src="../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../_static/documentation_options.js?v=f2a433a1"></script>
+      <script src="../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            m3sh
+              <img src="../../_static/logo-small.png" class="logo" alt="Logo"/>
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+   
+              <p class="caption" role="heading"><span class="caption-text">Basic usage and examples</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../basics.html">Mesh basics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../usage.html">Quickstart</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../iterators.html">Neighborhood traversal</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Modules - API</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../mesh.html">Halfedge data structure</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../helper.html">Auxiliary modules</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../vis.html">Visualization</a></li>
+</ul>
+
+   <p class="caption">
+     <span class="caption-text">Indices</span>
+   </p>
+   <ul>
+        <li class="toctree-l1"><a href= "../../genindex.html">Index</a></li>
+        <li class="toctree-l1"><a href= "../../py-modindex.html">Module index</a></li>
+        <li class="toctree-l1"><a href= "https://github.com/m3shware/m3sh">Package source</a></li>
+   </ul>
+    
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">m3sh</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">m3sh.obj</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for m3sh.obj</h1><div class="highlight"><pre>
+<span></span><span class="c1"># Copyright 2024, m3shware</span>
+<span class="c1">#</span>
+<span class="c1"># Permission is hereby granted, free of charge, to any person obtaining a</span>
+<span class="c1"># copy of this software and associated documentation files (the &quot;Software&quot;),</span>
+<span class="c1"># to deal in the Software without restriction, including without limitation</span>
+<span class="c1"># the rights to use, copy, modify, merge, publish, distribute, sublicense,</span>
+<span class="c1"># and/or sell copies of the Software, and to permit persons to whom the</span>
+<span class="c1"># Software is furnished to do so, subject to the following conditions:</span>
+<span class="c1">#</span>
+<span class="c1"># The above copyright notice and this permission notice shall be included in</span>
+<span class="c1"># all copies or substantial portions of the Software.</span>
+<span class="c1">#</span>
+<span class="c1"># THE SOFTWARE IS PROVIDED &quot;AS IS&quot;, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR</span>
+<span class="c1"># IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,</span>
+<span class="c1"># FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE</span>
+<span class="c1"># AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER</span>
+<span class="c1"># LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING</span>
+<span class="c1"># FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS</span>
+<span class="c1"># IN THE SOFTWARE.</span>
+
+<span class="sd">&quot;&quot;&quot; OBJ file I/O.</span>
+
+<span class="sd">Low-level functions to read and write OBJ files. Only a subset of the</span>
+<span class="sd">OBJ standard is supported. Complete specifications can be found in the</span>
+<span class="sd">`Advanced Visualizer Manual`.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+
+
+<span class="k">def</span> <span class="nf">_array_append</span><span class="p">(</span><span class="n">array</span><span class="p">,</span> <span class="n">item</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot; Resize and append to array.</span>
+
+<span class="sd">    Passing :obj:`None` as `item` will **not** initialize the newly</span>
+<span class="sd">    added array entries. The `array` argument cannot be :obj:`None`</span>
+<span class="sd">    in this case.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    array : ~numpy.ndarray or None</span>
+<span class="sd">        Array object to be augmented. A new array of shape</span>
+<span class="sd">        ``(1, *item.shape)`` will be created if :obj:`None`.</span>
+<span class="sd">    item : array_like or None</span>
+<span class="sd">        Item to be added as new element of the first axis. The</span>
+<span class="sd">        shapes ``array.shape[1:]`` and ``item.shape`` have to agree.</span>
+
+<span class="sd">    Raises</span>
+<span class="sd">    ------</span>
+<span class="sd">    ValueError</span>
+<span class="sd">        In case of dimension mismatch.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    ~numpy.ndarray</span>
+<span class="sd">        Reference to the enlarged array. This is a new array if the</span>
+<span class="sd">        input array argument was :obj:`None`.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">array</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">item</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">array</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span> <span class="o">!=</span> <span class="n">np</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="n">item</span><span class="p">):</span>
+                <span class="n">msg</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">&#39;cannot add item with shape </span><span class="si">{</span><span class="n">np</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="n">item</span><span class="p">)</span><span class="si">}</span><span class="s1">&#39;</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+
+        <span class="n">arr_shape</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">array</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+        <span class="n">arr_shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
+
+        <span class="n">array</span><span class="o">.</span><span class="n">resize</span><span class="p">(</span><span class="n">arr_shape</span><span class="p">,</span> <span class="n">refcheck</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">array</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">empty</span><span class="p">((</span><span class="mi">1</span><span class="p">,</span> <span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="n">item</span><span class="p">)))</span>
+
+    <span class="c1"># Assign to the &#39;free&#39; space at the end of the extended array.</span>
+    <span class="c1"># The assignment itself should not trigger any exceptions.</span>
+    <span class="k">if</span> <span class="n">item</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">array</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span> <span class="o">=</span> <span class="n">item</span>
+
+    <span class="k">return</span> <span class="n">array</span>
+
+
+<span class="k">def</span> <span class="nf">_array_clear</span><span class="p">(</span><span class="n">array</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot; Collapse first axis of array.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    array : ~numpy.ndarray</span>
+<span class="sd">        Array with at least two axes.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    ~numpy.ndarray</span>
+<span class="sd">        The resized array.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">arr_shape</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">array</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+    <span class="n">arr_shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+
+    <span class="n">array</span><span class="o">.</span><span class="n">resize</span><span class="p">(</span><span class="n">arr_shape</span><span class="p">,</span> <span class="n">refcheck</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">array</span>
+
+
+<span class="k">def</span> <span class="nf">_map_orientation</span><span class="p">(</span><span class="n">forward</span><span class="p">,</span> <span class="n">up</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot; Compute coordinate transformation matrix.</span>
+
+<span class="sd">    Compute rotation that maps the given up direction to the z-axis</span>
+<span class="sd">    of the world coordinate system and the forward direction to the</span>
+<span class="sd">    y-axis.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    forward : str</span>
+<span class="sd">        Forward vector. Mapped to world :math:`y`-direction.</span>
+<span class="sd">    up : str</span>
+<span class="sd">        Up vector. Mapped to world :math:`z`-direction.</span>
+
+<span class="sd">    Raises</span>
+<span class="sd">    ------</span>
+<span class="sd">    ValueError</span>
+<span class="sd">        If ``up`` and ``forward`` values are invalid.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    ~numpy.ndarray</span>
+<span class="sd">        Matrix of shape (3, 3) that maps local/model coordinates to</span>
+<span class="sd">        world coordinates given the local/model up and foward vectors.</span>
+
+<span class="sd">    Note</span>
+<span class="sd">    ----</span>
+<span class="sd">    The values &#39;y&#39; forward and &#39;z&#39; up imply the identity matrix.</span>
+<span class="sd">    Blender uses this particular forward/up directions by default.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">up_sign</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span> <span class="k">if</span> <span class="s1">&#39;-&#39;</span> <span class="ow">in</span> <span class="n">up</span> <span class="k">else</span> <span class="mi">1</span>
+    <span class="n">fw_sign</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span> <span class="k">if</span> <span class="s1">&#39;-&#39;</span> <span class="ow">in</span> <span class="n">forward</span> <span class="k">else</span> <span class="mi">1</span>
+
+    <span class="k">if</span> <span class="s1">&#39;x&#39;</span> <span class="ow">in</span> <span class="n">up</span><span class="p">:</span>
+        <span class="n">z</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">up_sign</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">])</span>
+    <span class="k">elif</span> <span class="s1">&#39;y&#39;</span> <span class="ow">in</span> <span class="n">up</span><span class="p">:</span>
+        <span class="n">z</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="n">up_sign</span><span class="p">,</span> <span class="mi">0</span><span class="p">])</span>
+    <span class="k">elif</span> <span class="s1">&#39;z&#39;</span> <span class="ow">in</span> <span class="n">up</span><span class="p">:</span>
+        <span class="n">z</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">up_sign</span><span class="p">])</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;invalid up direction &#39;</span><span class="si">{</span><span class="n">up</span><span class="si">}</span><span class="s2">&#39;&quot;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="s1">&#39;x&#39;</span> <span class="ow">in</span> <span class="n">forward</span><span class="p">:</span>
+        <span class="n">y</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">fw_sign</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">])</span>
+    <span class="k">elif</span> <span class="s1">&#39;y&#39;</span> <span class="ow">in</span> <span class="n">forward</span><span class="p">:</span>
+        <span class="n">y</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="n">fw_sign</span><span class="p">,</span> <span class="mi">0</span><span class="p">])</span>
+    <span class="k">elif</span> <span class="s1">&#39;z&#39;</span> <span class="ow">in</span> <span class="n">forward</span><span class="p">:</span>
+        <span class="n">y</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">fw_sign</span><span class="p">])</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;invalid forward direction &#39;</span><span class="si">{</span><span class="n">forward</span><span class="si">}</span><span class="s2">&#39;&quot;</span><span class="p">)</span>
+
+    <span class="n">x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">cross</span><span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="n">z</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">x</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mf">0.5</span><span class="p">:</span>
+        <span class="n">msg</span> <span class="o">=</span> <span class="p">(</span><span class="sa">f</span><span class="s2">&quot;directions &#39;</span><span class="si">{</span><span class="n">up</span><span class="si">}</span><span class="s2">&#39; and &#39;</span><span class="si">{</span><span class="n">forward</span><span class="si">}</span><span class="s2">&#39; cannot be &quot;</span> <span class="o">+</span>
+                <span class="s2">&quot;used together as up and forward vectors&quot;</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+
+    <span class="c1"># Stacking the computed vectors as rows of matrix will create a</span>
+    <span class="c1"># permutation matrix (rotation) that preserves the handedness of</span>
+    <span class="c1"># the coordinate system.</span>
+    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">stack</span><span class="p">((</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">z</span><span class="p">))</span>
+
+
+<div class="viewcode-block" id="merge">
+<a class="viewcode-back" href="../../api/m3sh.obj.merge.html#m3sh.obj.merge">[docs]</a>
+<span class="k">def</span> <span class="nf">merge</span><span class="p">(</span><span class="n">verts</span><span class="p">,</span> <span class="n">faces</span><span class="p">,</span> <span class="n">radius</span><span class="o">=</span><span class="mf">1e-4</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="kn">from</span> <span class="nn">scipy.spatial</span> <span class="kn">import</span> <span class="n">KDTree</span>
+
+    <span class="n">kdtree</span> <span class="o">=</span> <span class="n">KDTree</span><span class="p">(</span><span class="n">verts</span><span class="p">)</span>
+    <span class="n">neighbors</span> <span class="o">=</span> <span class="n">kdtree</span><span class="o">.</span><span class="n">query_ball_tree</span><span class="p">(</span><span class="n">kdtree</span><span class="p">,</span> <span class="n">radius</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="p">[[(</span><span class="nb">min</span><span class="p">(</span><span class="n">neighbors</span><span class="p">[</span><span class="n">v</span><span class="p">[</span><span class="mi">0</span><span class="p">]]),</span> <span class="n">v</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">v</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">f</span><span class="p">]</span> <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">faces</span><span class="p">]</span></div>
+
+
+
+<div class="viewcode-block" id="read">
+<a class="viewcode-back" href="../../api/m3sh.obj.read.html#m3sh.obj.read">[docs]</a>
+<span class="k">def</span> <span class="nf">read</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot; Read from file.</span>
+
+<span class="sd">    Assumes an OBJ-like file structure, i.e., a text file where each</span>
+<span class="sd">    line starts with a tag. Lines whose tag is contained in `args` are</span>
+<span class="sd">    read. The returned data blocks store line data along their first</span>
+<span class="sd">    axis. Data blocks are returned in the same order as given in `args`.</span>
+<span class="sd">    If no corresponding data is found in the file the requested data</span>
+<span class="sd">    block is represented as :obj:`None`.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    filename : str</span>
+<span class="sd">        Name of an OBJ file.</span>
+<span class="sd">    *args</span>
+<span class="sd">        Variable number of arguments of type :class:`str`.</span>
+
+<span class="sd">    Raises</span>
+<span class="sd">    ------</span>
+<span class="sd">    ValueError</span>
+<span class="sd">        If any argument is not of type :class:`str`.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    object or tuple(object, ...)</span>
+<span class="sd">        Data blocks corresponding to line tags given in `args`.</span>
+
+
+<span class="sd">    To read vertices and vertex normals from an OBJ file do</span>
+
+<span class="sd">    &gt;&gt;&gt; v, vn = read(&#39;input-file.obj&#39;, &#39;v&#39;, &#39;vn&#39;)</span>
+
+<span class="sd">    Data blocks are returend as objects of type :class:`~numpy.ndarray`.</span>
+<span class="sd">    This assumes that data associated with a specific tag is homogeneous.</span>
+<span class="sd">    The exception being the &#39;f&#39; tag returning ``list[list[int]]``.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">parse</span><span class="p">(</span><span class="n">block</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot; Parse vertex definition.</span>
+
+<span class="sd">        Returned values can be negative (relative offsets). If positive,</span>
+<span class="sd">        indices are 1-based.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        block : str</span>
+<span class="sd">            A v/vt/vn string representing a vertex definition as</span>
+<span class="sd">            encountered when reading &#39;f&#39; statements.</span>
+
+<span class="sd">        Raises</span>
+<span class="sd">        ------</span>
+<span class="sd">        ValueError</span>
+<span class="sd">            If the string could not be parsed.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        v : int or None</span>
+<span class="sd">            Vertex index.</span>
+<span class="sd">        vt : int or None</span>
+<span class="sd">            Vertex texture index.</span>
+<span class="sd">        vn : int or None</span>
+<span class="sd">            Vertex normal index.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Default return values. If v could not be assigned there is</span>
+        <span class="c1"># a problem with the input.</span>
+        <span class="n">v</span><span class="p">,</span> <span class="n">vt</span><span class="p">,</span> <span class="n">vn</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span>
+
+        <span class="k">if</span> <span class="s1">&#39;//&#39;</span> <span class="ow">in</span> <span class="n">block</span><span class="p">:</span>
+            <span class="n">bits</span> <span class="o">=</span> <span class="n">block</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;//&#39;</span><span class="p">)</span>
+
+            <span class="c1"># A v//vn statement is split by // into exactly two parts.</span>
+            <span class="c1"># The definition is invalid in all other cases.</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">bits</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+                <span class="n">v</span><span class="p">,</span> <span class="n">vn</span> <span class="o">=</span> <span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">bit</span><span class="p">)</span> <span class="k">for</span> <span class="n">bit</span> <span class="ow">in</span> <span class="n">bits</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">msg</span> <span class="o">=</span> <span class="s1">&#39;invalid v//vn definition: &#39;</span> <span class="o">+</span> <span class="n">block</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="s1">&#39;/&#39;</span> <span class="ow">in</span> <span class="n">block</span><span class="p">:</span>
+            <span class="n">bits</span> <span class="o">=</span> <span class="n">block</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;/&#39;</span><span class="p">)</span>
+
+            <span class="c1"># A v/vt or v/vt/vn statement depending on how many parts</span>
+            <span class="c1"># it gets split into by the / separator.</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">bits</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+                <span class="n">v</span><span class="p">,</span> <span class="n">vt</span> <span class="o">=</span> <span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">bit</span><span class="p">)</span> <span class="k">for</span> <span class="n">bit</span> <span class="ow">in</span> <span class="n">bits</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="nb">len</span><span class="p">(</span><span class="n">bits</span><span class="p">)</span> <span class="o">==</span> <span class="mi">3</span><span class="p">:</span>
+                <span class="n">v</span><span class="p">,</span> <span class="n">vt</span><span class="p">,</span> <span class="n">vn</span> <span class="o">=</span> <span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">bit</span><span class="p">)</span> <span class="k">for</span> <span class="n">bit</span> <span class="ow">in</span> <span class="n">bits</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">msg</span> <span class="o">=</span> <span class="s1">&#39;invalid v/vt/vn or v/vt definition: &#39;</span> <span class="o">+</span> <span class="n">block</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># Base case, only v given. This will raise ValueError if</span>
+            <span class="c1"># block cannot be converted to an integer value.</span>
+            <span class="n">v</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">block</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">v</span><span class="p">,</span> <span class="n">vt</span><span class="p">,</span> <span class="n">vn</span>
+
+    <span class="c1"># At least one argument has to be given. Nothing to read otherwise.</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">args</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span>
+
+    <span class="c1"># All input arguments have to be of type str.</span>
+    <span class="k">if</span> <span class="nb">any</span><span class="p">((</span><span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">arg</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span> <span class="k">for</span> <span class="n">arg</span> <span class="ow">in</span> <span class="n">args</span><span class="p">)):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;arguments have to be of type &#39;str&#39;&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Ouput data blocks for all arguments stored in a dictionary, keyed</span>
+    <span class="c1"># on the corresponding tag.</span>
+    <span class="n">args_arr</span> <span class="o">=</span> <span class="p">{</span><span class="n">arg</span><span class="p">:</span> <span class="p">[]</span> <span class="k">if</span> <span class="n">arg</span> <span class="o">==</span> <span class="s1">&#39;f&#39;</span> <span class="k">else</span> <span class="kc">None</span> <span class="k">for</span> <span class="n">arg</span> <span class="ow">in</span> <span class="n">args</span><span class="p">}</span>
+
+    <span class="c1"># The number of encountered item definitions. Needed to resolve</span>
+    <span class="c1"># negative (relative) item indices.</span>
+    <span class="n">vcnt</span><span class="p">,</span> <span class="n">vtcnt</span><span class="p">,</span> <span class="n">vncnt</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span>
+
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">file</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">file</span><span class="p">:</span>
+            <span class="c1"># Extract runs of non-whitespace characters, the split()</span>
+            <span class="c1"># method will also strip all whitespace ...</span>
+            <span class="n">blocks</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">split</span><span class="p">()</span>
+
+            <span class="c1"># ... then process the contents of non-empty lines.</span>
+            <span class="k">if</span> <span class="n">blocks</span><span class="p">:</span>
+                <span class="c1"># Unconditional increment of the number of mesh items</span>
+                <span class="c1"># encountered up to this point.</span>
+                <span class="k">if</span> <span class="n">blocks</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;v&#39;</span><span class="p">:</span>
+                    <span class="n">vcnt</span> <span class="o">+=</span> <span class="mi">1</span>
+
+                <span class="k">if</span> <span class="n">blocks</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;vt&#39;</span><span class="p">:</span>
+                    <span class="n">vtcnt</span> <span class="o">+=</span> <span class="mi">1</span>
+
+                <span class="k">if</span> <span class="n">blocks</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;vn&#39;</span><span class="p">:</span>
+                    <span class="n">vncnt</span> <span class="o">+=</span> <span class="mi">1</span>
+
+                <span class="k">if</span> <span class="n">blocks</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="ow">in</span> <span class="n">args</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="n">blocks</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;f&#39;</span><span class="p">:</span>
+                        <span class="n">f</span> <span class="o">=</span> <span class="p">[</span><span class="n">parse</span><span class="p">(</span><span class="n">block</span><span class="p">)</span> <span class="k">for</span> <span class="n">block</span> <span class="ow">in</span> <span class="n">blocks</span><span class="p">[</span><span class="mi">1</span><span class="p">:]]</span>
+
+                        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">f</span><span class="p">)):</span>
+                            <span class="c1"># Unpack the i-th geometric vertex definition</span>
+                            <span class="c1"># of the current face.</span>
+                            <span class="n">v</span><span class="p">,</span> <span class="n">vt</span><span class="p">,</span> <span class="n">vn</span> <span class="o">=</span> <span class="n">f</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+                            <span class="n">v</span> <span class="o">+=</span> <span class="n">vcnt</span> <span class="k">if</span> <span class="n">v</span> <span class="o">&lt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="o">-</span><span class="mi">1</span>
+
+                            <span class="k">if</span> <span class="n">vt</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                                <span class="n">vt</span> <span class="o">+=</span> <span class="n">vtcnt</span> <span class="k">if</span> <span class="n">vt</span> <span class="o">&lt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="o">-</span><span class="mi">1</span>
+
+                            <span class="k">if</span> <span class="n">vn</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                                <span class="n">vn</span> <span class="o">+=</span> <span class="n">vncnt</span> <span class="k">if</span> <span class="n">vn</span> <span class="o">&lt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="o">-</span><span class="mi">1</span>
+
+                            <span class="c1"># Replace all indices in the vertex definition</span>
+                            <span class="c1"># by 0-based abolute indices.</span>
+                            <span class="n">f</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">vt</span><span class="p">,</span> <span class="n">vn</span><span class="p">)</span>
+
+                        <span class="n">args_arr</span><span class="p">[</span><span class="s1">&#39;f&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="n">data</span> <span class="o">=</span> <span class="p">[</span><span class="nb">float</span><span class="p">(</span><span class="n">block</span><span class="p">)</span> <span class="k">for</span> <span class="n">block</span> <span class="ow">in</span> <span class="n">blocks</span><span class="p">[</span><span class="mi">1</span><span class="p">:]]</span>
+                        <span class="n">arr</span> <span class="o">=</span> <span class="n">args_arr</span><span class="p">[</span><span class="n">blocks</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span>
+                        <span class="n">args_arr</span><span class="p">[</span><span class="n">blocks</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span> <span class="o">=</span> <span class="n">_array_append</span><span class="p">(</span><span class="n">arr</span><span class="p">,</span> <span class="n">data</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">args</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">args_arr</span><span class="p">[</span><span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span>
+
+    <span class="c1"># This works as intended because dictionary values are iterated over</span>
+    <span class="c1"># in insertion order (guaranteed since version 3.7 of Python).</span>
+    <span class="k">return</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">args_arr</span><span class="o">.</span><span class="n">values</span><span class="p">())</span></div>
+
+
+
+<div class="viewcode-block" id="write">
+<a class="viewcode-back" href="../../api/m3sh.obj.write.html#m3sh.obj.write">[docs]</a>
+<span class="k">def</span> <span class="nf">write</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">f</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">data</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot; Write to file.</span>
+
+<span class="sd">    Face data is expected as a nested list. Each entry of a face (a</span>
+<span class="sd">    vertex definition) can be a single integer or a 3-tuple of integers.</span>
+<span class="sd">    Tuple entries are interpreted as v/vt/vn triples, missing entries</span>
+<span class="sd">    have to be specified with a :obj:`None` value.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    filename : str</span>
+<span class="sd">        Name of output file.</span>
+<span class="sd">    f : list</span>
+<span class="sd">        Face definitions.</span>
+<span class="sd">    **data</span>
+<span class="sd">        Keyword arguments.</span>
+
+
+<span class="sd">    Data blocks to be stored in the file are passed via keyword arguments:</span>
+
+<span class="sd">    &gt;&gt;&gt; mesh.write(&#39;output-file.obj&#39;, line_tag=data_block)</span>
+
+<span class="sd">    This assumes that ``data_block`` can be interpreted as a 2-dimensional</span>
+<span class="sd">    array. The contents of each row are written to a line that starts</span>
+<span class="sd">    with the given tag.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">faces</span> <span class="o">=</span> <span class="p">[]</span> <span class="k">if</span> <span class="n">f</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">f</span>
+
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="s1">&#39;w&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">file</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">data</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">value</span><span class="p">:</span>
+                <span class="n">file</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
+
+                <span class="k">for</span> <span class="n">element</span> <span class="ow">in</span> <span class="n">row</span><span class="p">:</span>
+                    <span class="n">file</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39; </span><span class="si">{</span><span class="n">element</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+
+                <span class="n">file</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">face</span> <span class="ow">in</span> <span class="n">faces</span><span class="p">:</span>
+            <span class="n">file</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;f&#39;</span><span class="p">)</span>
+
+            <span class="k">for</span> <span class="n">vertex</span> <span class="ow">in</span> <span class="n">face</span><span class="p">:</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">v</span> <span class="o">=</span> <span class="n">vertex</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="mi">1</span>
+                <span class="k">except</span> <span class="ne">TypeError</span><span class="p">:</span>
+                    <span class="n">file</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39; </span><span class="si">{</span><span class="nb">int</span><span class="p">(</span><span class="n">vertex</span><span class="p">)</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">vt</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span> <span class="k">if</span> <span class="n">vertex</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">vertex</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="mi">1</span>
+                    <span class="n">vn</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span> <span class="k">if</span> <span class="n">vertex</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">vertex</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">+</span> <span class="mi">1</span>
+
+                    <span class="k">if</span> <span class="n">vertex</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                        <span class="n">file</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39; </span><span class="si">{</span><span class="n">v</span><span class="si">}</span><span class="s1">/</span><span class="si">{</span><span class="n">vt</span><span class="si">}</span><span class="s1">/</span><span class="si">{</span><span class="n">vn</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="k">if</span> <span class="n">vertex</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                            <span class="n">file</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39; </span><span class="si">{</span><span class="n">v</span><span class="si">}</span><span class="s1">/</span><span class="si">{</span><span class="n">vt</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+                        <span class="k">else</span><span class="p">:</span>
+                            <span class="n">file</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39; </span><span class="si">{</span><span class="n">v</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+
+            <span class="n">file</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, m3shware.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

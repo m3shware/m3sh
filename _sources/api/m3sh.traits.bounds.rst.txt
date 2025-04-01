@@ -1,0 +1,6 @@
+bounds
+======
+
+.. currentmodule:: m3sh.traits
+
+.. autofunction:: bounds
