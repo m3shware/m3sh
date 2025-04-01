@@ -29,6 +29,31 @@ import math
 import numpy as np
 
 
+def angle(v, w, degrees=False):
+    """ Angle.
+
+    Parameters
+    ----------
+    v : ~numpy.ndarray, shape (3, )
+    w : ~numpy.ndarray, shape (3, )
+    degrees : bool, optional
+
+    Returns
+    -------
+    float
+        Angle in degrees or radians.
+    """
+    v = v / norm(v)
+    w = w / norm(w)
+
+    angle = math.acos(clamp(dot(v, w), -1., 1.))
+
+    if degrees:
+        return math.degrees(angle)
+
+    return angle
+
+
 def clamp(val, lo, hi):
     """ Clamp value to range.
 
