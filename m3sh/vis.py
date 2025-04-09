@@ -471,6 +471,80 @@ def _screenshot(filename, window=None):
     writer.Write()
 
 
+def _scatter(coo, size, color):
+    # inputs for coo: ndarray, list, vtkPolyData. If a polydata is given
+    # that defines points scalars how to map them to size/color?
+    points = vtk.vtkPoints()
+    points.SetData(numpy_to_vtk(coo))
+
+    polydata = vtk.vtkPolyData()
+    polydata.SetPoints(points)
+
+    sizearray = numpy_to_vtk(size)
+    sizearray.SetName('size')
+
+    colarray = numpy_to_vtk(color)
+    colarray.SetName('color')
+
+    pointdata = polydata.GetPointData()
+    pointdata.AddArray(sizearray)
+    pointdata.AddArray(colarray)
+    pointdata.SetActiveScalars('size')
+
+    sphere = vtk.vtkCubeSource() #vtk.vtkSphereSource()
+    # sphere.SetGenerateNormals(False)
+    # sphere.SetPhiResolution(16)
+    # sphere.SetThetaResolution(16)
+    sphere.Update()
+
+    glyph = vtk.vtkGlyph3D()
+    glyph.SetInputData(polydata)
+    glyph.SetSourceConnection(sphere.GetOutputPort())
+
+    # glyph.OrientOn()
+    # glyph.SetVectorModeToUseVector()
+    glyph.ScalingOn()
+    glyph.SetScaleModeToScaleByScalar()
+
+    mapper = vtk.vtkPolyDataMapper()
+    mapper.SetInputConnection(glyph.GetOutputPort())
+    # mapper.SetScalarVisibility(False)
+    # mapper.SetScalarModeToUsePointFieldData()
+    # mapper.SetColorModeToDirectScalars()
+    # mapper.ScalarVisibilityOn()
+    # mapper.SelectColorArray('glyph_color')
+
+    mapper.SetScalarVisibility(True)
+    mapper.SetScalarModeToUsePointFieldData()
+    mapper.SetColorModeToMapScalars()
+    mapper.SelectColorArray('color')
+
+    actor = vtk.vtkActor()
+    actor.SetMapper(mapper)
+    actor.GetProperty().SetEdgeVisibility(True)
+
+    add(actor)
+    return actor
+
+
+def _test():
+    points = np.array([[0., 0., 0.],
+                       [1., 1., 1.],
+                       [2., 3., 4.]])
+
+    size = np.array([1., 2., 1.])
+    color = np.array([0., 0.5, 1.])
+
+    n = 1_000
+
+    points = np.random.rand(n, 3)
+    size = 0.1 * np.random.rand(n)
+    color = np.random.rand(n)
+
+    _scatter(points, size, color)
+    show()
+
+
 def scatter(points, style='spheres', size=4, color=colors.dim_grey):
     """ Scatter plot.
 
@@ -2061,6 +2135,22 @@ def show(width=1200, height=600, title=None, *, info=False, lmbdown=None,
         # viewport to the renderers of the _renwin render window.
         canvas()
 
+    lightkit = vtk.vtkLightKit()
+    lightkit.AddLightsToRenderer(_renderer)
+
+    # shadows = vtk.vtkShadowMapPass()
+    # passes = vtk.vtkRenderPassCollection()
+    # passes.AddItem(shadows.GetShadowMapBakerPass())
+    # passes.AddItem(shadows)
+
+    # seq = vtk.vtkSequencePass()
+    # seq.SetPasses(passes)
+
+    # camera_pass = vtk.vtkCameraPass()
+    # camera_pass.SetDelegatePass(seq)
+
+    # _renderer.SetPass(camera_pass)
+
     # Attach renderers to window. Each renderer is responsible for a
     # viewport inside the main render window.
     while _renderers:
@@ -2070,6 +2160,12 @@ def show(width=1200, height=600, title=None, *, info=False, lmbdown=None,
             _renwin.AddRenderer(renderer)
 
         renderer.ResetCamera()
+        renderer.ResetCameraClippingRange()
+
+        # Changing the render pipeline to include shadows (see above)
+        # can also be obtained by this command. Note that shadows are
+        # wrong when rendering to non-square windows (known bug).
+        # renderer.SetUseShadows(True)
 
     # Set up the render window interactor with its customized trackball
     # interactor style.
@@ -5008,3 +5104,4 @@ class _VertexDragger:
 
 if __name__ == '__main__':
     _main()
+    # _test()
