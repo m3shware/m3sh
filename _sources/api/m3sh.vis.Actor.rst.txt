@@ -1,0 +1,30 @@
+Actor
+=====
+
+.. currentmodule:: m3sh.vis
+ 
+.. autoclass:: Actor
+   :show-inheritance:
+   :no-inherited-members:
+    
+   
+   
+   .. rubric:: Attributes
+ 
+   .. autosummary::
+      :toctree:
+      :template: attribute.rst
+   
+      ~Actor.color
+      ~Actor.opacity
+      ~Actor.pickable
+      ~Actor.prop
+      ~Actor.visible
+   
+   
+ 
+   
+   
+   
+   
+   

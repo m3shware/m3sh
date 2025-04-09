@@ -1,0 +1,6 @@
+midpoint
+========
+
+.. currentmodule:: m3sh.hds
+
+.. autoproperty:: Halfedge.midpoint

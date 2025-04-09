@@ -1,0 +1,6 @@
+\_\_contains\_\_
+================
+
+.. currentmodule:: m3sh.flags
+
+.. automethod:: HalfedgeFlag.__contains__
