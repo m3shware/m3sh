@@ -3705,7 +3705,130 @@ class _PolyData(_ViewProp, _AppearanceMixin):
         self.prop.GetMapper().SetScalarModeToUseCellData()
 
 
-class PolyData(Actor):
+class LutMixin:
+    def lookuptable(self, range=None, gradient=None, logscale=None,
+                    size=None, **kwargs):
+        """ Modify lookup table properties.
+
+        An objects lookup tables determines how entries of the scalar
+        array are translated to color values. Lookup tables have no
+        effect when directly mapping RGB color values.
+
+        Parameters
+        ----------
+        range : (float, float)
+            Accpeted range of scalar values.
+        gradient : str
+            Color scheme identifier, see below.
+        logscale : bool
+            Switch between linear and logarithmic scale.
+        size : int
+            Size of lookup table. Has no effect when a discrete
+            color series is used to define the lookup table.
+
+        Keyword arguments
+        -----------------
+        below : array_like, shape (4, )
+            Color for scalars below the specified range.
+        above: array_like, shape (4, )
+            Color for scalars above the specified range.
+        nan : array_like, shape (4, )
+            Special color for NaN scalar values.
+
+
+        Smooth color gradients are defined by the color scheme identifiers
+        'hot', 'jet', and 'grey'. The color schemes 'spectral', 'diverging',
+        'blue', 'orange', and 'purple' define a discrete color series.
+
+        If provied, out of range values are marked with the `below`,
+        `above`, and `nan` colors. Not that those colors also have an alpha
+        intensity value to control opacity.
+
+        Note
+        ----
+        Every object starts with a default lookup table. Arguments not
+        provided have no affect on the corresponding lookup table property.
+        """
+        # The current lookup table. Properties are modified according to the
+        # given parameters. None values preserve the corresponding property.
+        lut = self._prop.GetMapper().GetLookupTable()
+
+        if gradient in {'hot', 'cool', 'jet', 'grey', 'gray'}:
+            if gradient == 'hot':
+                lut.SetHueRange(0, 1/6)
+                lut.SetSaturationRange(1, 0.5)
+                lut.SetValueRange(1, 1)
+            elif gradient == 'cool':
+                lut.SetHueRange(0.49, 0.6)
+                lut.SetSaturationRange(1, 0.1)
+                lut.SetValueRange(0.55, 1)
+            elif gradient == 'jet':
+                lut.SetHueRange(2/3, 0)
+                lut.SetSaturationRange(1, 1)
+                lut.SetValueRange(1, 1)
+            elif gradient == 'grey' or gradient == 'gray':
+                lut.SetHueRange(0, 0)
+                lut.SetSaturationRange(0, 0)
+                lut.SetValueRange(0, 1)
+
+            lut.ForceBuild()
+        elif gradient in {'spectral', 'diverging', 'blue', 'orange',
+                          'purple'}:
+            # Color series define a fixed number of colors. A given size
+            # parameter is ignored in this case.
+            series = vtk.vtkColorSeries()
+
+            map = {'spectral': series.BREWER_DIVERGING_SPECTRAL_11,
+                   'diverging': series.BREWER_DIVERGING_BROWN_BLUE_GREEN_10,
+                   'blue': series.BREWER_SEQUENTIAL_BLUE_GREEN_9,
+                   'orange': series.BREWER_SEQUENTIAL_YELLOW_ORANGE_BROWN_9,
+                   'purple': series.BREWER_SEQUENTIAL_BLUE_PURPLE_9}
+
+            series.SetColorScheme(map[gradient])
+            series.BuildLookupTable(lut, series.ORDINAL)
+        elif gradient == 'default':
+            # This should reset the color gradient to some default value.
+            # Currently does nothing.
+            pass
+        elif gradient is None:
+            # Nothing to do, no gradient argument defined.
+            pass
+        else:
+            raise ValueError(f"unknown color scheme '{gradient}'")
+
+        if range is not None:
+            lut.SetTableRange(range[0], range[1])
+
+        if logscale is not None:
+            if logscale:
+                lut.SetScaleToLog10()
+            else:
+                lut.SetScaleToLinear()
+
+        if size is not None:
+            # Setting the size of a lookup table has no effect when using
+            # a discrete color scheme.
+            lut.SetNumberOfTableValues(size)
+
+        if 'below' in kwargs:
+            if (below := kwargs['below']) is not None:
+                lut.SetBelowRangeColor(below)
+                lut.SetUseBelowRangeColor(True)
+            else:
+                lut.SetUseBelowRangeColor(False)
+
+        if 'above' in kwargs:
+            if (above := kwargs['above']) is not None:
+                lut.SetAboveRangeColor(above)
+                lut.SetUseAboveRangeColor(True)
+            else:
+                lut.SetUseAboveRangeColor(False)
+
+        if (nan := kwargs.get('nan')) is not None:
+            lut.SetNanColor(nan)
+
+
+class PolyData(Actor, LutMixin):
     """ Polygonal shape wrapper.
 
     Manages visual properties of a polygonal shape. Point clouds are
@@ -3977,127 +4100,6 @@ class PolyData(Actor):
 
         if color is not None:
             self._prop.GetProperty().SetEdgeColor(color)
-
-    def lookuptable(self, range=None, gradient=None, logscale=None,
-                    size=None, **kwargs):
-        """ Modify lookup table properties.
-
-        An objects lookup tables determines how entries of the scalar
-        array are translated to color values. Lookup tables have no
-        effect when directly mapping RGB color values.
-
-        Parameters
-        ----------
-        range : (float, float)
-            Accpeted range of scalar values.
-        gradient : str
-            Color scheme identifier, see below.
-        logscale : bool
-            Switch between linear and logarithmic scale.
-        size : int
-            Size of lookup table. Has no effect when a discrete
-            color series is used to define the lookup table.
-
-        Keyword arguments
-        -----------------
-        below : array_like, shape (4, )
-            Color for scalars below the specified range.
-        above: array_like, shape (4, )
-            Color for scalars above the specified range.
-        nan : array_like, shape (4, )
-            Special color for NaN scalar values.
-
-
-        Smooth color gradients are defined by the color scheme identifiers
-        'hot', 'jet', and 'grey'. The color schemes 'spectral', 'diverging',
-        'blue', 'orange', and 'purple' define a discrete color series.
-
-        If provied, out of range values are marked with the `below`,
-        `above`, and `nan` colors. Not that those colors also have an alpha
-        intensity value to control opacity.
-
-        Note
-        ----
-        Every object starts with a default lookup table. Arguments not
-        provided have no affect on the corresponding lookup table property.
-        """
-        # The current lookup table. Properties are modified according to the
-        # given parameters. None values preserve the corresponding property.
-        lut = self._prop.GetMapper().GetLookupTable()
-
-        if gradient in {'hot', 'cool', 'jet', 'grey', 'gray'}:
-            if gradient == 'hot':
-                lut.SetHueRange(0, 1/6)
-                lut.SetSaturationRange(1, 0.5)
-                lut.SetValueRange(1, 1)
-            elif gradient == 'cool':
-                lut.SetHueRange(0.49, 0.6)
-                lut.SetSaturationRange(1, 0.1)
-                lut.SetValueRange(0.55, 1)
-            elif gradient == 'jet':
-                lut.SetHueRange(2/3, 0)
-                lut.SetSaturationRange(1, 1)
-                lut.SetValueRange(1, 1)
-            elif gradient == 'grey' or gradient == 'gray':
-                lut.SetHueRange(0, 0)
-                lut.SetSaturationRange(0, 0)
-                lut.SetValueRange(0, 1)
-
-            lut.ForceBuild()
-        elif gradient in {'spectral', 'diverging', 'blue', 'orange',
-                          'purple'}:
-            # Color series define a fixed number of colors. A given size
-            # parameter is ignored in this case.
-            series = vtk.vtkColorSeries()
-
-            map = {'spectral': series.BREWER_DIVERGING_SPECTRAL_11,
-                   'diverging': series.BREWER_DIVERGING_BROWN_BLUE_GREEN_10,
-                   'blue': series.BREWER_SEQUENTIAL_BLUE_GREEN_9,
-                   'orange': series.BREWER_SEQUENTIAL_YELLOW_ORANGE_BROWN_9,
-                   'purple': series.BREWER_SEQUENTIAL_BLUE_PURPLE_9}
-
-            series.SetColorScheme(map[gradient])
-            series.BuildLookupTable(lut, series.ORDINAL)
-        elif gradient == 'default':
-            # This should reset the color gradient to some default value.
-            # Currently does nothing.
-            pass
-        elif gradient is None:
-            # Nothing to do, no gradient argument defined.
-            pass
-        else:
-            raise ValueError(f"unknown color scheme '{gradient}'")
-
-        if range is not None:
-            lut.SetTableRange(range[0], range[1])
-
-        if logscale is not None:
-            if logscale:
-                lut.SetScaleToLog10()
-            else:
-                lut.SetScaleToLinear()
-
-        if size is not None:
-            # Setting the size of a lookup table has no effect when using
-            # a discrete color scheme.
-            lut.SetNumberOfTableValues(size)
-
-        if 'below' in kwargs:
-            if (below := kwargs['below']) is not None:
-                lut.SetBelowRangeColor(below)
-                lut.SetUseBelowRangeColor(True)
-            else:
-                lut.SetUseBelowRangeColor(False)
-
-        if 'above' in kwargs:
-            if (above := kwargs['above']) is not None:
-                lut.SetAboveRangeColor(above)
-                lut.SetUseAboveRangeColor(True)
-            else:
-                lut.SetUseAboveRangeColor(False)
-
-        if (nan := kwargs.get('nan')) is not None:
-            lut.SetNanColor(nan)
 
     def modified(self):
         """ Update notification.
