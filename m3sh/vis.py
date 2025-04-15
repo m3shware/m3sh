@@ -2547,7 +2547,7 @@ def _main():
             mesh.edges(width=1, color=colors.ivory_black)
 
         if args.silhouette:
-            mesh.silhouette(width=6, color=colors.coral)
+            mesh.silhouette(width=4, color=colors.black)
 
     show(title=args.file, info=True)
 
@@ -4101,6 +4101,67 @@ class PolyData(Actor, LutMixin):
         if color is not None:
             self._prop.GetProperty().SetEdgeColor(color)
 
+    def silhouette(self, style=None, width=None, color=None):
+        """ Silhouette display.
+
+        Parameters
+        ----------
+        style : str, optional
+            Either 'lines' or 'tubes'. :obj:`False` to disable.
+        width : int, optional
+            Edge width in pixels.
+        color : array_like, shape (3, ), optional
+            Edge color.
+
+        Note
+        ----
+        Parameters with a :obj:`None` value do not affect the corresponding
+        silhouette display property.
+        """
+        if not hasattr(self, '_silhouette'):
+            self._silhouette = None
+
+        if style == '' or style is False:
+            delete(self._silhouette)
+            self._silhouette = None
+            return
+
+        if self._silhouette is None:
+            outline = vtk.vtkPolyDataSilhouette()
+            outline.SetInputData(self.polydata)
+            outline.SetCamera(_renderer.GetActiveCamera())
+            outline.SetEnableFeatureAngle(False)
+            outline.SetBorderEdges(True)
+
+            mapper = vtk.vtkPolyDataMapper()
+            mapper.SetInputConnection(outline.GetOutputPort())
+
+            actor = vtk.vtkActor()
+            actor.SetMapper(mapper)
+            actor.SetPickable(False)
+
+            if color is None:
+                actor.GetProperty().SetColor(colors.black)
+
+            if width is None:
+                actor.GetProperty().SetLineWidth(2)
+
+            add(actor)
+            self._silhouette = actor
+        else:
+            actor = self._silhouette
+
+        if width is not None:
+            actor.GetProperty().SetLineWidth(width)
+
+        if style == 'lines':
+            actor.GetProperty().SetRenderLinesAsTubes(False)
+        elif style == 'tubes':
+            actor.GetProperty().SetRenderLinesAsTubes(True)
+
+        if color is not None:
+            actor.GetProperty().SetColor(color)
+
     def modified(self):
         """ Update notification.
 
@@ -4303,67 +4364,6 @@ class PolyMesh(PolyData):
         :type: Mesh
         """
         return self._mesh
-
-    def silhouette(self, style=None, width=None, color=None):
-        """ Silhouette display.
-
-        Parameters
-        ----------
-        style : str, optional
-            Either 'lines' or 'tubes'. :obj:`False` to disable.
-        width : int, optional
-            Edge width in pixels.
-        color : array_like, shape (3, ), optional
-            Edge color.
-
-        Note
-        ----
-        Parameters with a :obj:`None` value do not affect the corresponding
-        silhouette display property.
-        """
-        if not hasattr(self, '_silhouette'):
-            self._silhouette = None
-
-        if style == '' or style is False:
-            delete(self._silhouette)
-            self._silhouette = None
-            return
-
-        if self._silhouette is None:
-            outline = vtk.vtkPolyDataSilhouette()
-            outline.SetInputData(self.polydata)
-            outline.SetCamera(_renderer.GetActiveCamera())
-            outline.SetEnableFeatureAngle(False)
-            outline.SetBorderEdges(True)
-
-            mapper = vtk.vtkPolyDataMapper()
-            mapper.SetInputConnection(outline.GetOutputPort())
-
-            actor = vtk.vtkActor()
-            actor.SetMapper(mapper)
-            actor.SetPickable(False)
-
-            if color is None:
-                actor.GetProperty().SetColor(colors.black)
-
-            if width is None:
-                actor.GetProperty().SetLineWidth(2)
-
-            add(actor)
-            self._silhouette = actor
-        else:
-            actor = self._silhouette
-
-        if width is not None:
-            actor.GetProperty().SetLineWidth(width)
-
-        if style == 'lines':
-            actor.GetProperty().SetRenderLinesAsTubes(False)
-        elif style == 'tubes':
-            actor.GetProperty().SetRenderLinesAsTubes(True)
-
-        if color is not None:
-            actor.GetProperty().SetColor(color)
 
     def texture(self, img, uv):
         """ Texture mapping.
