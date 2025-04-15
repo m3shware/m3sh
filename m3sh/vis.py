@@ -2526,16 +2526,16 @@ def _main():
         reader.SetFileName(file)
         reader.Update()
 
-        add(mesh := _PolyData(reader.GetOutput()))
+        add(mesh := PolyData(reader.GetOutput()))
 
         # Only for testing, remove later...
-        # scalars = mesh.points[:, 2]
-        # mesh.colorize(scalars, items='points', gradient='spectral',
-        #               range=(min(scalars), max(scalars)))
+        scalars = mesh.points[:, 2]
+        mesh.colorize(scalars, items='points', gradient='spectral',
+                      range=(min(scalars), max(scalars)))
 
-        if mesh.normals is not None:
-            add(_VectorField(mesh._vtk_polydata,
-                             mesh._avg_edge_length()[0]))
+        # if mesh.normals is not None:
+        #     add(_VectorField(mesh._vtk_polydata,
+        #                      mesh._avg_edge_length()[0]))
 
         if args.bounds:
             aabb(mesh)
@@ -3733,7 +3733,7 @@ class PolyData(Actor):
 
     def __init__(self, data, *, verts=None, lines=None, faces=None):
         if isinstance(data, vtk.vtkPolyData):
-            self._points = None
+            self._points = vtk_to_numpy(data.GetPoints().GetData())
             self._polydata = data
         else:
             self._points = np.asarray(data)
@@ -4274,9 +4274,6 @@ class PolyMesh(PolyData):
     ----------
     mesh : Mesh or tuple
         Polygonal mesh representation.
-    copy : bool, optional
-        If :obj:`True` the points array of `mesh` is **not** shared
-        with VTK. A :obj:`None` value allows to make a copy if needed.
 
     Raises
     ------
@@ -4291,33 +4288,11 @@ class PolyMesh(PolyData):
     vertex coordinate data buffers if not disabled explicitly.
     """
 
-    def __init__(self, mesh, copy=None):
-        super().__init__(np.asarray(mesh[0], copy=copy), faces=mesh[1])
+    def __init__(self, mesh):
+        super().__init__(mesh[0], faces=mesh[1])
 
         # Initialize private properties.
         self._mesh = mesh
-
-        # points = vtk.vtkPoints()
-
-        # if share:
-        #     points.SetData(numpy_to_vtk(mesh.points))
-        # else:
-        #     for p in mesh.points:
-        #         points.InsertNextPoint(p[0], p[1], p[2])
-
-        # polydata = vtk.vtkPolyData()
-        # polydata.SetPoints(points)
-
-        # polys = vtk.vtkCellArray()
-
-        # for f in mesh:
-        #     face = vtk.vtkIdList()
-        #     for v in f:
-        #         face.InsertNextId(int(v))
-        #     polys.InsertNextCell(face)
-
-        # polydata.SetPolys(polys)
-        # super().__init__(polydata)
 
     @property
     def mesh(self):
