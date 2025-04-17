@@ -13,14 +13,38 @@
    {% endif %}
    {% endblock %}
 
-   {% block classes %}
-   {% if classes %}
+   {% set mixins = [] %}
+   {% set concrete = [] %}
+
+   {% for item in classes %}
+   {% if 'Mixin' in item %}
+      {% set _ = mixins.append(item) %}
+   {% else %}
+      {% set _ = concrete.append(item) %}
+   {% endif %}
+   {% endfor %}
+
+   {% block concrete %}
+   {% if concrete %}
    .. rubric:: Classes
 
    .. autosummary::
       :toctree:
       :template: class-toc-vtk.rst
-   {% for item in classes %}
+   {% for item in concrete %}
+      {{ item }}
+   {%- endfor %}
+   {% endif %}
+   {% endblock %}
+
+   {% block mixins %}
+   {% if mixins %}
+   .. rubric:: Mixins
+
+   .. autosummary::
+      :toctree:
+      :template: class-toc-base.rst
+   {% for item in mixins %}
       {{ item }}
    {%- endfor %}
    {% endif %}
