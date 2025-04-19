@@ -43,7 +43,7 @@
 
    .. autosummary::
       :toctree:
-      :template: class-toc-base.rst
+      :template: class-toc-vtk.rst
    {% for item in mixins %}
       {{ item }}
    {%- endfor %}
