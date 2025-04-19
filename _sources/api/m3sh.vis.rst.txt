@@ -1,0 +1,133 @@
+﻿m3sh.vis
+========
+
+.. automodule:: m3sh.vis
+
+   
+   
+   
+
+   
+   
+
+   
+   
+      
+   
+   
+   
+      
+   
+   
+   
+      
+   
+   
+   
+      
+   
+   
+   
+      
+   
+   
+   
+      
+   
+   
+   
+      
+   
+   
+   
+      
+   
+   
+   
+      
+   
+   
+   
+      
+   
+   
+   
+      
+   
+   
+   
+      
+   
+   
+   
+      
+   
+   
+
+   
+   
+   .. rubric:: Classes
+
+   .. autosummary::
+      :toctree:
+      :template: class-toc-vtk.rst
+   
+      Arrows
+      Circles
+      Cones
+      Disks
+      LookupTable
+      OrientedGlyphs
+      PolyData
+      PolyMesh
+      Prop
+      Spheres
+   
+   
+
+   
+   
+   .. rubric:: Mixins
+
+   .. autosummary::
+      :toctree:
+      :template: class-toc-vtk.rst
+   
+      GlyphMixin
+      MapperMixin
+      PropertyMixin
+   
+   
+
+   
+   
+   
+   
+   
+   
+   .. rubric:: Functions
+
+   .. autosummary::
+      :toctree:
+      :template: function.rst
+   
+      aabb
+      add
+      box
+      canvas
+      colorbar
+      cones
+      cylinder
+      delete
+      label
+      mesh
+      pick
+      plot
+      quiver
+      scatter
+      show
+      sphere
+      splat
+      update
+   
+   

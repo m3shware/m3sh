@@ -1,0 +1,31 @@
+Prop
+====
+
+.. currentmodule:: m3sh.vis
+ 
+.. autoclass:: Prop
+   :show-inheritance:
+   :no-inherited-members:
+    
+   
+   
+   .. rubric:: Attributes
+ 
+   .. autosummary::
+      :toctree:
+      :template: attribute.rst
+   
+      ~Prop.actor
+      ~Prop.bounds
+      ~Prop.name
+      ~Prop.pickable
+      ~Prop.prop
+      ~Prop.visible
+   
+   
+ 
+   
+   
+   
+   
+   

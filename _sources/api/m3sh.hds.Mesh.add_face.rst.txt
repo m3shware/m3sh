@@ -1,0 +1,6 @@
+add\_face
+=========
+
+.. currentmodule:: m3sh.hds
+
+.. automethod:: Mesh.add_face
