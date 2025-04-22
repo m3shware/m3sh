@@ -301,7 +301,7 @@ def _window(width=1200, height=600, title=None, color=colors.white,
     renwin.Render()
 
     # Set application window taskbar and dock icon.
-    _icon(renwin)
+    _app_icon(renwin)
 
     # Camera orientation widget was introduced in VTK 9.1, alterantively
     # we can show an axis widget.
@@ -344,8 +344,8 @@ def add(obj, renderer=None):
 
     Parameters
     ----------
-    obj : vtkActor or Actor
-        Instance of a renderable object.
+    obj : Prop or vtkActor
+        Instance of a render object.
     renderer : vtkRenderer or vtkRenderWindow, optional
         The viewport or window to display the object.
 
@@ -489,20 +489,21 @@ def update(*args, **kwargs):
     """ Update viewports.
 
     Some changes to actors require an explicit re-render requests. Use this
-    function if your changes are not diplayed properly.
+    function if your changes are not diplayed properly. Changes applied
+    to external data structures that are sourced by VTK objects have to be
+    communicated by invoking the corresponding :meth:`modified` method.
 
     Parameters
     ----------
     *args
-        Variable length argument list. Not used. Only here to make this
-        function usable as a callback.
+        Variable length argument list.
     **kwargs
-        Dictionary of keyword arguments. Not used.
+        Dictionary of keyword arguments.
 
     Note
     ----
-    It may also be necessary to invoke the ``Modified()`` function on a data
-    set to see changes.
+    This functions defines arguments (which are ignored) to make it directly
+    usable as a callback function.
     """
     # Calling update() before a render window is created results in an
     # exception. Since a forced update is pointless in this situation, we
@@ -511,13 +512,23 @@ def update(*args, **kwargs):
         iren.Render()
 
 
-def _screenshot(filename, window=None):
+def screenshot(filename, scale=1.0, window=None):
     """ Save the current framebuffer contents.
 
     Parameters
     ----------
     filename : str
         Name of PNG target file.
+    scale : float, optional
+        Scale factor.
+    window : vtkRenderWindow, optional
+        Window to grab.
+
+    Note
+    ----
+    Some display properties (for example the width of mesh edges) are given
+    in screen units (i.e., pixels). This may give some unexpected results when
+    using the `scale` argument to change the resolution of the saved image.
     """
     window = _renwin if window is None else window
     width, height = window.GetSize()
@@ -525,7 +536,7 @@ def _screenshot(filename, window=None):
     filter = vtk.vtkResizingWindowToImageFilter()
     filter.SetInput(window)
     filter.SetInputBufferTypeToRGBA()
-    filter.SetSize(2*width, 2*height)
+    filter.SetSize(int(scale*width), int(scale*height))
     filter.Update()
 
     writer = vtk.vtkPNGWriter()
@@ -587,7 +598,7 @@ def colorbar(object, x=0.8, y=0.1):
 
     Parameters
     ----------
-    object : Shape or vtkActor
+    object : Prop or vtkActor
         A render object.
     x : float, optional
         Horizontal position in normalized window coordinates.
@@ -597,9 +608,9 @@ def colorbar(object, x=0.8, y=0.1):
     Returns
     -------
     LookupTable
-        Color bar representation of lookup table.
+        Visual representation of lookup table.
     """
-    colorbar = LookupTable(object.actor)
+    colorbar = LookupTable(object)
     colorbar.position = x, y
 
     add(colorbar)
@@ -625,7 +636,7 @@ def scatter(points, style='spheres', size=1.0, color=colors.dim_grey):
     Returns
     -------
     Spheres
-        The corresponding render object.
+        Sphere congruence prop.
 
     Note
     ----
@@ -668,14 +679,13 @@ def splat(points, vectors, size=1.0, color=colors.snow):
     return splats
 
 
-def quiver(points, vectors, size=1.0, color=colors.green_pale, *,
-           shaft_radius=0.025, tip_radius=0.05, tip_length=0.5,
-           resolution=6):
+def quiver(points, vectors, size=1.0, color=colors.green_pale, **kwargs):
+        #    shaft_radius=0.025, tip_radius=0.05, tip_length=0.5,
+        #    resolution=6):
     """ Quiver plot.
 
     Display arrows at given locations pointing in given directions. For
-    each point exactly one direction vector has to be given. The glyphs
-    used to model arrow can be customized via keyword arguments.
+    each point exactly one direction vector has to be given.
 
     Parameters
     ----------
@@ -683,12 +693,19 @@ def quiver(points, vectors, size=1.0, color=colors.green_pale, *,
         Point coordinates.
     vectors : array_like, shape (k, 3)
         Vector coordinates.
-    scale : float or array_like, optional
-        Scale of the displayed arrows. Either one global scale factor
-        or one scalar per point/arrow pair.
+    size : float, optional
+        Length of the displayed arrows.
     color : array_like, optional
-        Color specification. Either one global RGB color triplet or
-        one color triplet per point/arrow pair.
+        Color specification.
+
+    Returns
+    -------
+    Arrows
+        Vector field prop.
+
+
+    The glyphs used to model arrows can be customized via the following
+    keyword arguments.
 
     Keyword arguments
     -----------------
@@ -697,16 +714,13 @@ def quiver(points, vectors, size=1.0, color=colors.green_pale, *,
     tip_length : float, optional
     resolution : int, optional
 
-    Returns
-    -------
-    Actor
-        Actor instance.
-
     Note
     ----
-    See vtkArrowSource for more details on glyph customization.
+    If `array_like` parameters are of type :class:`~numpy.ndarray` their
+    data buffer is shared with VTK's data objects (use copies to decouple
+    storage).
     """
-    vf = Arrows(points, vectors)
+    vf = Arrows(points, vectors, **kwargs)
 
     vf.size = size
     vf.color = color
@@ -939,7 +953,7 @@ def _tweak_lut(lut, range=None, gradient=None, logscale=None, size=None,
     #     lut.SetNanColor(None)
 
 
-def _icon(window, file='m3sh.png'):
+def _app_icon(window, file='m3sh.png'):
     """
     """
     reader_factory = vtk.vtkImageReader2Factory()
@@ -958,41 +972,40 @@ def mesh(mesh, normals=None, color=colors.snow):
 
     Visualization of a polygonal mesh represented as a :class:`Mesh`
     instance or a 2-tuple holding an `array_like` vertex coordinate
-    representation and a list of face definitions.
-
-    Vertex normals are merely a visualization hint and result in smooth
-    shading of the mesh.
+    representation and a list of face definitions. The visual
+    appearance of a mesh can be modified by using the methods and
+    attributes of the returned object.
 
     Parameters
     ----------
     mesh : Mesh or tuple
         Polygonal mesh representation.
-    normals : ~numpy.ndarray, optional
-        Array of unit vertex normals, one vector per row.
+    normals : array_like, optional
+        Array of unit vertex normals.
     color : array_like, shape (3, ), optional
         RGB color triple.
 
     Returns
     -------
     PolyMesh
-        The visual appearance of a mesh can be modified by using the
-        methods and attributes of the returned object.
+        Polygonal mesh prop.
 
     Note
     ----
-    The `copy` argument only applies to `mesh`, the data buffer of the
-    vertex normal array is always shared with VTK.
+    Vertex normals are merely a visualization hint and result in smooth
+    shading of the mesh.
     """
     renmesh = PolyMesh(mesh)
     renmesh.color = color
+    renmesh.normals = normals
 
-    if normals is not None:
-        if isinstance(normals, np.ndarray):
-            pointdata = renmesh.polydata.GetPointData()
-            pointdata.SetNormals(numpy_to_vtk(normals))
-            pointdata.Modified()
-        else:
-            raise ValueError('normals must be ndarray instance')
+    # if normals is not None:
+    #     if isinstance(normals, np.ndarray):
+    #         pointdata = renmesh.polydata.GetPointData()
+    #         pointdata.SetNormals(numpy_to_vtk(normals))
+    #         # pointdata.Modified()
+    #     else:
+    #         raise ValueError('normals must be ndarray instance')
 
     add(renmesh)
     return renmesh
@@ -1662,43 +1675,53 @@ def _spheres(C, r):
 #     return tree
 
 
-def _display(message, x=0.05, y=0.95, size=12, color=colors.white, bold=False,
-            italic=False, shadow=False, frame=False):
+def display(message, x=0.05, y=0.95, size=12, color=colors.white,
+            bold=False, italic=False, shadow=False, frame=False):
     """ Display static text in the render window.
+
+    Location of the displayed text is given in normalized window
+    coordinates, i.e., relative to the width and height of the render
+    window.
 
     Parameters
     ----------
     message : str
         The message to be displayed.
+    x : float, optional
+        Coordinate in the interval [0, 1].
+    y : float, optional
+        Coordinate in the interval [0, 1].
+    size : int, optional
+        Font size.
 
     Returns
     -------
-    ret : vtkActor2D
-        The corresponding text actor.
+    Prop
+        The wrapped text actor.
     """
-    textProp = vtk.vtkTextProperty()
-    textProp.SetFontSize(size)
-    textProp.SetFontFamilyToCourier()
-    textProp.SetColor(color)
-    textProp.SetBold(bold)
-    textProp.SetBackgroundColor(colors.black)
-    textProp.SetBackgroundOpacity(0.0)
-    textProp.SetFrame(frame)
-    textProp.SetItalic(italic)
-    textProp.SetShadow(shadow)
-    textProp.SetVerticalJustificationToTop()
+    text = vtk.vtkTextProperty()
+    text.SetFontSize(size)
+    text.SetFontFamilyToCourier()
+    text.SetColor(color)
+    text.SetBold(bold)
+    text.SetBackgroundColor(colors.black)
+    text.SetBackgroundOpacity(0.0)
+    text.SetFrame(frame)
+    text.SetItalic(italic)
+    text.SetShadow(shadow)
+    text.SetVerticalJustificationToTop()
 
-    textMapper = vtk.vtkTextMapper()
-    textMapper.SetInput(message)
-    textMapper.SetTextProperty(textProp)
+    mapper = vtk.vtkTextMapper()
+    mapper.SetInput(message)
+    mapper.SetTextProperty(text)
 
-    textActor = vtk.vtkActor2D()
-    textActor.SetMapper(textMapper)
-    textActor.GetPositionCoordinate().SetCoordinateSystemToNormalizedViewport()
-    textActor.GetPositionCoordinate().SetValue(x, y)
+    actor = vtk.vtkActor2D()
+    actor.SetMapper(mapper)
+    actor.GetPositionCoordinate().SetCoordinateSystemToNormalizedViewport()
+    actor.GetPositionCoordinate().SetValue(x, y)
 
-    add(textActor)
-    return Prop(textActor)
+    add(actor)
+    return Prop(actor)
 
 
 def _put(pos, dim, text, scale=1.0, opacity=0.75, axis='x', follow=False,
@@ -1828,8 +1851,8 @@ def label(pos, text, size=12, opacity=1.0, color=colors.white):
 
     Returns
     -------
-    Actor
-        The created :class:`Actor` instance.
+    Prop
+        The created :class:`Prop` instance.
     """
     actor = vtk.vtkBillboardTextActor3D()
     actor.SetInput(text)
@@ -1860,7 +1883,7 @@ def _commands():
         ren = _renderer
         _splash = canvas(layer=1, interactive=False)
 
-        _display(message, y=0.9, shadow=True)
+        display(message, y=0.9, shadow=True)
 
         _renderer = ren
     else:
@@ -1868,9 +1891,10 @@ def _commands():
         _splash = None
 
 
-def show(width=1200, height=600, title=None, *, info=False, lmbdown=None,
-         lmbup=None, rmbdown=None, rmbup=None, keydown=None, keyup=None,
-         mousemove=None):
+def show(width=1200, height=600, title=None, info=False, shadows=False, *,
+         lmbdown=None, lmbup=None, rmbdown=None, rmbup=None, keydown=None,
+         keyup=None, mousemove=None,
+         ):
     """ Start the VTK event loop.
 
     Open window for rendering and start the VTK event loop.
@@ -1883,6 +1907,16 @@ def show(width=1200, height=600, title=None, *, info=False, lmbdown=None,
         Window height in pixels.
     title : str, optional
         Window title.
+    info : bool, optional
+        Show rendering backend information.
+    shadows : bool, optional
+        Render shadows, experimental.
+
+
+    This is a blocking function, a script will not advance beyond it until
+    the event loop stops. Interaction with displayed objects has to be
+    triggered by mouse and keyboard events and corresponding event handlers,
+    see below.
 
     Keyword Arguments
     -----------------
@@ -1901,19 +1935,12 @@ def show(width=1200, height=600, title=None, *, info=False, lmbdown=None,
     mousemove : list[callable]
         Mouse move callbacks.
 
-    Note
-    ----
-    This is a blocking function, a script will not advance beyond it until
-    the event loop stops. Interaction with displayed objects has to be
-    triggered by mouse and keyboard events and corresponding event handlers,
-    see below.
-
 
     .. rubric:: Mouse and keyboard events
 
-    Button press and release events as well as mouse move events are
-    recognized. Key press and release events are recognized. Assign a list
-    of callbacks to the corresponding keyword argument.
+    Button and keyboard press and release events as well as mouse move
+    events are recognized. Assign a list of callbacks to the corresponding
+    keyword argument to register callback functions.
 
     Note
     ----
@@ -1927,7 +1954,7 @@ def show(width=1200, height=600, title=None, *, info=False, lmbdown=None,
 
         .. py:function:: callback(iren, x, y, **kwargs)
 
-           :param iren: Identifies the render window.
+           :param iren: Render window interactor.
            :type iren: vtkRenderWindowInteractor
            :param x: Display coordinates of the mouse cursor.
            :type x: int
@@ -1947,6 +1974,26 @@ def show(width=1200, height=600, title=None, *, info=False, lmbdown=None,
     ----
     An object itself can be used as callback when it implements the
     :meth:`__call__` method.
+
+
+    .. rubric:: Example
+
+    Display a cube. Pressing the space bar will make a screenshot of the
+    current window. Since we do not care about the cursor position when
+    the space bar was pressed the positional arguments `x` and `y` are
+    collected in the `*args` argument and ignored.
+
+    .. code-block:: python
+       :linenos:
+
+       import m3sh.vis as vis
+
+       def key_press_callback(iren, *args, **kwargs):
+           if iren.GetKeySym().lower() == 'space':
+               vis.screenshot('box.png')
+
+       vis.box([-1, -1, -1], [1, 1, 1], edge=True)
+       vis.show(title='box', keydown=[key_press_callback])
     """
     # Global state variables that are modified in this function. Should
     # be reset when show() terminates.
@@ -2001,7 +2048,12 @@ def show(width=1200, height=600, title=None, *, info=False, lmbdown=None,
         # Changing the render pipeline to include shadows (see above)
         # can also be obtained by this command. Note that shadows are
         # wrong when rendering to non-square windows (known bug).
-        # renderer.SetUseShadows(True)
+        if shadows:
+            renderer.SetUseShadows(True)
+
+            # Set fixed aspect ratio 1:1 to circumvent the shadow bug.
+            size = min(width, height)
+            _renwin.SetSize(size, size)
 
     # Set up the render window interactor with its customized trackball
     # interactor style.
@@ -2020,7 +2072,7 @@ def show(width=1200, height=600, title=None, *, info=False, lmbdown=None,
     _renwin.Render()
 
     # Set application window taskbar and dock icon.
-    _icon(_renwin)
+    _app_icon(_renwin)
 
     # Camera orientation widget was introduced in VTK 9.1, alterantively
     # we can show an axis widget.
@@ -2056,7 +2108,7 @@ def show(width=1200, height=600, title=None, *, info=False, lmbdown=None,
         else:
             canvas(_splash)
 
-        _display(f"VTK Version {vtk.vtkVersion.GetVTKVersion()}\n" +
+        display(f"VTK Version {vtk.vtkVersion.GetVTKVersion()}\n" +
                 f"OpenGL support {_renwin.SupportsOpenGL()}\n" +
                 f"Hardware acceleration {_renwin.IsDirect()}",
                 x=0.8, y=.15, shadow=True)
@@ -2218,7 +2270,7 @@ def _show(width=1200, height=600, title=None, position=(0, 0), *, info=False,
     _renwin.Render()
 
     # Set application window taskbar and dock icon.
-    _icon(_renwin)
+    _app_icon(_renwin)
 
     # Camera orientation widget was introduced in VTK 9.1, alterantively
     # we can show an axis widget.
@@ -2254,7 +2306,7 @@ def _show(width=1200, height=600, title=None, position=(0, 0), *, info=False,
         else:
             canvas(_splash)
 
-        _display(f"VTK Version {vtk.vtkVersion.GetVTKVersion()}\n" +
+        display(f"VTK Version {vtk.vtkVersion.GetVTKVersion()}\n" +
                 f"OpenGL support {_renwin.SupportsOpenGL()}\n" +
                 f"Hardware acceleration {_renwin.IsDirect()}",
                 x=0.8, y=.15, shadow=True)
@@ -2347,7 +2399,7 @@ def pick(x, y, type='cell', iren=None):
 def _main():
     import argparse
 
-    parser = argparse.ArgumentParser(exit_on_error=False)
+    parser = argparse.ArgumentParser()
     parser.add_argument('file', nargs='*', type=str, help='OBJ input file')
     parser.add_argument('--bounds', action='store_true', help='show AABB')
     parser.add_argument('--edges', action='store_true', help='show edges')
@@ -2366,12 +2418,11 @@ def _main():
 
         # Only for testing, remove later...
         # scalars = mesh.points[:, 2]
-        # mesh.colorize(scalars, items='verts')
+        # mesh.colorize(scalars, items='verts', interpolate_scalars=True)
         # mesh.lookuptable((min(scalars), max(scalars)), gradient='spectral')
 
-        # if mesh.normals is not None:
-        #     add(_VectorField(mesh._vtk_polydata,
-        #                      mesh._avg_edge_length()[0]))
+        if mesh.normals is not None:
+            quiver(mesh, None, mesh._avg_edge_length()[0])
 
         if args.bounds:
             aabb(mesh)
@@ -2385,6 +2436,8 @@ def _main():
         # if args.silhouette:
         #     mesh.silhouette(width=4, color=colors.black)
 
+    # Window title holds the list of all given filenames even if only
+    # one file was given.
     show(title=args.file, info=True)
 
 
@@ -2394,17 +2447,19 @@ def _show_vertex_index_cb(iren, x, y, **kwargs):
     print(pick(x, y, type='cell', iren=iren)[1:])
 
 
-def _show_cell_labels(actor):
+def _show_cell_labels(obj):
     """
     """
     ids = vtk.vtkIdFilter()
-    ids.SetInputData(actor.polydata)
+    ids.SetInputData(obj._vtk_polydata)
     ids.SetPointIds(False)
     ids.SetCellIds(True)
 
     cc = vtk.vtkCellCenters()
     cc.SetInputConnection(ids.GetOutputPort())
 
+    # Labels are drawn on top of all other objects. It should be possible
+    # to take visibility into account.
     mapper = vtk.vtkLabeledDataMapper()
     mapper.SetInputConnection(cc.GetOutputPort())
     mapper.SetLabelModeToLabelScalars()
@@ -2413,6 +2468,7 @@ def _show_cell_labels(actor):
     actor.SetMapper(mapper)
 
     add(actor)
+    return Prop(actor)
 
 
 class Prop:
@@ -2522,6 +2578,12 @@ class PropertyMixin:
 
     @property
     def opacity(self):
+        """ Opacity property.
+
+        Set and get opacity value.
+
+        :type: float
+        """
         return self._vtk_prop.GetProperty().GetOpacity()
 
     @opacity.setter
@@ -2546,43 +2608,44 @@ class MapperMixin:
                     size=None, **kwargs):
         """ Modify lookup table properties.
 
-        An objects lookup tables determines how entries of the scalar array
-        are translated to color values. Lookup tables have no effect when
-        directly mapping RGB color values.
+        An objects' lookup tables determines how entries of the scalar array
+        are translated to color values. Smooth color gradients are defined
+        by the color schemes 'hot', 'cool', 'jet', and 'grey'. The color
+        schemes 'spectral', 'diverging', 'blue', 'orange', and 'purple'
+        define a discrete color series.
 
         Parameters
         ----------
         range : (float, float)
-            Accpeted range of scalar values.
+            Accpeted range of scalar values, default [0, 1].
         gradient : str
-            Color scheme identifier, see below.
+            Color scheme identifier.
         logscale : bool
             Switch between linear and logarithmic scale.
         size : int
             Size of lookup table.
 
+        Note
+        ----
+        Lookup tables have no effect when directly mapping RGB color values.
+
+
+        If the corresponding keyword arguments are provied, out of range
+        values are marked with the `below`, `above`, and `nan` colors. Note
+        that those colors also have an alpha value to control opacity.
+
         Keyword arguments
         -----------------
         below : array_like, shape (4, )
-            Color for scalars below the specified range.
+            Color for scalars below range.
         above: array_like, shape (4, )
-            Color for scalars above the specified range.
+            Color for scalars above range.
         nan : array_like, shape (4, )
             Special color for NaN scalar values.
 
-
-        Smooth color gradients are defined by the color scheme identifiers
-        'hot', 'cool', 'jet', and 'grey'. The color schemes 'spectral',
-        'diverging', 'blue', 'orange', and 'purple' define a discrete color
-        series.
-
-        If provied, out of range values are marked with the `below`,
-        `above`, and `nan` colors. Not that those colors also have an alpha
-        intensity value to control opacity.
-
         Note
         ----
-        Arguments not provided have no affect on the corresponding lookup
+        Any arguments not provided have no affect on the corresponding lookup
         table property.
         """
         # The current lookup table. Properties are modified according to the
@@ -2595,6 +2658,12 @@ class GlyphMixin:
 
     @property
     def size(self):
+        """ Size property.
+
+        Set and get global size for all glyphs.
+
+        :type: float
+        """
         # Global scale factor that is multiplied by scalars values if
         # used to set per point scale factors.
         return self._vtk_glyph.GetScaleFactor()
@@ -2604,15 +2673,28 @@ class GlyphMixin:
         self._vtk_glyph.SetScaleFactor(value)
 
     def scale(self, values):
+        """ Scale glyph geometry.
+
+        Parameters
+        ----------
+        values : array_like
+            Per point scale factors.
+
+        Note
+        ----
+        Scale factors and :attr:`size` are multiplied to obtain the final
+        size of a glyph.
+        """
         self._scalars = np.asarray(values)
         self._vtk_polydata.GetPointData().SetScalars(numpy_to_vtk(self._scalars))
         self._vtk_glyph.SetScaling(True)
+        self._vtk_glyph.SetScaleModeToScaleByScalar()
 
     @property
     def color(self):
         """ Color property.
 
-        Setting the global color attribute disables coloring using previously
+        Setting the color attribute disables coloring using previously
         set scalars with :meth:`colorize`.
 
         :type: array_like, shape (3, )
@@ -2943,25 +3025,78 @@ class _VectorField():
 
 
 class OrientedGlyphs(Prop, PropertyMixin, MapperMixin, GlyphMixin):
+    """ Glyph base class.
+
+    Base class for all simple oriented glyphs. Displays a scaled and
+    oriented `source` shape at all point locations.
+
+    Parameters
+    ----------
+    points : array_like
+        Point coordinates.
+    vectors : array_like
+        Orientation defining vectors.
+    source
+        Source object.
+    src_xform : vtkTransform
+        Source transformation.
+
+    Note
+    ----
+    If `array_like` parameters are of type :class:`~numpy.ndarray` their
+    data buffer is shared with VTK's data objects (use copies to decouple
+    storage).
+    """
 
     def __init__(self, points, vectors, source, src_xform):
-        self._points = np.asarray(points)
-        self._vectors = np.asarray(vectors)
-        self._source = source
+        if isinstance(points, Prop):
+            points = points._vtk_polydata
 
-        self._vtk_points = vtk.vtkPoints()
-        self._vtk_points.SetData(numpy_to_vtk(self._points))
+        if isinstance(points, vtk.vtkPolyData):
+            self._points = vtk_to_numpy(points.GetPoints().GetData())
 
-        self._vtk_polydata = vtk.vtkPolyData()
-        self._vtk_polydata.SetPoints(self._vtk_points)
-        self._vtk_polydata.GetPointData().SetNormals(numpy_to_vtk(self._vectors))
+            # Normals should either be stored with the polydata instance
+            # (vectors should be None in this case) or specified by the
+            # vectors parameter (in this case the polydata should not
+            # define normals).
+            if ((normals := points.GetPointData().GetNormals()) is not None
+                    and vectors is not None):
+                raise ValueError('ambiguous normal specification')
+
+            if normals is not None:
+                self._vectors = vtk_to_numpy(normals)
+            elif vectors is not None:
+                self._vector = np.asarray(vectors)
+                points.GetPointData().SetNormals(numpy_to_vtk(self._vector))
+            else:
+                raise ValueError('no normals specified')
+
+            self._vtk_points = points.GetPoints()
+            self._vtk_polydata = points
+        else:
+            self._points = np.asarray(points)
+            self._vectors = np.asarray(vectors)
+
+            self._vtk_points = vtk.vtkPoints()
+            self._vtk_points.SetData(numpy_to_vtk(self._points))
+
+            self._vtk_polydata = vtk.vtkPolyData()
+            self._vtk_polydata.SetPoints(self._vtk_points)
+
+            pointdata = self._vtk_polydata.GetPointData()
+            pointdata.SetNormals(numpy_to_vtk(self._vectors))
+
+        self._vtk_source = source
 
         self._vtk_glyph = vtk.vtkGlyph3D()
         self._vtk_glyph.SetInputData(self._vtk_polydata)
         self._vtk_glyph.SetSourceConnection(source.GetOutputPort())
         self._vtk_glyph.OrientOn()
         self._vtk_glyph.SetVectorModeToUseNormal()
-        self._vtk_glyph.SetScaleModeToScaleByScalar()
+
+        # This allows scaling by the global scale factor but does not
+        # use local scale factors associated with individual points.
+        self._vtk_glyph.SetScaleModeToDataScalingOff()
 
         if src_xform is not None:
             self._vtk_glyph.SetSourceTransform(src_xform)
@@ -2979,6 +3114,7 @@ class OrientedGlyphs(Prop, PropertyMixin, MapperMixin, GlyphMixin):
 
 
 class Spheres(Prop, PropertyMixin, MapperMixin, GlyphMixin):
+    """ Point cloud."""
 
     def __init__(self, points):
         self._points = np.asarray(points)
@@ -3040,8 +3176,8 @@ class Spheres(Prop, PropertyMixin, MapperMixin, GlyphMixin):
 
 class Arrows(OrientedGlyphs):
 
-    def __init__(self, points, vectors):
-        super().__init__(points, vectors, *self._arrow())
+    def __init__(self, points, vectors, **kwargs):
+        super().__init__(points, vectors, *self._arrow(**kwargs))
 
     @staticmethod
     def _arrow(shaft_radius=0.025, tip_radius=0.05, tip_length=0.5,
@@ -3122,7 +3258,9 @@ class Cones(Prop, PropertyMixin):
 
         self._vtk_polydata = vtk.vtkPolyData()
         self._vtk_polydata.SetPoints(self._vtk_points)
-        self._vtk_polydata.GetPointData().SetVectors(numpy_to_vtk(self._vectors))
+
+        pointdata = self._vtk_polydata.GetPointData()
+        pointdata.SetVectors(numpy_to_vtk(self._vectors))
 
         indices = vtk.vtkIntArray()
         indices.SetNumberOfComponents(1)
@@ -3703,9 +3841,15 @@ class PolyData(Prop, PropertyMixin, MapperMixin):
     def __init__(self, data, *, verts=None, lines=None, polys=None):
         if isinstance(data, vtk.vtkPolyData):
             self._points = vtk_to_numpy(data.GetPoints().GetData())
+            self._normals = None
+
+            if (normals := data.GetPointData().GetNormals()) is not None:
+                self._normals = vtk_to_numpy(normals)
+
             self._vtk_polydata = data
         else:
             self._points = np.asarray(data)
+            self._normals = None
             self._vtk_polydata = vtk.vtkPolyData()
 
             points = vtk.vtkPoints()
@@ -3780,6 +3924,26 @@ class PolyData(Prop, PropertyMixin, MapperMixin):
         return self._points
 
     @property
+    def normals(self):
+        """ Vertex normals.
+
+        :type: ~numpy.ndarray
+        """
+        return self._normals
+
+    @normals.setter
+    def normals(self, value):
+        data = self._vtk_polydata.GetPointData()
+
+        if value is not None:
+            self._normals = np.asarray(value)
+            value = numpy_to_vtk(self._normals)
+        else:
+            self._normals = None
+
+        data.SetNormals(value)
+
+    @property
     def color(self):
         """ Color property.
 
@@ -3795,13 +3959,13 @@ class PolyData(Prop, PropertyMixin, MapperMixin):
         self._vtk_prop.GetMapper().SetScalarVisibility(False)
         self._vtk_prop.GetProperty().SetColor(value)
 
-    def colorize(self, scalars, items):
-        """ Colorize polygonal data.
+    def colorize(self, scalars, items, interpolate_scalars=False):
+        r""" Colorize polygonal data.
 
         Colorize by assinging vertex colors or face colors. Vertex colors
         are interpolated across faces. Colors can be specified directly as
         RGB intensity triples or via a color map that maps scalar values
-        to RGB values.
+        to colors (see :meth:`lookuptable` for details on the mapping).
 
         Parameters
         ----------
@@ -3809,29 +3973,63 @@ class PolyData(Prop, PropertyMixin, MapperMixin):
             Scalar values.
         items : str
             Either 'verts' or 'faces'.
-        range : (float, float), optional
-            Lookup table range. Defaults to the range given by the
-            smallest and largest scalar value.
-        gradient : str, optional
-            Color scheme identifier.
-        logscale : bool, optional
-            Toggle logarithmic scaling.
-        size : int, optional
-            Size of lookup table.
 
-
-        Mapping scalars to colors uses a lookup table managed by the
-        :attr:`mapper` instance of an actor. The `range`, `gradient`, and
-        `logscale` arguments directly influence the lookup table. Lookup
-        tables can be further customized via the :meth:`lookuptable` method.
-
-        Use the :func:`colorbar` function to display a visual representation
-        of a lookup table.
 
         Note
         ----
-        When specifying colors directly by RGB triples, all arguments
-        except `scalars` and `items` are ignored.
+        Use the :func:`colorbar` function to display a visual representation
+        of the lookup table used for color mapping.
+
+
+        .. rubric:: Examples
+
+        Apply colors to the vertices of the unit cube :math:`[0, 1]^3`.
+        Since vertex coordinates range between 0 and 1 we use them directly
+        as RGB color specification.
+
+        .. code-block:: python
+           :linenos:
+
+           import m3sh.vis as vis
+
+           box = vis.box([0., 0., 0.], [1., 1., 1.])
+           box.edges()
+           box.colorize(box.points, 'verts')
+
+           vis.show()
+
+
+        Color the cube by :math:`z`-coordinate value. Not the difference
+        when interpolating scalars before mapping them to colors.
+
+        .. code-block:: python
+           :linenos:
+
+           import m3sh.vis as vis
+
+           box = vis.box([0., 0., 0.], [1., 1., 1.])
+           box.edges()
+           box.colorize(box.points[:, 2], 'verts', interpolate_scalars=True)
+
+           vis.colorbar(box)
+           vis.show()
+
+
+        To map colors to faces we have to specify a scalar for each of the
+        six faces of the cube. Note that the `interpolate_scalars` argument
+        has no effect when mapping colors to faces.
+
+        .. code-block:: python
+           :linenos:
+
+           import m3sh.vis as vis
+
+           box = vis.box([0., 0., 0.], [1., 1., 1.])
+           box.edges()
+           box.colorize([.0, .2, .4, .6, .8, 1.], 'faces')
+
+           vis.colorbar(box)
+           vis.show()
         """
         if items == 'verts':
             self._set_point_scalars(scalars)
@@ -3839,6 +4037,9 @@ class PolyData(Prop, PropertyMixin, MapperMixin):
             self._set_cell_scalars(scalars)
         else:
             raise ValueError(f"invalid item argument '{items}'")
+
+        self._vtk_prop.GetMapper().SetInterpolateScalarsBeforeMapping(
+            interpolate_scalars)
 
     # def contour(self, scalars=None, *, levels=None, range=(None, None),
     #             width=None, style=None, color=None):
@@ -3986,6 +4187,31 @@ class PolyData(Prop, PropertyMixin, MapperMixin):
         self._vtk_polydata.GetPoints().Modified()
         self._vtk_polydata.GetPointData().Modified()
         self._vtk_polydata.GetCellData().Modified()
+
+    def _avg_edge_length(self):
+        filter = vtk.vtkExtractEdges()
+        filter.SetInputData(self._vtk_polydata)
+        filter.Update()
+
+        points = vtk_to_numpy(filter.GetOutput().GetPoints().GetData())
+        edges = filter.GetOutput().GetLines()
+        edge_iter = edges.NewIterator()
+
+        min, max, sum = np.inf, 0.0, 0.0
+
+        while not edge_iter.IsDoneWithTraversal():
+            edge = edge_iter.GetCurrentCell()
+            i, j = edge.GetId(0), edge.GetId(1)
+
+            length = np.linalg.norm(points[i, :] - points[j, :])
+            sum += length
+
+            min = length if length < min else min
+            max = length if length > max else max
+
+            edge_iter.GoToNextCell()
+
+        return sum / edges.GetNumberOfCells(), min, max
 
     def _set_point_scalars(self, value):
         polydata = self._vtk_polydata
@@ -4697,7 +4923,7 @@ class LookupTable(Prop):
 
     Parameters
     ----------
-    actor : Actor or vtkActor
+    actor : Prop or vtkActor
         A render object.
 
     Note
