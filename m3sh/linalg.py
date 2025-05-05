@@ -29,7 +29,7 @@ import math
 import numpy as np
 
 
-def angle(v, w, degrees=False):
+def angle(v, w, sign=None, degrees=False):
     """ Angle.
 
     Parameters
@@ -50,6 +50,9 @@ def angle(v, w, degrees=False):
 
     if degrees:
         return math.degrees(angle)
+
+    if sign is not None and dot(sign, cross(v, w)) < 0.0:
+        angle *= -1.0
 
     return angle
 
