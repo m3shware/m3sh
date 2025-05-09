@@ -406,13 +406,13 @@ def aabb(points, opacity=0.15, edges=True, labels='dim', color=colors.snow):
 
     Returns
     -------
-    box : PolyData
+    PolyMesh
         Bounding box shape.
 
     Note
     ----
     Visual properties of the bounding box edges can be further customized
-    via the returned :class:`PolyData` instance.
+    via the returned :class:`PolyMesh` instance.
     """
     if isinstance(points, Prop):
         a, b = points.bounds
@@ -438,7 +438,7 @@ def aabb(points, opacity=0.15, edges=True, labels='dim', color=colors.snow):
                    a[2], b[2])
     cube.Update()
 
-    box = PolyData(cube.GetOutput())
+    box = PolyMesh(cube.GetOutput())
     box.color = color
     box.opacity = opacity
 
@@ -967,7 +967,7 @@ def _app_icon(window, file='m3sh.png'):
         window.SetIcon(reader.GetOutput())
 
 
-def mesh(mesh, normals=None, color=colors.snow):
+def mesh(mesh, color=colors.snow):
     """ Mesh visualization.
 
     Visualization of a polygonal mesh represented as a :class:`Mesh`
@@ -980,35 +980,53 @@ def mesh(mesh, normals=None, color=colors.snow):
     ----------
     mesh : Mesh or tuple
         Polygonal mesh representation.
-    normals : array_like, optional
-        Array of unit vertex normals.
     color : array_like, shape (3, ), optional
         RGB color triple.
 
     Returns
     -------
     PolyMesh
-        Polygonal mesh prop.
-
-    Note
-    ----
-    Vertex normals are merely a visualization hint and result in smooth
-    shading of the mesh.
+        Polygonal mesh instance.
     """
     renmesh = PolyMesh(mesh)
     renmesh.color = color
-    renmesh.normals = normals
-
-    # if normals is not None:
-    #     if isinstance(normals, np.ndarray):
-    #         pointdata = renmesh.polydata.GetPointData()
-    #         pointdata.SetNormals(numpy_to_vtk(normals))
-    #         # pointdata.Modified()
-    #     else:
-    #         raise ValueError('normals must be ndarray instance')
 
     add(renmesh)
     return renmesh
+
+
+def graph(nodes, graph, color=colors.black):
+    """ Graph visualization.
+
+    Experimental support for graph plotting. The `graph` parameter
+    is described in more detail in SciPy's :mod:`~scipy.sparse.csgraph`
+    module
+
+    Parameters
+    ----------
+    nodes : array_like
+        Node coordinate array.
+    graph : csr_matrix
+        Combinatorial graph definition.
+    color : array_like, shape (3, ), optional
+        Edge color.
+
+    Returns
+    -------
+    PolyGraph
+        Polygonal graph instance.
+
+    Note
+    ----
+    Conversion from a dense matrix repesentation can be achieved
+    via the :func:`~scipy.sparse.csgraph.csgraph_from_dense` utility
+    function.
+    """
+    rengraph = PolyGraph(nodes, graph)
+    rengraph.color = color
+
+    add(rengraph)
+    return rengraph
 
 
 def _contour(M, S, levels=10, width=2.0, style='-', color=(0.0, 0.0, 0.0)):
@@ -1421,13 +1439,13 @@ def box(a, b, opacity=1.0, edges=True, color=colors.snow):
 
     Returns
     -------
-    PolyData
+    PolyMesh
         The corresponding polygonal shape representation.
 
     Note
     ----
     Visual properties of the box edges can be further customized via
-    the returned :class:`PolyData` instance.
+    the returned :class:`PolyMesh` instance.
     """
     cube = vtk.vtkCubeSource()
     cube.SetBounds(a[0], b[0],
@@ -1435,7 +1453,7 @@ def box(a, b, opacity=1.0, edges=True, color=colors.snow):
                    a[2], b[2])
     cube.Update()
 
-    box = PolyData(cube.GetOutput())
+    box = PolyMesh(cube.GetOutput())
     box.color = color
     box.opacity = opacity
 
@@ -1893,8 +1911,7 @@ def _commands():
 
 def show(width=1200, height=600, title=None, info=False, shadows=False, *,
          lmbdown=None, lmbup=None, rmbdown=None, rmbup=None, keydown=None,
-         keyup=None, mousemove=None,
-         ):
+         keyup=None, mousemove=None):
     """ Start the VTK event loop.
 
     Open window for rendering and start the VTK event loop.
@@ -2414,15 +2431,15 @@ def _main():
         reader.SetFileName(file)
         reader.Update()
 
-        add(mesh := PolyData(reader.GetOutput()))
+        add(mesh := PolyMesh(reader.GetOutput()))
 
         # Only for testing, remove later...
         # scalars = mesh.points[:, 2]
         # mesh.colorize(scalars, items='verts', interpolate_scalars=True)
         # mesh.lookuptable((min(scalars), max(scalars)), gradient='spectral')
 
-        if mesh.normals is not None:
-            quiver(mesh, None, mesh._avg_edge_length()[0])
+        # if mesh.normals is not None:
+        #     quiver(mesh, None, mesh._avg_edge_length()[0])
 
         if args.bounds:
             aabb(mesh)
@@ -3828,7 +3845,7 @@ class PolyData(Prop, PropertyMixin, MapperMixin):
     verts : list, optional
         Combinatorial vertex definitions.
     lines : list, optional
-        Not supported yet.
+        Combinatorial line definitions.
     polys : list, optional
         Combinatorial face definitions.
 
@@ -3841,15 +3858,9 @@ class PolyData(Prop, PropertyMixin, MapperMixin):
     def __init__(self, data, *, verts=None, lines=None, polys=None):
         if isinstance(data, vtk.vtkPolyData):
             self._points = vtk_to_numpy(data.GetPoints().GetData())
-            self._normals = None
-
-            if (normals := data.GetPointData().GetNormals()) is not None:
-                self._normals = vtk_to_numpy(normals)
-
             self._vtk_polydata = data
         else:
             self._points = np.asarray(data)
-            self._normals = None
             self._vtk_polydata = vtk.vtkPolyData()
 
             points = vtk.vtkPoints()
@@ -3867,16 +3878,18 @@ class PolyData(Prop, PropertyMixin, MapperMixin):
                 polydata.SetVerts(cells)
 
             if lines is not None:
-                print("the 'lines' argument is ignored")
+                polydata = self._vtk_polydata
+                cells = vtk.vtkCellArray()
 
-                # cells = vtk.vtkCellArray()
-                # for i in range(len(lines) - 1):
-                #     if lines[i] > -1 and lines[i+1] > -1:
-                #         line = vtk.vtkIdList()
-                #         line.InsertNextId(lines[i])
-                #         line.InsertNextId(lines[i+1])
-                #         cells.InsertNextCell(line)
-                # polydata.SetLines(cells)
+                for e in lines:
+                    edge = vtk.vtkIdList()
+
+                    for v in e:
+                        edge.InsertNextId(int(v))
+
+                    cells.InsertNextCell(edge)
+
+                polydata.SetLines(cells)
 
             if polys is not None:
                 polydata = self._vtk_polydata
@@ -3924,26 +3937,6 @@ class PolyData(Prop, PropertyMixin, MapperMixin):
         return self._points
 
     @property
-    def normals(self):
-        """ Vertex normals.
-
-        :type: ~numpy.ndarray
-        """
-        return self._normals
-
-    @normals.setter
-    def normals(self, value):
-        data = self._vtk_polydata.GetPointData()
-
-        if value is not None:
-            self._normals = np.asarray(value)
-            value = numpy_to_vtk(self._normals)
-        else:
-            self._normals = None
-
-        data.SetNormals(value)
-
-    @property
     def color(self):
         """ Color property.
 
@@ -3972,7 +3965,7 @@ class PolyData(Prop, PropertyMixin, MapperMixin):
         scalars : array_like
             Scalar values.
         items : str
-            Either 'verts' or 'faces'.
+            Either 'verts' or 'cells'.
 
 
         Note
@@ -4026,14 +4019,14 @@ class PolyData(Prop, PropertyMixin, MapperMixin):
 
            box = vis.box([0., 0., 0.], [1., 1., 1.])
            box.edges()
-           box.colorize([.0, .2, .4, .6, .8, 1.], 'faces')
+           box.colorize([.0, .2, .4, .6, .8, 1.], 'cells')
 
            vis.colorbar(box)
            vis.show()
         """
         if items == 'verts':
             self._set_point_scalars(scalars)
-        elif items == 'faces':
+        elif items == 'cells':
             self._set_cell_scalars(scalars)
         else:
             raise ValueError(f"invalid item argument '{items}'")
@@ -4096,82 +4089,82 @@ class PolyData(Prop, PropertyMixin, MapperMixin):
     #         mapper.SetScalarVisibility(False)
     #         actor.GetProperty().SetColor(color)
 
-    def verts(self, style=None, size=None, color=None):
-        """ Vertex display.
+    # def verts(self, style=None, size=None, color=None):
+    #     """ Vertex display.
 
-        Set visual properties of vertices.
+    #     Set visual properties of vertices.
 
-        Parameters
-        ----------
-        style : str, optional
-            Either 'points' or 'spheres', :obj:`False` to disable.
-        size : int, optional
-            Size in pixels.
-        color : array_like, shape (3, ), optional
-            Vertex color.
+    #     Parameters
+    #     ----------
+    #     style : str, optional
+    #         Either 'points' or 'spheres', :obj:`False` to disable.
+    #     size : int, optional
+    #         Size in pixels.
+    #     color : array_like, shape (3, ), optional
+    #         Vertex color.
 
-        Note
-        ----
-        Parameters with a :obj:`None` value do not affect the corresponding
-        vertex display property.
+    #     Note
+    #     ----
+    #     Parameters with a :obj:`None` value do not affect the corresponding
+    #     vertex display property.
 
-        Important
-        ---------
-        On some rendering backends vertex display only works when edges
-        are displayed. For now use :func:`scatter` as a work-around.
-        """
-        if style == 'points':
-            self._vtk_prop.GetProperty().SetRenderPointsAsSpheres(False)
-            self._vtk_prop.GetProperty().SetVertexVisibility(True)
-        elif style == 'spheres':
-            self._vtk_prop.GetProperty().SetRenderPointsAsSpheres(True)
-            self._vtk_prop.GetProperty().SetVertexVisibility(True)
-        elif style == '' or style is False:
-            self._vtk_prop.GetProperty().SetVertexVisibility(False)
-        else:
-            self._vtk_prop.GetProperty().SetVertexVisibility(True)
+    #     Important
+    #     ---------
+    #     On some rendering backends vertex display only works when edges
+    #     are displayed. For now use :func:`scatter` as a work-around.
+    #     """
+    #     if style == 'points':
+    #         self._vtk_prop.GetProperty().SetRenderPointsAsSpheres(False)
+    #         self._vtk_prop.GetProperty().SetVertexVisibility(True)
+    #     elif style == 'spheres':
+    #         self._vtk_prop.GetProperty().SetRenderPointsAsSpheres(True)
+    #         self._vtk_prop.GetProperty().SetVertexVisibility(True)
+    #     elif style == '' or style is False:
+    #         self._vtk_prop.GetProperty().SetVertexVisibility(False)
+    #     else:
+    #         self._vtk_prop.GetProperty().SetVertexVisibility(True)
 
-        if size is not None:
-            self._vtk_prop.GetProperty().SetPointSize(size)
+    #     if size is not None:
+    #         self._vtk_prop.GetProperty().SetPointSize(size)
 
-        if color is not None:
-            self._vtk_prop.GetProperty().SetVertexColor(color)
+    #     if color is not None:
+    #         self._vtk_prop.GetProperty().SetVertexColor(color)
 
-    def edges(self, style=None, width=None, color=None):
-        """ Edge display.
+    # def edges(self, style=None, width=None, color=None):
+    #     """ Edge display.
 
-        Set visual properties of edges.
+    #     Set visual properties of edges.
 
-        Parameters
-        ----------
-        style : str, optional
-            Either 'lines' or 'tubes', :obj:`False` to disable.
-        width : int, optional
-            Edge width in pixels.
-        color : array_like, shape (3, ), optional
-            Edge color.
+    #     Parameters
+    #     ----------
+    #     style : str, optional
+    #         Either 'lines' or 'tubes', :obj:`False` to disable.
+    #     width : int, optional
+    #         Edge width in pixels.
+    #     color : array_like, shape (3, ), optional
+    #         Edge color.
 
-        Note
-        ----
-        Parameters with a :obj:`None` value do not affect the corresponding
-        edge display property.
-        """
-        if style == 'lines':
-            self._vtk_prop.GetProperty().SetRenderLinesAsTubes(False)
-            self._vtk_prop.GetProperty().SetEdgeVisibility(True)
-        elif style == 'tubes':
-            self._vtk_prop.GetProperty().SetRenderLinesAsTubes(True)
-            self._vtk_prop.GetProperty().SetEdgeVisibility(True)
-        elif style == '' or style is False:
-            self._vtk_prop.GetProperty().SetEdgeVisibility(False)
-        else:
-            self._vtk_prop.GetProperty().SetEdgeVisibility(True)
+    #     Note
+    #     ----
+    #     Parameters with a :obj:`None` value do not affect the corresponding
+    #     edge display property.
+    #     """
+    #     if style == 'lines':
+    #         self._vtk_prop.GetProperty().SetRenderLinesAsTubes(False)
+    #         self._vtk_prop.GetProperty().SetEdgeVisibility(True)
+    #     elif style == 'tubes':
+    #         self._vtk_prop.GetProperty().SetRenderLinesAsTubes(True)
+    #         self._vtk_prop.GetProperty().SetEdgeVisibility(True)
+    #     elif style == '' or style is False:
+    #         self._vtk_prop.GetProperty().SetEdgeVisibility(False)
+    #     else:
+    #         self._vtk_prop.GetProperty().SetEdgeVisibility(True)
 
-        if width is not None:
-            self._vtk_prop.GetProperty().SetLineWidth(width)
+    #     if width is not None:
+    #         self._vtk_prop.GetProperty().SetLineWidth(width)
 
-        if color is not None:
-            self._vtk_prop.GetProperty().SetEdgeColor(color)
+    #     if color is not None:
+    #         self._vtk_prop.GetProperty().SetEdgeColor(color)
 
     def modified(self):
         """ Update notification.
@@ -4187,31 +4180,6 @@ class PolyData(Prop, PropertyMixin, MapperMixin):
         self._vtk_polydata.GetPoints().Modified()
         self._vtk_polydata.GetPointData().Modified()
         self._vtk_polydata.GetCellData().Modified()
-
-    def _avg_edge_length(self):
-        filter = vtk.vtkExtractEdges()
-        filter.SetInputData(self._vtk_polydata)
-        filter.Update()
-
-        points = vtk_to_numpy(filter.GetOutput().GetPoints().GetData())
-        edges = filter.GetOutput().GetLines()
-        edge_iter = edges.NewIterator()
-
-        min, max, sum = np.inf, 0.0, 0.0
-
-        while not edge_iter.IsDoneWithTraversal():
-            edge = edge_iter.GetCurrentCell()
-            i, j = edge.GetId(0), edge.GetId(1)
-
-            length = np.linalg.norm(points[i, :] - points[j, :])
-            sum += length
-
-            min = length if length < min else min
-            max = length if length > max else max
-
-            edge_iter.GoToNextCell()
-
-        return sum / edges.GetNumberOfCells(), min, max
 
     def _set_point_scalars(self, value):
         polydata = self._vtk_polydata
@@ -4819,14 +4787,26 @@ class PolyMesh(PolyData):
     """
 
     def __init__(self, mesh):
-        # We rely on the __getitem__ method of the Mesh class to get the
-        # array of point coordintaes and an iterable that can be treated
-        # as list[list[int]] to specify mesh connectivity.
-        super().__init__(mesh[0], polys=mesh[1])
+        if isinstance(mesh, vtk.vtkPolyData):
+            super().__init__(mesh)
 
-        # Initialize private instance attributes. Can be accessed as a
-        # read only property of the same name.
-        self._mesh = mesh
+            # There is not halfedge mesh instance when initializing from
+            # a vtkPolyData instance.
+            self._mesh = None
+            self._normals = None
+
+            if (normals := mesh.GetPointData().GetNormals()) is not None:
+                self._normals = vtk_to_numpy(normals)
+        else:
+            # We rely on the __getitem__ method of the Mesh class to get
+            # the array of point coordintaes and an iterable that can be
+            # treated as list[list[int]] to specify mesh connectivity.
+            super().__init__(mesh[0], polys=mesh[1])
+
+            # Initialize private instance attributes. Can be accessed as
+            # properties of the same name.
+            self._mesh = mesh
+            self._normals = None
 
     @property
     def mesh(self):
@@ -4835,6 +4815,106 @@ class PolyMesh(PolyData):
         :type: Mesh
         """
         return self._mesh
+
+    @property
+    def normals(self):
+        """ Vertex normals.
+
+        Vertex normals are merely a visualization hint and result in
+        smooth shading of the mesh.
+
+        :type: ~numpy.ndarray
+        """
+        return self._normals
+
+    @normals.setter
+    def normals(self, value):
+        data = self._vtk_polydata.GetPointData()
+
+        if value is not None:
+            self._normals = np.asarray(value)
+            value = numpy_to_vtk(self._normals)
+        else:
+            self._normals = None
+
+        data.SetNormals(value)
+
+    def verts(self, style=None, size=None, color=None):
+        """ Vertex display.
+
+        Set visual properties of vertices.
+
+        Parameters
+        ----------
+        style : str, optional
+            Either 'points' or 'spheres', :obj:`False` to disable.
+        size : int, optional
+            Size in pixels.
+        color : array_like, shape (3, ), optional
+            Vertex color.
+
+        Note
+        ----
+        Parameters with a :obj:`None` value do not affect the corresponding
+        vertex display property.
+
+        Important
+        ---------
+        On some rendering backends vertex display only works when edges
+        are displayed. For now use :func:`scatter` as a work-around.
+        """
+        if style == 'points':
+            self._vtk_prop.GetProperty().SetRenderPointsAsSpheres(False)
+            self._vtk_prop.GetProperty().SetVertexVisibility(True)
+        elif style == 'spheres':
+            self._vtk_prop.GetProperty().SetRenderPointsAsSpheres(True)
+            self._vtk_prop.GetProperty().SetVertexVisibility(True)
+        elif style == '' or style is False:
+            self._vtk_prop.GetProperty().SetVertexVisibility(False)
+        else:
+            self._vtk_prop.GetProperty().SetVertexVisibility(True)
+
+        if size is not None:
+            self._vtk_prop.GetProperty().SetPointSize(size)
+
+        if color is not None:
+            self._vtk_prop.GetProperty().SetVertexColor(color)
+
+    def edges(self, style=None, width=None, color=None):
+        """ Edge display.
+
+        Set visual properties of edges.
+
+        Parameters
+        ----------
+        style : str, optional
+            Either 'lines' or 'tubes', :obj:`False` to disable.
+        width : int, optional
+            Edge width in pixels.
+        color : array_like, shape (3, ), optional
+            Edge color.
+
+        Note
+        ----
+        Parameters with a :obj:`None` value do not affect the corresponding
+        edge display property.
+        """
+        if style == 'lines':
+            self._vtk_prop.GetProperty().SetRenderLinesAsTubes(False)
+            self._vtk_prop.GetProperty().SetEdgeVisibility(True)
+        elif style == 'tubes':
+            self._vtk_prop.GetProperty().SetRenderLinesAsTubes(True)
+            self._vtk_prop.GetProperty().SetEdgeVisibility(True)
+        elif style == '' or style is False:
+            self._vtk_prop.GetProperty().SetEdgeVisibility(False)
+        else:
+            self._vtk_prop.GetProperty().SetEdgeVisibility(True)
+
+        if width is not None:
+            self._vtk_prop.GetProperty().SetLineWidth(width)
+
+        if color is not None:
+            self._vtk_prop.GetProperty().SetEdgeColor(color)
 
     # def texture(self, img, uv):
     #     """ Texture mapping.
@@ -4913,6 +4993,89 @@ class PolyMesh(PolyData):
     #     elif color is not None:
     #         mapper.SetScalarVisibility(False)
     #         actor.GetProperty().SetColor(color)
+
+    def _avg_edge_length(self):
+        # The edge extraction filter only works when there are polygonal
+        # cells defined! This cannot be used to compute the average edge
+        # length of a PolyGraph instance!
+        filter = vtk.vtkExtractEdges()
+        filter.SetInputData(self._vtk_polydata)
+        filter.Update()
+
+        points = vtk_to_numpy(filter.GetOutput().GetPoints().GetData())
+        edges = filter.GetOutput().GetLines()
+        edge_iter = edges.NewIterator()
+
+        min, max, sum = np.inf, 0.0, 0.0
+
+        while not edge_iter.IsDoneWithTraversal():
+            edge = edge_iter.GetCurrentCell()
+            i, j = edge.GetId(0), edge.GetId(1)
+
+            length = np.linalg.norm(points[i, :] - points[j, :])
+            sum += length
+
+            min = length if length < min else min
+            max = length if length > max else max
+
+            edge_iter.GoToNextCell()
+
+        return sum / edges.GetNumberOfCells(), min, max
+
+
+class PolyGraph(PolyData):
+    """ Polygonal graph.
+
+    Parameters
+    ----------
+    nodes : array_like
+        Node coordinate array.
+    graph : csr_matrix
+        Combinatorial graph definition.
+    """
+
+    def __init__(self, nodes, graph):
+        # Raises an attribute error if not a sparse matrix or array type.
+        assert graph.format == 'csr'
+
+        # Assume csr_matrix representation of graph, i.e., edge defined by
+        # the sparsity pattern, not by edge weights!
+        rowptr = graph.indptr
+        colidx = graph.indices
+
+        # For a symmetric matrix this will define all edges twice! Fix!
+        edges = ((i, j) for i in range(len(rowptr)-1)
+                        for j in colidx[rowptr[i]:rowptr[i+1]])
+
+        super().__init__(nodes, lines=edges)
+
+        # mapper = self._vtk_prop.GetMapper()
+        # mapper.SetResolveCoincidentTopologyToPolygonOffset()
+
+    def edges(self, style=None, width=None):
+        """ Edge display.
+
+        Set visual properties of edges.
+
+        Parameters
+        ----------
+        style : str, optional
+            Either 'lines' or 'tubes'.
+        width : int, optional
+            Edge width in pixels.
+
+        Note
+        ----
+        Parameters with a :obj:`None` value do not affect the corresponding
+        edge display property.
+        """
+        if style == 'lines':
+            self._vtk_prop.GetProperty().SetRenderLinesAsTubes(False)
+        elif style == 'tubes':
+            self._vtk_prop.GetProperty().SetRenderLinesAsTubes(True)
+
+        if width is not None:
+            self._vtk_prop.GetProperty().SetLineWidth(width)
 
 
 class LookupTable(Prop):
