@@ -1,0 +1,45 @@
+PolyGraph
+=========
+
+.. currentmodule:: m3sh.vis
+ 
+.. autoclass:: PolyGraph
+   :show-inheritance:
+   :no-inherited-members:
+    
+   
+   
+   .. rubric:: Attributes
+ 
+   .. autosummary::
+      :toctree:
+      :template: attribute.rst
+   
+      ~PolyGraph.actor
+      ~PolyGraph.bounds
+      ~PolyGraph.color
+      ~PolyGraph.name
+      ~PolyGraph.opacity
+      ~PolyGraph.pickable
+      ~PolyGraph.points
+      ~PolyGraph.prop
+      ~PolyGraph.visible
+   
+   
+ 
+   
+   
+   .. rubric:: Methods
+ 
+   .. autosummary::
+      :toctree: 
+      :template: function.rst
+   
+      ~PolyGraph.colorize
+      ~PolyGraph.edges
+      ~PolyGraph.lookuptable
+      ~PolyGraph.modified
+   
+   
+   
+   

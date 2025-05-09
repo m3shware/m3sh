@@ -1,0 +1,6 @@
+lookuptable
+===========
+
+.. currentmodule:: m3sh.vis
+
+.. automethod:: Cones.lookuptable

@@ -1,0 +1,6 @@
+deleted
+=======
+
+.. currentmodule:: m3sh.hds
+
+.. autoproperty:: Face.deleted
