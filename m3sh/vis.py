@@ -2438,8 +2438,8 @@ def _main():
         # mesh.colorize(scalars, items='verts', interpolate_scalars=True)
         # mesh.lookuptable((min(scalars), max(scalars)), gradient='spectral')
 
-        # if mesh.normals is not None:
-        #     quiver(mesh, None, mesh._avg_edge_length()[0])
+        if mesh.normals is not None:
+            quiver(mesh, None, mesh._avg_edge_length()[0])
 
         if args.bounds:
             aabb(mesh)
