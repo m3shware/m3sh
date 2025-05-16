@@ -108,6 +108,24 @@ def cross(u, v):
                      u[0]*v[1] - u[1]*v[0]])
 
 
+def cross_mat(u):
+    r""" Cross product matrix.
+
+    Parameters
+    ----------
+    u : array_like, shape (3, )
+        Vector in :math:`\mathbb{R}^3`.
+
+    Returns
+    -------
+    ~numpy.ndarray, shape (3, 3)
+        Cross product matrix.
+    """
+    return np.array([[0.0, -u[2], u[1]],
+                     [u[2], 0.0, -u[0]],
+                     [-u[1], u[0], 0.0]])
+
+
 def dot(u, v):
     r""" Dot product.
 
