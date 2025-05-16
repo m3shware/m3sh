@@ -1,0 +1,6 @@
+vector
+======
+
+.. currentmodule:: m3sh.hds
+
+.. autoproperty:: Halfedge.vector

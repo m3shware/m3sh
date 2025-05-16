@@ -1,0 +1,6 @@
+bounds
+======
+
+.. currentmodule:: m3sh.vis
+
+.. autoproperty:: PolyMesh.bounds
