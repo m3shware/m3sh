@@ -995,7 +995,7 @@ def mesh(mesh, color=colors.snow):
     return renmesh
 
 
-def graph(nodes, graph, color=colors.black):
+def graph(points, graph, color=colors.black):
     """ Graph visualization.
 
     Experimental support for graph plotting. The `graph` parameter
@@ -1004,7 +1004,7 @@ def graph(nodes, graph, color=colors.black):
 
     Parameters
     ----------
-    nodes : array_like
+    points : array_like
         Node coordinate array.
     graph : csr_matrix
         Combinatorial graph definition.
@@ -1022,11 +1022,19 @@ def graph(nodes, graph, color=colors.black):
     via the :func:`~scipy.sparse.csgraph.csgraph_from_dense` utility
     function.
     """
-    rengraph = PolyGraph(nodes, graph)
+    rengraph = PolyGraph(points, graph)
     rengraph.color = color
 
     add(rengraph)
     return rengraph
+
+
+def _tetmesh(points, tets, color=colors.snow):
+    renmesh = _TetrahedralMesh(points, tets)
+    renmesh.color = color
+
+    add(renmesh)
+    return renmesh
 
 
 def _contour(M, S, levels=10, width=2.0, style='-', color=(0.0, 0.0, 0.0)):
@@ -5034,6 +5042,9 @@ class PolyGraph(PolyData):
         Combinatorial graph definition.
     """
 
+    # def __init__(self, points, graph):
+    #     super().__init__(points, lines=graph.edges())
+
     def __init__(self, nodes, graph):
         # Raises an attribute error if not a sparse matrix or array type.
         assert graph.format == 'csr'
@@ -5076,6 +5087,94 @@ class PolyGraph(PolyData):
 
         if width is not None:
             self._vtk_prop.GetProperty().SetLineWidth(width)
+
+
+class _TetrahedralMesh(Prop, PropertyMixin, MapperMixin):
+
+    def __init__(self, data, tets):
+        if isinstance(data, vtk.vtkUnstructuredGrid):
+            assert False
+        else:
+            self._points = np.asarray(data)
+            self._vtk_usgrid = vtk.vtkUnstructuredGrid()
+
+            points = vtk.vtkPoints()
+            points.SetData(numpy_to_vtk(self._points))
+
+            self._vtk_usgrid.SetPoints(points)
+            self._vtk_usgrid.Allocate(len(tets))
+
+            grid = self._vtk_usgrid
+
+            print(len(tets))
+            n = len(data)
+
+            assert len(tets) <= 0.5 * (n*n - 3*n - 2)
+
+            for i, tet in enumerate(tets):
+                tetra = vtk.vtkIdList()
+
+                assert len(tet) == 4
+
+                for v in tet:
+                    tetra.InsertNextId(int(v))
+
+                grid.InsertNextCell(vtk.VTK_TETRA, tetra)
+                # break
+
+                # if i > 100:
+                #     break
+
+        mapper = vtk.vtkDataSetMapper()
+        mapper.SetInputData(self._vtk_usgrid)
+
+        # Create standard lookup table and how this table is used by
+        # the mapper.
+        mapper.SetLookupTable(_generic_lut(gradient='spectral'))
+        mapper.SetUseLookupTableScalarRange(True)
+        mapper.SetScalarVisibility(False)
+
+        actor = vtk.vtkActor()
+        actor.SetMapper(mapper)
+
+        # Initialize Prop base class. Mixins don't have an initializer.
+        super().__init__(actor)
+
+    def edges(self, style=None, width=None, color=None):
+        """ Edge display.
+
+        Set visual properties of edges.
+
+        Parameters
+        ----------
+        style : str, optional
+            Either 'lines' or 'tubes', :obj:`False` to disable.
+        width : int, optional
+            Edge width in pixels.
+        color : array_like, shape (3, ), optional
+            Edge color.
+
+        Note
+        ----
+        Parameters with a :obj:`None` value do not affect the corresponding
+        edge display property.
+        """
+        if style == 'lines':
+            self._vtk_prop.GetProperty().SetRenderLinesAsTubes(False)
+            self._vtk_prop.GetProperty().SetEdgeVisibility(True)
+        elif style == 'tubes':
+            self._vtk_prop.GetProperty().SetRenderLinesAsTubes(True)
+            self._vtk_prop.GetProperty().SetEdgeVisibility(True)
+        elif style == '' or style is False:
+            self._vtk_prop.GetProperty().SetEdgeVisibility(False)
+        else:
+            self._vtk_prop.GetProperty().SetEdgeVisibility(True)
+
+        if width is not None:
+            self._vtk_prop.GetProperty().SetLineWidth(width)
+
+        if color is not None:
+            self._vtk_prop.GetProperty().SetEdgeColor(color)
 
 
 class LookupTable(Prop):
