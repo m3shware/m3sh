@@ -1,0 +1,45 @@
+Arrows
+======
+
+.. currentmodule:: m3sh.vis
+ 
+.. autoclass:: Arrows
+   :show-inheritance:
+   :no-inherited-members:
+    
+   
+   
+   .. rubric:: Attributes
+ 
+   .. autosummary::
+      :toctree:
+      :template: attribute.rst
+   
+      ~Arrows.actor
+      ~Arrows.bounds
+      ~Arrows.color
+      ~Arrows.name
+      ~Arrows.opacity
+      ~Arrows.pickable
+      ~Arrows.prop
+      ~Arrows.size
+      ~Arrows.visible
+   
+   
+ 
+   
+   
+   .. rubric:: Methods
+ 
+   .. autosummary::
+      :toctree: 
+      :template: function.rst
+   
+      ~Arrows.colorize
+      ~Arrows.lookuptable
+      ~Arrows.modified
+      ~Arrows.scale
+   
+   
+   
+   

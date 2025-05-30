@@ -1,0 +1,45 @@
+OrientedGlyphs
+==============
+
+.. currentmodule:: m3sh.vis
+ 
+.. autoclass:: OrientedGlyphs
+   :show-inheritance:
+   :no-inherited-members:
+    
+   
+   
+   .. rubric:: Attributes
+ 
+   .. autosummary::
+      :toctree:
+      :template: attribute.rst
+   
+      ~OrientedGlyphs.actor
+      ~OrientedGlyphs.bounds
+      ~OrientedGlyphs.color
+      ~OrientedGlyphs.name
+      ~OrientedGlyphs.opacity
+      ~OrientedGlyphs.pickable
+      ~OrientedGlyphs.prop
+      ~OrientedGlyphs.size
+      ~OrientedGlyphs.visible
+   
+   
+ 
+   
+   
+   .. rubric:: Methods
+ 
+   .. autosummary::
+      :toctree: 
+      :template: function.rst
+   
+      ~OrientedGlyphs.colorize
+      ~OrientedGlyphs.lookuptable
+      ~OrientedGlyphs.modified
+      ~OrientedGlyphs.scale
+   
+   
+   
+   

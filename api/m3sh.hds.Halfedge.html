@@ -1,0 +1,245 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Halfedge &mdash; m3sh 1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+
+  
+    <link rel="shortcut icon" href="../_static/ghems_red.ico"/>
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=f2a433a1"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="boundary" href="m3sh.hds.Halfedge.boundary.html" />
+    <link rel="prev" title="__len__" href="m3sh.hds.Face.__len__.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            m3sh
+              <img src="../_static/logo-small.png" class="logo" alt="Logo"/>
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+   
+              <p class="caption" role="heading"><span class="caption-text">Basic usage and examples</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../basics.html">Mesh basics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../usage.html">Quickstart</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../iterators.html">Neighborhood traversal</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Modules - API</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="../mesh.html">Halfedge data structure</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="m3sh.hds.html">m3sh.hds</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="m3sh.hds.Face.html">Face</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">Halfedge</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="m3sh.hds.Halfedge.boundary.html">boundary</a></li>
+<li class="toctree-l4"><a class="reference internal" href="m3sh.hds.Halfedge.collapsible.html">collapsible</a></li>
+<li class="toctree-l4"><a class="reference internal" href="m3sh.hds.Halfedge.deleted.html">deleted</a></li>
+<li class="toctree-l4"><a class="reference internal" href="m3sh.hds.Halfedge.face.html">face</a></li>
+<li class="toctree-l4"><a class="reference internal" href="m3sh.hds.Halfedge.flags.html">flags</a></li>
+<li class="toctree-l4"><a class="reference internal" href="m3sh.hds.Halfedge.flippable.html">flippable</a></li>
+<li class="toctree-l4"><a class="reference internal" href="m3sh.hds.Halfedge.midpoint.html">midpoint</a></li>
+<li class="toctree-l4"><a class="reference internal" href="m3sh.hds.Halfedge.next.html">next</a></li>
+<li class="toctree-l4"><a class="reference internal" href="m3sh.hds.Halfedge.origin.html">origin</a></li>
+<li class="toctree-l4"><a class="reference internal" href="m3sh.hds.Halfedge.pair.html">pair</a></li>
+<li class="toctree-l4"><a class="reference internal" href="m3sh.hds.Halfedge.prev.html">prev</a></li>
+<li class="toctree-l4"><a class="reference internal" href="m3sh.hds.Halfedge.target.html">target</a></li>
+<li class="toctree-l4"><a class="reference internal" href="m3sh.hds.Halfedge.vector.html">vector</a></li>
+<li class="toctree-l4"><a class="reference internal" href="m3sh.hds.Halfedge.__contains__.html">__contains__</a></li>
+<li class="toctree-l4"><a class="reference internal" href="m3sh.hds.Halfedge.__getitem__.html">__getitem__</a></li>
+<li class="toctree-l4"><a class="reference internal" href="m3sh.hds.Halfedge.__iter__.html">__iter__</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="m3sh.hds.Mesh.html">Mesh</a></li>
+<li class="toctree-l3"><a class="reference internal" href="m3sh.hds.Vertex.html">Vertex</a></li>
+<li class="toctree-l3"><a class="reference internal" href="m3sh.hds.NonManifoldError.html">NonManifoldError</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="m3sh.iterators.html">m3sh.iterators</a></li>
+<li class="toctree-l2"><a class="reference internal" href="m3sh.traits.html">m3sh.traits</a></li>
+<li class="toctree-l2"><a class="reference internal" href="m3sh.flags.html">m3sh.flags</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../helper.html">Auxiliary modules</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../vis.html">Visualization</a></li>
+</ul>
+
+   <p class="caption">
+     <span class="caption-text">Indices</span>
+   </p>
+   <ul>
+        <li class="toctree-l1"><a href= "../genindex.html">Index</a></li>
+        <li class="toctree-l1"><a href= "../py-modindex.html">Module index</a></li>
+        <li class="toctree-l1"><a href= "https://github.com/m3shware/m3sh">Package source</a></li>
+   </ul>
+    
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">m3sh</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../mesh.html">Halfedge data structure</a></li>
+          <li class="breadcrumb-item"><a href="m3sh.hds.html">m3sh.hds</a></li>
+      <li class="breadcrumb-item active">Halfedge</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/api/m3sh.hds.Halfedge.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="halfedge">
+<h1>Halfedge<a class="headerlink" href="#halfedge" title="Link to this heading"></a></h1>
+<dl class="py class">
+<dt class="sig sig-object py" id="m3sh.hds.Halfedge">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">m3sh.hds.</span></span><span class="sig-name descname"><span class="pre">Halfedge</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">origin</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">target</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/m3sh/hds.html#Halfedge"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#m3sh.hds.Halfedge" title="Link to this definition"></a></dt>
+<dd><p>Halfedge base class.</p>
+<p>Halfedges store references to their vertices, the successor, predecessor,
+and twin halfedge as well as the incident face – the face to its left.
+A closed loop of halfedges defines a face and its orientation. Successor
+and predecessor refer to the next and previous halfedge in such a loop.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>origin</strong> (<a class="reference internal" href="m3sh.hds.Vertex.html#m3sh.hds.Vertex" title="m3sh.hds.Vertex"><em>Vertex</em></a>) – Origin vertex of the halfedge.</p></li>
+<li><p><strong>target</strong> (<a class="reference internal" href="m3sh.hds.Vertex.html#m3sh.hds.Vertex" title="m3sh.hds.Vertex"><em>Vertex</em></a>) – Target vertex of the halfedge.</p></li>
+</ul>
+</dd>
+</dl>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>As halfedges are stored in a dictionary and not in a list, they do not
+have a canonical index value but a key that is formed by the pair of
+origin and target vertex.</p>
+</div>
+<p class="rubric">Attributes</p>
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="m3sh.hds.Halfedge.boundary.html#m3sh.hds.Halfedge.boundary" title="m3sh.hds.Halfedge.boundary"><code class="xref py py-obj docutils literal notranslate"><span class="pre">boundary</span></code></a></p></td>
+<td><p>Topological state.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="m3sh.hds.Halfedge.collapsible.html#m3sh.hds.Halfedge.collapsible" title="m3sh.hds.Halfedge.collapsible"><code class="xref py py-obj docutils literal notranslate"><span class="pre">collapsible</span></code></a></p></td>
+<td><p>Topological state.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="m3sh.hds.Halfedge.deleted.html#m3sh.hds.Halfedge.deleted" title="m3sh.hds.Halfedge.deleted"><code class="xref py py-obj docutils literal notranslate"><span class="pre">deleted</span></code></a></p></td>
+<td><p>Internal state.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="m3sh.hds.Halfedge.face.html#m3sh.hds.Halfedge.face" title="m3sh.hds.Halfedge.face"><code class="xref py py-obj docutils literal notranslate"><span class="pre">face</span></code></a></p></td>
+<td><p>Incident face.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="m3sh.hds.Halfedge.flags.html#m3sh.hds.Halfedge.flags" title="m3sh.hds.Halfedge.flags"><code class="xref py py-obj docutils literal notranslate"><span class="pre">flags</span></code></a></p></td>
+<td><p>Halfedge flags.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="m3sh.hds.Halfedge.flippable.html#m3sh.hds.Halfedge.flippable" title="m3sh.hds.Halfedge.flippable"><code class="xref py py-obj docutils literal notranslate"><span class="pre">flippable</span></code></a></p></td>
+<td><p>Topological state.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="m3sh.hds.Halfedge.midpoint.html#m3sh.hds.Halfedge.midpoint" title="m3sh.hds.Halfedge.midpoint"><code class="xref py py-obj docutils literal notranslate"><span class="pre">midpoint</span></code></a></p></td>
+<td><p>Halfedge midpoint.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="m3sh.hds.Halfedge.next.html#m3sh.hds.Halfedge.next" title="m3sh.hds.Halfedge.next"><code class="xref py py-obj docutils literal notranslate"><span class="pre">next</span></code></a></p></td>
+<td><p>Successor halfedge.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="m3sh.hds.Halfedge.origin.html#m3sh.hds.Halfedge.origin" title="m3sh.hds.Halfedge.origin"><code class="xref py py-obj docutils literal notranslate"><span class="pre">origin</span></code></a></p></td>
+<td><p>Halfedge origin vertex.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="m3sh.hds.Halfedge.pair.html#m3sh.hds.Halfedge.pair" title="m3sh.hds.Halfedge.pair"><code class="xref py py-obj docutils literal notranslate"><span class="pre">pair</span></code></a></p></td>
+<td><p>Opposite halfedge.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="m3sh.hds.Halfedge.prev.html#m3sh.hds.Halfedge.prev" title="m3sh.hds.Halfedge.prev"><code class="xref py py-obj docutils literal notranslate"><span class="pre">prev</span></code></a></p></td>
+<td><p>Predecessor halfedge.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="m3sh.hds.Halfedge.target.html#m3sh.hds.Halfedge.target" title="m3sh.hds.Halfedge.target"><code class="xref py py-obj docutils literal notranslate"><span class="pre">target</span></code></a></p></td>
+<td><p>Halfedge target vertex.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="m3sh.hds.Halfedge.vector.html#m3sh.hds.Halfedge.vector" title="m3sh.hds.Halfedge.vector"><code class="xref py py-obj docutils literal notranslate"><span class="pre">vector</span></code></a></p></td>
+<td><p>Halfedge direction vector.</p></td>
+</tr>
+</tbody>
+</table>
+<p class="rubric">Special methods</p>
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="m3sh.hds.Halfedge.__contains__.html#m3sh.hds.Halfedge.__contains__" title="m3sh.hds.Halfedge.__contains__"><code class="xref py py-obj docutils literal notranslate"><span class="pre">__contains__</span></code></a>(vertex)</p></td>
+<td><p>Incidence test.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="m3sh.hds.Halfedge.__getitem__.html#m3sh.hds.Halfedge.__getitem__" title="m3sh.hds.Halfedge.__getitem__"><code class="xref py py-obj docutils literal notranslate"><span class="pre">__getitem__</span></code></a>(index)</p></td>
+<td><p>Vertex access.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="m3sh.hds.Halfedge.__iter__.html#m3sh.hds.Halfedge.__iter__" title="m3sh.hds.Halfedge.__iter__"><code class="xref py py-obj docutils literal notranslate"><span class="pre">__iter__</span></code></a>()</p></td>
+<td><p>Vertex iterator.</p></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="m3sh.hds.Face.__len__.html" class="btn btn-neutral float-left" title="__len__" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="m3sh.hds.Halfedge.boundary.html" class="btn btn-neutral float-right" title="boundary" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, m3shware.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
