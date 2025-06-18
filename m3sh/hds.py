@@ -761,6 +761,16 @@ class Mesh:
         f = Face(len(self._faces))          # new face object
         edge_loop = []                      # halfedge loop around face
 
+        # Dry run.
+        for k in range(n):
+            v = self._verts[face[k]]
+            w = self._verts[face[(k + 1) % n]]
+            h = self._halfs.get((v, w), None)
+
+            if h is not None and h._face is not None:
+                msg = f'edge ({v._idx}, {w._idx}) is non-manifold'
+                raise NonManifoldError(msg)
+
         # Add/process edges of the given face. The _add_halfedge method
         # may raise a NonManifoldError. If vertex indices are out of
         # bounds an IndexError is raised in the loop.
@@ -1889,9 +1899,6 @@ class Mesh:
         assert not v._deleted or not self._vhout[v]
         assert not w._deleted or not self._vhout[w]
 
-        v._deleted = False
-        w._deleted = False
-
         try:
             # If the edge (v, w) is already mapped we have a topological
             # problem unless it is mapped as a boundary halfedge.
@@ -1925,6 +1932,9 @@ class Mesh:
                 # setting the value of managed attributes again).
                 # if key not in (attr for _, attr, _ in self._hattr):
                 setattr(h, key, value)
+
+        v._deleted = False
+        w._deleted = False
 
         return h
 
@@ -2522,7 +2532,17 @@ class Vertex:
         functionality negatively.
         """
         assert not self._deleted
-        assert self._halfedge is not None or not self._mesh._vhout[self]
+
+        h = self._halfedge
+        vhout = self._mesh._vhout[self]
+
+        # If h is set it has to be a member of vhout. In particular this
+        # imples that vhout is not empty if h is set.
+        assert h is None or h in vhout
+
+        # If h is not set the set vhout has to be empty.
+        assert h is not None or not vhout
+
         return self._halfedge is None
 
     @property
