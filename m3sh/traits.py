@@ -361,10 +361,10 @@ def face_normal(face):
         for h in face._hiter():
             # For non-convex faces some normals computed in this
             # way point to the wrong side.
-            vector += linalg.unit(linalg.cross(h.vector,
-                                               h.next.vector))
+            vector += linalg.unit_inplace(linalg.cross(h.vector,
+                                                       h.next.vector))
 
-    return linalg.unit(vector)
+    return linalg.unit_inplace(vector)
 
 
 def face_normals(mesh):
