@@ -1,0 +1,6 @@
+\_\_len\_\_
+===========
+
+.. currentmodule:: m3sh.flags
+
+.. automethod:: VertexFlag.__len__

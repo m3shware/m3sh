@@ -1,0 +1,6 @@
+unit\_inplace
+=============
+
+.. currentmodule:: m3sh.linalg
+
+.. autofunction:: unit_inplace

@@ -1,0 +1,522 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>m3sh.iterators &mdash; m3sh 1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=e59714d7" />
+
+  
+    <link rel="shortcut icon" href="../../_static/ghems_red.ico"/>
+      <script src="../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../_static/documentation_options.js?v=f2a433a1"></script>
+      <script src="../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            m3sh
+              <img src="../../_static/logo-small.png" class="logo" alt="Logo"/>
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+   
+              <p class="caption" role="heading"><span class="caption-text">Basic usage and examples</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../basics.html">Mesh basics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../usage.html">Quickstart</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../iterators.html">Neighborhood traversal</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Modules - API</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../mesh.html">Halfedge data structure</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../helper.html">Auxiliary modules</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../vis.html">Visualization</a></li>
+</ul>
+
+   <p class="caption">
+     <span class="caption-text">Indices</span>
+   </p>
+   <ul>
+        <li class="toctree-l1"><a href= "../../genindex.html">Index</a></li>
+        <li class="toctree-l1"><a href= "../../py-modindex.html">Module index</a></li>
+        <li class="toctree-l1"><a href= "https://github.com/m3shware/m3sh">Package source</a></li>
+   </ul>
+    
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">m3sh</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">m3sh.iterators</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for m3sh.iterators</h1><div class="highlight"><pre>
+<span></span><span class="c1"># Copyright 2024, m3shware</span>
+<span class="c1">#</span>
+<span class="c1"># Permission is hereby granted, free of charge, to any person obtaining a</span>
+<span class="c1"># copy of this software and associated documentation files (the &quot;Software&quot;),</span>
+<span class="c1"># to deal in the Software without restriction, including without limitation</span>
+<span class="c1"># the rights to use, copy, modify, merge, publish, distribute, sublicense,</span>
+<span class="c1"># and/or sell copies of the Software, and to permit persons to whom the</span>
+<span class="c1"># Software is furnished to do so, subject to the following conditions:</span>
+<span class="c1">#</span>
+<span class="c1"># The above copyright notice and this permission notice shall be included in</span>
+<span class="c1"># all copies or substantial portions of the Software.</span>
+<span class="c1">#</span>
+<span class="c1"># THE SOFTWARE IS PROVIDED &quot;AS IS&quot;, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR</span>
+<span class="c1"># IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,</span>
+<span class="c1"># FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE</span>
+<span class="c1"># AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER</span>
+<span class="c1"># LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING</span>
+<span class="c1"># FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS</span>
+<span class="c1"># IN THE SOFTWARE.</span>
+
+<span class="sd">&quot;&quot;&quot; Combinatorial mesh item neighborhood iterators.</span>
+
+<span class="sd">Adjacent/incident mesh items are visited in counter-clockwise order as</span>
+<span class="sd">determined by the mesh orientation (whenever it makes sense to consider</span>
+<span class="sd">oriented item traversal).</span>
+
+<span class="sd">Note</span>
+<span class="sd">----</span>
+<span class="sd">When applied to a :class:`~m3sh.hds.Mesh` instance, the iterators</span>
+<span class="sd">:func:`verts` and :func:`faces` will **skip** deleted mesh items.</span>
+<span class="sd">This is an alternative to iteration over the mesh item</span>
+<span class="sd">containers :attr:`~m3sh.hds.Mesh.vertices` and :attr:`~m3sh.hds.Mesh.faces`.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span> <span class="nn">collections</span> <span class="kn">import</span> <span class="n">deque</span>
+
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+
+<span class="kn">from</span> <span class="nn">m3sh.hds</span> <span class="kn">import</span> <span class="n">Face</span>
+<span class="kn">from</span> <span class="nn">m3sh.heap</span> <span class="kn">import</span> <span class="n">MinHeap</span>
+
+
+<div class="viewcode-block" id="verts">
+<a class="viewcode-back" href="../../api/m3sh.iterators.verts.html#m3sh.iterators.verts">[docs]</a>
+<span class="k">def</span> <span class="nf">verts</span><span class="p">(</span><span class="n">obj</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot; Vertex iterator.</span>
+
+<span class="sd">    The returned iterator traverses adjacent/incident vertices</span>
+<span class="sd">    of `obj` depending on its type:</span>
+
+<span class="sd">    .. table::</span>
+<span class="sd">       :width: 100%</span>
+<span class="sd">       :widths: 20, 80</span>
+
+<span class="sd">       =============== ================================================</span>
+<span class="sd">       :class:`Vertex` \u21ba traversal of adjacent vertices</span>
+<span class="sd">       --------------- ------------------------------------------------</span>
+<span class="sd">       :class:`Face`   \u21ba traversal of incident vertices</span>
+<span class="sd">       --------------- ------------------------------------------------</span>
+<span class="sd">       :class:`Mesh`   in-order traversal of :attr:`~Mesh.vertices`</span>
+<span class="sd">       =============== ================================================</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    obj : Vertex or Face or Mesh</span>
+<span class="sd">        The base object.</span>
+
+<span class="sd">    Yields</span>
+<span class="sd">    ------</span>
+<span class="sd">    Vertex</span>
+
+<span class="sd">    Note</span>
+<span class="sd">    ----</span>
+<span class="sd">    When applied to a mesh, this iterator will skip any deleted vertices</span>
+<span class="sd">    present in its vertex list.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">obj</span><span class="o">.</span><span class="n">_viter</span><span class="p">()</span></div>
+
+
+
+<span class="k">def</span> <span class="nf">_verts_bfs</span><span class="p">(</span><span class="n">item</span><span class="p">,</span> <span class="n">stop</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">start</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot; Breadth-first vertex neighborhood iterator.</span>
+
+<span class="sd">    Breadth-first traversal of vertex neighborhood of a mesh item.</span>
+<span class="sd">    Incident vertices are considered neighbors at distance zero.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    item : Vertex or Halfedge or Face</span>
+<span class="sd">        The seed item.</span>
+<span class="sd">    stop : int, optional</span>
+<span class="sd">        All vertices at edge distance less or equal to `stop` are visited.</span>
+<span class="sd">    start : int, optional</span>
+<span class="sd">        Vertex reporting starts at the given distance level.</span>
+
+<span class="sd">    Yields</span>
+<span class="sd">    ------</span>
+<span class="sd">    Vertex</span>
+<span class="sd">        Next vertex in breadth-first search.</span>
+<span class="sd">    int</span>
+<span class="sd">        Distance to `item`.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># The try block could be replaced by explicit type checking using</span>
+    <span class="c1"># isinstance.</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">seeds</span> <span class="o">=</span> <span class="p">[</span><span class="n">v</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">item</span><span class="p">]</span>           <span class="c1"># face and edge are iterable</span>
+    <span class="k">except</span> <span class="ne">TypeError</span><span class="p">:</span>
+        <span class="n">seeds</span> <span class="o">=</span> <span class="p">[</span><span class="n">item</span><span class="p">]</span>                      <span class="c1"># vertex case, single seed</span>
+
+    <span class="n">queue</span> <span class="o">=</span> <span class="n">deque</span><span class="p">(</span><span class="n">seeds</span><span class="p">)</span>
+    <span class="n">level</span> <span class="o">=</span> <span class="nb">dict</span><span class="o">.</span><span class="n">fromkeys</span><span class="p">(</span><span class="n">seeds</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+
+    <span class="k">while</span> <span class="n">queue</span><span class="p">:</span>
+        <span class="n">v</span> <span class="o">=</span> <span class="n">queue</span><span class="o">.</span><span class="n">popleft</span><span class="p">()</span>
+        <span class="n">d</span> <span class="o">=</span> <span class="n">level</span><span class="p">[</span><span class="n">v</span><span class="p">]</span>
+
+        <span class="c1"># Stop when all vertices at distance stop (i.e., number of</span>
+        <span class="c1"># edges traversed) have been found.</span>
+        <span class="k">if</span> <span class="n">stop</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">d</span> <span class="o">&gt;</span> <span class="n">stop</span><span class="p">:</span>
+            <span class="k">return</span>
+
+        <span class="k">if</span> <span class="n">start</span> <span class="o">&lt;=</span> <span class="n">d</span><span class="p">:</span>
+            <span class="k">yield</span> <span class="n">v</span><span class="p">,</span> <span class="n">d</span>
+
+        <span class="k">for</span> <span class="n">w</span> <span class="ow">in</span> <span class="n">v</span><span class="o">.</span><span class="n">_viter</span><span class="p">():</span>
+            <span class="c1"># Vertices with assigned level information are either</span>
+            <span class="c1"># in the queue right now or have been removed earlier.</span>
+            <span class="k">if</span> <span class="n">w</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">level</span><span class="p">:</span>
+                <span class="n">queue</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">w</span><span class="p">)</span>
+                <span class="n">level</span><span class="p">[</span><span class="n">w</span><span class="p">]</span> <span class="o">=</span> <span class="n">d</span> <span class="o">+</span> <span class="mi">1</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">assert</span> <span class="n">level</span><span class="p">[</span><span class="n">w</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="n">d</span> <span class="o">+</span> <span class="mi">1</span>
+
+
+<span class="k">def</span> <span class="nf">_verts_dij</span><span class="p">(</span><span class="n">item</span><span class="p">,</span> <span class="n">stop</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">start</span><span class="o">=</span><span class="mf">0.0</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot; Dijkstra based vertex neighborhood iterator.</span>
+
+<span class="sd">    Visit the vertex neighborhood of a mesh item in a Dijkstra like</span>
+<span class="sd">    fashion (distance based breadth-first search).</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    item : Vertex or Halfedge or Face</span>
+<span class="sd">        The seed item.</span>
+<span class="sd">    stop : float, optional</span>
+<span class="sd">        All vertices at distance less or equal to `stop` are visited.</span>
+<span class="sd">    start : float, optional</span>
+<span class="sd">        Vertex reporting starts at the given distance.</span>
+
+<span class="sd">    Yields</span>
+<span class="sd">    ------</span>
+<span class="sd">    Vertex</span>
+<span class="sd">        Next vertex according to distance.</span>
+<span class="sd">    float</span>
+<span class="sd">        Distance to `item`.</span>
+
+<span class="sd">    Note</span>
+<span class="sd">    ----</span>
+<span class="sd">    Distance is measured as the length of the shortest edge path that</span>
+<span class="sd">    connects two vertices.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># The dictionary of predecessors is generated but not used.</span>
+    <span class="c1"># prev = dict()</span>
+
+    <span class="c1"># The try block could be replaced by explicit type checking using</span>
+    <span class="c1"># isinstance.</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">seeds</span> <span class="o">=</span> <span class="p">[</span><span class="n">v</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">item</span><span class="p">]</span>           <span class="c1"># face and edge are iterable</span>
+    <span class="k">except</span> <span class="ne">TypeError</span><span class="p">:</span>
+        <span class="n">seeds</span> <span class="o">=</span> <span class="p">[</span><span class="n">item</span><span class="p">]</span>                      <span class="c1"># vertex case, single seed</span>
+
+    <span class="c1"># Seed the priority queue with all source vertices. Priorities are</span>
+    <span class="c1"># distance values. Smaller distance means higher priority.</span>
+    <span class="n">queue</span> <span class="o">=</span> <span class="n">MinHeap</span><span class="p">((</span><span class="n">seed</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span> <span class="k">for</span> <span class="n">seed</span> <span class="ow">in</span> <span class="n">seeds</span><span class="p">)</span>
+    <span class="n">dist</span> <span class="o">=</span> <span class="nb">dict</span><span class="o">.</span><span class="n">fromkeys</span><span class="p">(</span><span class="n">seeds</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
+
+    <span class="c1"># Initialize predecessor values for all seed vertices. This replaces</span>
+    <span class="c1"># corresponding dictionary entries if already present.</span>
+    <span class="c1"># prev.update((v, None) for v in seeds)</span>
+
+    <span class="k">while</span> <span class="n">queue</span><span class="p">:</span>
+        <span class="n">v</span><span class="p">,</span> <span class="n">d</span> <span class="o">=</span> <span class="n">queue</span><span class="o">.</span><span class="n">pop</span><span class="p">()</span>
+
+        <span class="c1"># Stop once a vertex with larger distance value than eps is</span>
+        <span class="c1"># popped. All remaining vertices have larger distance values.</span>
+        <span class="k">if</span> <span class="n">stop</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">d</span> <span class="o">&gt;</span> <span class="n">stop</span><span class="p">:</span>
+            <span class="k">return</span>
+
+        <span class="k">if</span> <span class="n">start</span> <span class="o">&lt;=</span> <span class="n">d</span><span class="p">:</span>
+            <span class="k">yield</span> <span class="n">v</span><span class="p">,</span> <span class="n">d</span>
+
+        <span class="c1"># Update distance value of v&#39;s neighbors w if the path via v</span>
+        <span class="c1"># and the edge vw is shorter than the current shortest path.</span>
+        <span class="k">for</span> <span class="n">w</span> <span class="ow">in</span> <span class="n">v</span><span class="o">.</span><span class="n">_viter</span><span class="p">():</span>
+            <span class="n">edge_len</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">w</span><span class="o">.</span><span class="n">point</span> <span class="o">-</span> <span class="n">v</span><span class="o">.</span><span class="n">point</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">d</span> <span class="o">+</span> <span class="n">edge_len</span> <span class="o">&lt;</span> <span class="n">dist</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">w</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">inf</span><span class="p">):</span>
+                <span class="n">dist</span><span class="p">[</span><span class="n">w</span><span class="p">]</span> <span class="o">=</span> <span class="n">d</span> <span class="o">+</span> <span class="n">edge_len</span>
+                <span class="c1"># prev[w] = v</span>
+                <span class="n">queue</span><span class="o">.</span><span class="n">push</span><span class="p">(</span><span class="n">w</span><span class="p">,</span> <span class="n">d</span> <span class="o">+</span> <span class="n">edge_len</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">_verts_frozen</span><span class="p">(</span><span class="n">obj</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot; Vertex iterator.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="nb">iter</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">obj</span><span class="o">.</span><span class="n">_viter</span><span class="p">()))</span>
+
+
+<div class="viewcode-block" id="halfs">
+<a class="viewcode-back" href="../../api/m3sh.iterators.halfs.html#m3sh.iterators.halfs">[docs]</a>
+<span class="k">def</span> <span class="nf">halfs</span><span class="p">(</span><span class="n">obj</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot; Halfedge iterator</span>
+
+<span class="sd">    The returned iterator traverses incident halfedges of `obj`</span>
+<span class="sd">    depending on its type:</span>
+
+<span class="sd">    .. table::</span>
+<span class="sd">       :width: 100%</span>
+<span class="sd">       :widths: 20, 80</span>
+
+<span class="sd">       =============== ================================================</span>
+<span class="sd">       :class:`Vertex` \u21ba traversal of outward pointing halfedges</span>
+<span class="sd">       --------------- ------------------------------------------------</span>
+<span class="sd">       :class:`Face`   \u21ba traversal of incident halfedges</span>
+<span class="sd">       --------------- ------------------------------------------------</span>
+<span class="sd">       :class:`Mesh`   traversal of :attr:`~Mesh.halfedges`</span>
+<span class="sd">       =============== ================================================</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    obj : Vertex or Face or Mesh</span>
+<span class="sd">        The base object.</span>
+
+<span class="sd">    Yields</span>
+<span class="sd">    ------</span>
+<span class="sd">    Halfedge</span>
+
+<span class="sd">    Note</span>
+<span class="sd">    ----</span>
+<span class="sd">    This iterator is equivalent to ``iter(mesh.halfedges.values())``</span>
+<span class="sd">    when applied to a mesh.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">obj</span><span class="o">.</span><span class="n">_hiter</span><span class="p">()</span></div>
+
+
+
+<span class="k">def</span> <span class="nf">_halfs_frozen</span><span class="p">(</span><span class="n">obj</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot; Halfedge iterator.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="nb">iter</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">obj</span><span class="o">.</span><span class="n">_hiter</span><span class="p">()))</span>
+
+
+<div class="viewcode-block" id="edges">
+<a class="viewcode-back" href="../../api/m3sh.iterators.edges.html#m3sh.iterators.edges">[docs]</a>
+<span class="k">def</span> <span class="nf">edges</span><span class="p">(</span><span class="n">mesh</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot; Edge iterator.</span>
+
+<span class="sd">    Formally, an undirected edge is defined as a pair of oppositely</span>
+<span class="sd">    oriented halfedges. To visit the edges of a mesh, this iterator</span>
+<span class="sd">    yields exactly one of the two halfedge representatives of an edge.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    mesh : Mesh</span>
+<span class="sd">        Mesh instance.</span>
+
+<span class="sd">    Yields</span>
+<span class="sd">    ------</span>
+<span class="sd">    Halfedge</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">mesh</span><span class="o">.</span><span class="n">_eiter</span><span class="p">()</span></div>
+
+
+
+<span class="k">def</span> <span class="nf">_edges_frozen</span><span class="p">(</span><span class="n">mesh</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot; Edge iterator.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="nb">iter</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">mesh</span><span class="o">.</span><span class="n">_eiter</span><span class="p">()))</span>
+
+
+<div class="viewcode-block" id="faces">
+<a class="viewcode-back" href="../../api/m3sh.iterators.faces.html#m3sh.iterators.faces">[docs]</a>
+<span class="k">def</span> <span class="nf">faces</span><span class="p">(</span><span class="n">obj</span><span class="p">):</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot; Face iterator.</span>
+
+<span class="sd">    A vertex :math:`v` and a face :math:`f` are incident if</span>
+<span class="sd">    :math:`v \in f`. Two faces are incident if they share a common edge.</span>
+<span class="sd">    The returned iterator visits the incident faces of `obj` depending</span>
+<span class="sd">    on its type:</span>
+
+<span class="sd">    .. table::</span>
+<span class="sd">       :width: 100%</span>
+<span class="sd">       :widths: 20, 80</span>
+
+<span class="sd">       =============== ================================================</span>
+<span class="sd">       :class:`Vertex` \u21ba traversal of incident faces</span>
+<span class="sd">       --------------- ------------------------------------------------</span>
+<span class="sd">       :class:`Face`   \u21ba traversal of incident faces</span>
+<span class="sd">       --------------- ------------------------------------------------</span>
+<span class="sd">       :class:`Mesh`   in-order traversal of :attr:`~Mesh.faces`</span>
+<span class="sd">       =============== ================================================</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    obj : Vertex or Face or Mesh</span>
+<span class="sd">        The base object.</span>
+
+<span class="sd">    Yields</span>
+<span class="sd">    ------</span>
+<span class="sd">    Face</span>
+
+<span class="sd">    Note</span>
+<span class="sd">    ----</span>
+<span class="sd">    When applied to a mesh, this iterator will skip any deleted faces</span>
+<span class="sd">    still present in its face list.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">obj</span><span class="o">.</span><span class="n">_fiter</span><span class="p">()</span></div>
+
+
+
+<span class="k">def</span> <span class="nf">_faces_bfs</span><span class="p">(</span><span class="n">item</span><span class="p">,</span> <span class="n">stop</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">start</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot; Breadth-first face neighborhood iterator.</span>
+
+<span class="sd">    Breadth-first traversal of the face neighborhood of a mesh</span>
+<span class="sd">    item. The 0-ring face neighborhood of a vertex is empty.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    item : Vertex or Halfedge or Face</span>
+<span class="sd">        The seed item.</span>
+<span class="sd">    stop : int, optional</span>
+<span class="sd">        All faces at distance less or equal to `stop` are visited.</span>
+<span class="sd">    start : int, optional</span>
+<span class="sd">        Face reporting starts at the given distance level.</span>
+
+<span class="sd">    Yields</span>
+<span class="sd">    ------</span>
+<span class="sd">    Face</span>
+<span class="sd">        The next face in breadth-first search.</span>
+<span class="sd">    int</span>
+<span class="sd">        Distance to `item`.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># The try block could be replaced by explicit type checking using</span>
+    <span class="c1"># isinstance.</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">seeds</span> <span class="o">=</span> <span class="p">[</span><span class="n">v</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">item</span><span class="p">]</span>           <span class="c1"># item is face or edge</span>
+        <span class="n">level</span> <span class="o">=</span> <span class="nb">dict</span><span class="o">.</span><span class="n">fromkeys</span><span class="p">(</span><span class="n">seeds</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">level</span><span class="p">[</span><span class="n">item</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="k">except</span> <span class="ne">TypeError</span><span class="p">:</span>                       <span class="c1"># item is a vertex</span>
+        <span class="n">seeds</span> <span class="o">=</span> <span class="p">[</span><span class="n">item</span><span class="p">]</span>
+        <span class="n">level</span> <span class="o">=</span> <span class="nb">dict</span><span class="o">.</span><span class="n">fromkeys</span><span class="p">(</span><span class="n">seeds</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">start</span> <span class="o">==</span> <span class="mi">0</span> <span class="ow">and</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">item</span><span class="p">,</span> <span class="n">Face</span><span class="p">):</span>
+            <span class="k">yield</span> <span class="n">item</span>
+
+    <span class="n">queue</span> <span class="o">=</span> <span class="n">deque</span><span class="p">(</span><span class="n">seeds</span><span class="p">)</span>
+
+    <span class="k">while</span> <span class="n">queue</span><span class="p">:</span>
+        <span class="n">v</span> <span class="o">=</span> <span class="n">queue</span><span class="o">.</span><span class="n">popleft</span><span class="p">()</span>
+
+        <span class="c1"># Once a stop level vertex is visited in a breadth-first</span>
+        <span class="c1"># traversal, all faces of lower levels are exhausted.</span>
+        <span class="k">if</span> <span class="n">stop</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">level</span><span class="p">[</span><span class="n">v</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="n">stop</span><span class="p">:</span>
+            <span class="k">return</span>
+
+        <span class="k">for</span> <span class="n">w</span> <span class="ow">in</span> <span class="n">v</span><span class="o">.</span><span class="n">_viter</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">w</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">level</span><span class="p">:</span>
+                <span class="n">queue</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">w</span><span class="p">)</span>
+                <span class="n">level</span><span class="p">[</span><span class="n">w</span><span class="p">]</span> <span class="o">=</span> <span class="n">level</span><span class="p">[</span><span class="n">v</span><span class="p">]</span> <span class="o">+</span> <span class="mi">1</span>
+
+        <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">v</span><span class="o">.</span><span class="n">_fiter</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">f</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">level</span><span class="p">:</span>
+                <span class="n">level</span><span class="p">[</span><span class="n">f</span><span class="p">]</span> <span class="o">=</span> <span class="n">level</span><span class="p">[</span><span class="n">v</span><span class="p">]</span> <span class="o">+</span> <span class="mi">1</span>
+
+                <span class="k">if</span> <span class="n">start</span> <span class="o">&lt;=</span> <span class="n">level</span><span class="p">[</span><span class="n">v</span><span class="p">]:</span>
+                    <span class="k">yield</span> <span class="n">f</span><span class="p">,</span> <span class="n">level</span><span class="p">[</span><span class="n">f</span><span class="p">]</span>
+
+
+<span class="k">def</span> <span class="nf">_faces_lnk</span><span class="p">(</span><span class="n">item</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot; Face iterator.</span>
+
+<span class="sd">    Counter-clockwise traversal of all faces that share an edge or a</span>
+<span class="sd">    vertex with `item`.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    item : Halfedge or Face</span>
+<span class="sd">        The base item.</span>
+
+<span class="sd">    Yields</span>
+<span class="sd">    ------</span>
+<span class="sd">    Face</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">item</span><span class="o">.</span><span class="n">_fiter_lnk</span><span class="p">()</span>
+
+
+<span class="k">def</span> <span class="nf">_faces_frozen</span><span class="p">(</span><span class="n">obj</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot; Face iterator.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="nb">iter</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">obj</span><span class="o">.</span><span class="n">_fiter</span><span class="p">()))</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, m3shware.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
