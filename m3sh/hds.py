@@ -1794,6 +1794,14 @@ class Mesh:
         if hh._face is not None:
             hh._face._valence = None
 
+        # ... this change has to be reflected in the halfedge dictionary
+        # by reinserting them with a new key.
+        del self._halfs[u, w]
+        del self._halfs[w, u]
+
+        self._halfs[u, v] = halfedge
+        self._halfs[w, v] = halfedge._pair
+
         # Take care of the combinatorial attributes of halfedge and its
         # pair. Since one of their endpoints changed ...
         halfedge._pair._pair = h
@@ -1803,14 +1811,6 @@ class Mesh:
         halfedge._pair = hh
         halfedge._target = v
         halfedge._next = h
-
-        # ... this change has to be reflected in the halfedge dictionary
-        # by reinserting them with a new key.
-        del self._halfs[u, w]
-        del self._halfs[w, u]
-
-        self._halfs[u, v] = halfedge
-        self._halfs[w, v] = halfedge._pair
 
         # The split has resulted in polygonal faces to left and right of
         # halfedge. On request, these faces are triangulated.
