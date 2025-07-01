@@ -1639,6 +1639,12 @@ class Mesh:
         b._next, b._prev = c, halfedge
         c._next, c._prev = halfedge, b
 
+        a._face = halfedge._pair._face
+        c._face = halfedge._face
+
+        halfedge._face._halfedge = halfedge
+        halfedge._pair._face._halfedge = halfedge._pair
+
         return halfedge
 
     def insert_halfedge(self, face, origin, target):
@@ -3076,14 +3082,18 @@ class Halfedge:
         # An interior edge can only be flipped if the incident faces are
         # triangles.
         if len(self._face) != 3 or len(self._pair._face) != 3:
-            return None
+            return False
 
         # The vertices opposite the query edge may not belong to the same
         # face. Happens if one of the edge's endpoints is of degree three.
         v = self._next._target
         w = self._pair._next._target
 
-        return any(w in f for f in v._fiter())
+        # if (v, w) in self._origin._mesh._halfs:
+        #     return False
+
+        # return True
+        return not any(w in f for f in v._fiter())
 
     def _compute_loop_len(self):
         """ Length of halfedge loop.
