@@ -64,7 +64,7 @@ _interactors = []
 
 
 def canvas(*args, color=None, color2=None, camera=None, transparent=None,
-           interactive=None, layer=None):
+           interactive=None, layer=None, shadows=None):
     r""" Create or modify viewport.
 
     Change properties of an existing viewport or create a new one inside
@@ -113,12 +113,19 @@ def canvas(*args, color=None, color2=None, camera=None, transparent=None,
         Toggle event notification.
     layer : int, optional
         Layer index. Only for internal use.
+    shadows : bool, optional
+        Render shadows, experimental.
 
     Note
     ----
     Setting `interactive` to :obj:`False` will prevent a viewport from
     receiving events. Note that widgets placed in such a non-interactive
     renderer still receive interaction events.
+
+    Warning
+    -------
+    Shadows are not computed correctly in non-square viewports! This is
+    a known VTK bug.
     """
     # The active renderer is a global state variable that is modified
     # inside this function.
@@ -142,6 +149,9 @@ def canvas(*args, color=None, color2=None, camera=None, transparent=None,
         _renderer.SetMaximumNumberOfPeels(10)
         _renderer.SetUseFXAA(1)
 
+        lightkit = vtk.vtkLightKit()
+        lightkit.AddLightsToRenderer(_renderer)
+
         # Add the new renderer to the list of all renderers of the main
         # render window. Otherwise the generated list is consumed when
         # the main window instance is created in show().
@@ -163,8 +173,8 @@ def canvas(*args, color=None, color2=None, camera=None, transparent=None,
         raise ValueError('wrong number of positional arguments')
 
     if len(args) == 4:
-        _renderer.SetViewport(args[0], args[2],             # lower left
-                              args[1], args[3])             # upper right
+        _renderer.SetViewport(args[0], args[2],         # lower left
+                              args[1], args[3])         # upper right
 
     if camera is not None:
         # Set the provided camera. Either directly or use the camera of
@@ -182,6 +192,11 @@ def canvas(*args, color=None, color2=None, camera=None, transparent=None,
 
     if interactive is not None:
         _renderer.SetInteractive(interactive)
+
+    if shadows is not None:
+        # Note that shadows are wrong when rendering to non-square
+        # windows (known bug).
+        _renderer.SetUseShadows(shadows)
 
     # Viewports can be layered, i.e., occupy the same region in a render
     # window or overlap partially. In this case it can be useful to set
@@ -2017,7 +2032,7 @@ def show(width=1200, height=600, title=None, info=False, shadows=False, *,
            if iren.GetKeySym().lower() == 'space':
                vis.screenshot('box.png')
 
-       vis.box([-1, -1, -1], [1, 1, 1], edge=True)
+       vis.box([-1, -1, -1], [1, 1, 1], edges=True)
        vis.show(title='box', keydown=[key_press_callback])
     """
     # Global state variables that are modified in this function. Should
@@ -2043,8 +2058,11 @@ def show(width=1200, height=600, title=None, info=False, shadows=False, *,
         # viewport to the renderers of the _renwin render window.
         canvas()
 
-    lightkit = vtk.vtkLightKit()
-    lightkit.AddLightsToRenderer(_renderer)
+    # This has been moved to canvas(). Each newly created renderer must
+    # be treated this way. Leaving it here affects only the final one
+    # created before calling show().
+    # lightkit = vtk.vtkLightKit()
+    # lightkit.AddLightsToRenderer(_renderer)
 
     # shadows = vtk.vtkShadowMapPass()
     # passes = vtk.vtkRenderPassCollection()
@@ -2072,13 +2090,14 @@ def show(width=1200, height=600, title=None, info=False, shadows=False, *,
 
         # Changing the render pipeline to include shadows (see above)
         # can also be obtained by this command. Note that shadows are
-        # wrong when rendering to non-square windows (known bug).
+        # wrong when rendering to non-square windows (known bug). This
+        # respects per viewport shadow settings when False.
         if shadows:
             renderer.SetUseShadows(True)
 
             # Set fixed aspect ratio 1:1 to circumvent the shadow bug.
-            size = min(width, height)
-            _renwin.SetSize(size, size)
+            # size = min(width, height)
+            # _renwin.SetSize(size, size)
 
     # Set up the render window interactor with its customized trackball
     # interactor style.
