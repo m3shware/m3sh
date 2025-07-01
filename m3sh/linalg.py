@@ -212,6 +212,22 @@ def norm(u):
     return math.sqrt(u.dot(u))
 
 
+def sqrd(u):
+    r""" Squared length of vector.
+
+    Parameters
+    ----------
+    u : array_like, shape (n, )
+        Vector in :math:`\mathbb{R}^n`.
+
+    Returns
+    -------
+    float
+        Squared Euclidean length of the vector :math:`\mathbf{u}`.
+    """
+    return u.dot(u)
+
+
 def unit_inplace(u):
     r""" In-place vector normalization.
 
