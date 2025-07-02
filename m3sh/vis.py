@@ -694,9 +694,8 @@ def splat(points, vectors, size=1.0, color=colors.snow):
     return splats
 
 
-def quiver(points, vectors, size=1.0, color=colors.green_pale, **kwargs):
-        #    shaft_radius=0.025, tip_radius=0.05, tip_length=0.5,
-        #    resolution=6):
+def quiver(points, vectors, size=1.0, radius=0.025, resolution=6,
+           color=colors.green_pale):
     """ Quiver plot.
 
     Display arrows at given locations pointing in given directions. For
@@ -709,7 +708,11 @@ def quiver(points, vectors, size=1.0, color=colors.green_pale, **kwargs):
     vectors : array_like, shape (k, 3)
         Vector coordinates.
     size : float, optional
-        Length of the displayed arrows.
+        Global scale factor.
+    radius : float, optional
+        Unscaled radius of arrow shaft.
+    resolution : int, optional
+        Discretization detail level.
     color : array_like, optional
         Color specification.
 
@@ -719,15 +722,11 @@ def quiver(points, vectors, size=1.0, color=colors.green_pale, **kwargs):
         Vector field prop.
 
 
-    The glyphs used to model arrows can be customized via the following
-    keyword arguments.
-
-    Keyword arguments
-    -----------------
-    shaft_radius : float, optional
-    tip_radius : float, optional
-    tip_length : float, optional
-    resolution : int, optional
+    The glyph used to model arrows has unit length. The `radius` argument
+    is an absolute value applied to this glyph. The `size` argument is a
+    global scale factor applied to the glyph. It scales its length and
+    radius. The detail level of the glyph (how many vertices are used to
+    discretize a circle) can be set via the `resolution` argument.
 
     Note
     ----
@@ -735,7 +734,8 @@ def quiver(points, vectors, size=1.0, color=colors.green_pale, **kwargs):
     data buffer is shared with VTK's data objects (use copies to decouple
     storage).
     """
-    vf = Arrows(points, vectors, **kwargs)
+    vf = Arrows(np.atleast_2d(points), np.atleast_2d(vectors), radius,
+                2.0 * radius, resolution=resolution)
 
     vf.size = size
     vf.color = color
@@ -3220,8 +3220,12 @@ class Spheres(Prop, PropertyMixin, MapperMixin, GlyphMixin):
 
 class Arrows(OrientedGlyphs):
 
-    def __init__(self, points, vectors, **kwargs):
-        super().__init__(points, vectors, *self._arrow(**kwargs))
+    def __init__(self, points, vectors, shaft_radius=0.025, tip_radius=0.05,
+                 tip_length=0.5, resolution=6):
+        super().__init__(points, vectors, *self._arrow(shaft_radius,
+                                                       tip_radius,
+                                                       tip_length,
+                                                       resolution))
 
     @staticmethod
     def _arrow(shaft_radius=0.025, tip_radius=0.05, tip_length=0.5,
