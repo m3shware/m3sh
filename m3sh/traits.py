@@ -30,6 +30,40 @@ import numpy as np
 import m3sh.linalg as linalg
 
 
+def _axis_angles(mesh, normals=None):
+    """
+
+    Parameters
+    ----------
+    mesh : Mesh
+        Triangle mesh instance.
+    normals : ~numpy.ndarray
+        Face normal vectors.
+
+    Returns
+    -------
+    dict
+    """
+    if normals is None:
+        normals = face_normals(mesh)
+
+    axis_angles = dict()
+
+    for h in mesh._eiter():
+        axis = h.vector / linalg.norm(h.vector)
+
+        if h.boundary or h.pair.boundary:
+            cos_phi, sin_phi = 1.0, 0.0
+        else:
+            cos_phi, sin_phi = linalg.rotation(normals[h.face],
+                                               normals[h.pair.face], axis)
+
+        axis_angles[h] = (axis, cos_phi, sin_phi)
+        axis_angles[h.pair] = (-axis, cos_phi, sin_phi)
+
+    return axis_angles
+
+
 def bounds(points):
     r""" Bounding box vertices.
 
@@ -174,8 +208,41 @@ def _vertex_angle(vertex):
     return angle
 
 
-def _vertex_area(vertex):
-    return sum(face_area(f) for f in vertex._fiter())
+def _vertex_area_simple(vertex):
+    """
+    """
+    return sum(face_area(f) for f in vertex._fiter()) / 3.0
+
+
+def _vertex_area_mixed(vertex):
+    """
+    """
+    a = vertex.point
+    weight = 0.0
+    val = 0.5 * math.pi
+
+    for h in vertex._hiter():
+        if h.boundary:
+            continue
+
+        b = h.target.point
+        c = h.next.target.point
+
+        area = 0.5 * linalg.norm(linalg.cross(b-a, c-b))
+
+        angle_a = linalg.angle(b-a, c-a)
+        angle_b = linalg.angle(c-b, a-b)
+        angle_c = linalg.angle(a-c, b-c)
+
+        if angle_a < val and angle_b < val and angle_c < val:
+            weight += 0.125 * (  linalg.sqrd(b-a) * angle_c
+                               + linalg.sqrd(c-a) * angle_b)
+        elif angle_a > val:
+            weight += 0.5 * area
+        else:
+            weight += 0.25 * area
+
+    return weight
 
 
 def edge_length(item):
@@ -239,6 +306,8 @@ def _angle_defect(vertex):
 
 
 def _halfedge_normal(halfedge):
+    """ Mean curvature vector.
+    """
     pass
 
 
