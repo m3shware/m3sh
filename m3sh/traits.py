@@ -330,6 +330,16 @@ def _halfedge_angle(self):
     Our definition of a convex edge depends on the surface orientation.
     Typically one assumes outward normals.
     """
+    assert False
+
+    # Do not use this function. The angle is not defined for boundary
+    # edges. If the normals of adjacent faces are know the oriented
+    # angle can be obtained as
+    #
+    # linalg.angle(normal[h.face],
+    #              normal[h.pair.face],
+    #              h.vector)
+
     assert not self._deleted
 
     if self._face is None:
@@ -372,6 +382,10 @@ def _halfedge_rotation(self):
     ----
     Results in the identity along the boundary.
     """
+    assert False
+
+    # Do not use this function. It is superseded by axis_angle().
+
     assert not self._deleted
 
     if self._face is None:
