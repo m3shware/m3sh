@@ -25,22 +25,21 @@ import math
 import numpy as np
 
 
-def angle(v, w, a=None, deg=False):
+def angle(v, w, up=None, degrees=False):
     r""" Angle between vectors.
 
     Angle between vectors :math:`\mathbf{v}` and :math:`\mathbf{w}` in
-    radians. To obtain an oriented angle an axis vector :math:`\mathbf{a}`
-    has to be specified. Typically the axis vector is a vector parallel
-    to the cross product vector :math:`\mathbf{v} \times \mathbf{w}` with
-    the desired orientation.
+    radians. To obtain an oriented angle an axis vector `up` has to be
+    specified. Typically `up` is a vector parallel to the cross product
+    vector :math:`\mathbf{v} \times \mathbf{w}`.
 
     Parameters
     ----------
     v, w : ~numpy.ndarray, shape (3, )
         Vector in 3-space.
-    a : ~numpy.ndarray, shape (3, ), optional
+    up : ~numpy.ndarray, shape (3, ), optional
         Axis vector in 3-space.
-    deg : bool, optional
+    degrees : bool, optional
         Convert result from radians to degrees.
 
     Returns
@@ -58,10 +57,10 @@ def angle(v, w, a=None, deg=False):
     # an axis vector, see below.
     angle = math.acos(clamp(v.dot(w) / (norm(v) * norm(w)), -1., 1.))
 
-    if deg:
+    if degrees:
         angle = math.degrees(angle)
 
-    if a is not None and a.dot(cross(v, w)) < 0.0:
+    if up is not None and up.dot(cross(v, w)) < 0.0:
         angle *= -1.0
 
     return angle

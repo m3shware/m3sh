@@ -535,7 +535,7 @@ def planarity_score(face, denom=0.0):
     # Distance of diagnoals can result in inf and nan values in case of
     # flipped or degenerate quadrilaterals.
     n = linalg.cross(v, w)
-    d = abs(linalg.dot(f[1] - f[0], n) / linalg.norm(n))
+    d = abs(n.dot(f[1] - f[0]) / linalg.norm(n))
 
     if denom == 0.0:
         denom = 0.25 * np.sum(np.linalg.norm([f[1]-f[0],
