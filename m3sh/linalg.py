@@ -381,3 +381,29 @@ def rotation(v, w, a):
         sin_alpha *= -1.0
 
     return cos_alpha, sin_alpha
+
+
+def _rotation_from_quaternion(a):
+    a = unit(a)
+
+    if a[0] == 1.0:
+        raise ValueError()
+
+    a00 = a[0] * a[0]
+    a01 = a[0] * a[1]
+    a02 = a[0] * a[2]
+    a03 = a[0] * a[3]
+
+    a11 = a[1] * a[1]
+    a12 = a[1] * a[2]
+    a13 = a[1] * a[3]
+
+    a22 = a[2] * a[2]
+    a23 = a[2] * a[3]
+
+    a33 = a[3] * a[3]
+
+    return np.array(
+        [[a00 + a11 - a22 - a33, 2 * (a12 - a03), 2 * (a13 + a02)],
+         [2 * (a12 + a03), a00 - a11 + a22 - a33, 2 * (a23 - a01)],
+         [2 * (a13 - a02), 2 * (a23 + a01), a00 - a11 - a22 + a33]])
