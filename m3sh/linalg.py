@@ -273,6 +273,16 @@ def unit(u):
     return u / norm(u)
 
 
+def rank(x):
+    s = np.linalg.svd(x)[1]
+    m, n = x.shape
+    tol = s.max() * max(m, n) * np.finfo(s.dtype).eps
+
+    # print(f'{s=}, {tol=}')
+
+    return sum(s > tol)
+
+
 def rotate(x, a, phi, sinphi=None):
     r""" Rotate vector about axis.
 
