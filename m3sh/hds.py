@@ -390,12 +390,13 @@ class Mesh:
 
         if not quiet:
             print(f' done ({time()-start:.3f} sec, {merge=})')
-            print(f'\t\u251c\u2500 {len(verts)} vertices')
-            print(f'\t\u2514\u2500 {len(faces)} faces')
 
             for arg in args:
-                print(f"read data block '{arg}' " +
+                print(f"\t\u251c\u2500 data block '{arg}' " +
                       f"of size {np.shape(data[arg])}")
+
+            print(f'\t\u251c\u2500 {len(verts)} vertices')
+            print(f'\t\u2514\u2500 {len(faces)} faces')
 
         if merge:
             start = time()
