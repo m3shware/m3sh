@@ -38,7 +38,8 @@ via the "-O" command line argument.
 """
 
 from pathlib import Path
-from time import time
+from datetime import datetime
+from time import time   #use perf_counter instead
 from copy import copy, deepcopy
 
 import numpy as np
@@ -61,6 +62,8 @@ class Mesh:
         :obj:`~numpy.ndarray` object if necessary.
     faces : array_like, optional
         Face definitions, 0-based vertex indexing.
+    name : str, optional
+        Name tag.
 
     Raises
     ------
@@ -79,7 +82,7 @@ class Mesh:
         :func:`numpy.array` *is array_like.*
     """
 
-    def __init__(self, points=None, faces=None):
+    def __init__(self, points=None, faces=None, *, name=None):
         """ Initialize from vertex and face lists.
         """
         CWHITERED = '\33[41m'               # white on red background
@@ -137,6 +140,10 @@ class Mesh:
         for v in self._verts:
             if not v._manifold:
                 raise NonManifoldError(f'vertex #{v._idx} is non-manifold')
+
+        # The corresponding property setter will strip any directory
+        # prefix and type suffix from the name.
+        self.name = name
 
     # def __repr__(self):
     #     return (f'Mesh({repr(self._points)}, \n' +
@@ -330,6 +337,27 @@ class Mesh:
                 len(self._halfs) // 2,
                 sum(1 for _ in self._fiter()))
 
+    @property
+    def name(self):
+        """ Name property.
+
+        Name augmented with current time stamp.
+
+        :type: str
+
+        Note
+        ----
+        The returned string does not include a type suffix!
+        """
+        date = str(datetime.now())[:10]
+        time = str(datetime.now())[11:16]
+
+        return f'{date}_{time}_{self._name}'
+
+    @name.setter
+    def name(self, value):
+        self._name = value if value is None else Path(value).stem
+
     @classmethod
     def read(cls, filename, *args, merge=False, quiet=True):
         """ Read mesh from file.
@@ -423,6 +451,8 @@ class Mesh:
                 # All vertices are assigned the normal vector with
                 # identical index. This is fine for mesh generation.
                 mesh = cls(verts, [[v[0] for v in f] for f in faces])
+                mesh.name = filename
+
                 return mesh, *data.values()
 
             if not quiet:
@@ -466,9 +496,11 @@ class Mesh:
 
         if args:
             mesh = cls(verts, [[v[0] for v in f] for f in faces])
+            mesh.name = filename
+
             return mesh, *data.values()
 
-        return cls(verts, [[v[0] for v in f] for f in faces])
+        return cls(verts, [[v[0] for v in f] for f in faces], name=filename)
 
     def write(self, filename, quiet=True, **data):
         """ Write mesh to file.
