@@ -568,12 +568,18 @@ class Mesh:
         tidx = lambda v : int(v) if vt_given else None
         nidx = lambda v : int(v) if vn_given else None
 
+        # Using the implicit face iterator (instead of using self.faces
+        # explicitly) will skip all faces of the mesh that are marked as
+        # deleted.
         faces = (((int(v), tidx(v), nidx(v)) for v in f) for f in self)
 
         if not quiet:
             start = time()
             print(f'writing {CBOLD}{Path(filename).name}{CEND}', end=' ...')
 
+        # Write all vertex coordinates (including unused/deleted/isolated)
+        # ones. This is necessary since the faces list generated above
+        # uses vertex offsets into the list of all vertices.
         obj.write(filename, v=self._points, f=faces, **data)
 
         if not quiet:
