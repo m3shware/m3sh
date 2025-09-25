@@ -1,0 +1,6 @@
+sqrd
+====
+
+.. currentmodule:: m3sh.linalg
+
+.. autofunction:: sqrd

@@ -1,0 +1,26 @@
+PropertyMixin
+=============
+
+.. currentmodule:: m3sh.vis
+ 
+.. autoclass:: PropertyMixin
+   :show-inheritance:
+   :no-inherited-members:
+    
+   
+   
+   .. rubric:: Attributes
+ 
+   .. autosummary::
+      :toctree:
+      :template: attribute.rst
+   
+      ~PropertyMixin.opacity
+   
+   
+ 
+   
+   
+   
+   
+   

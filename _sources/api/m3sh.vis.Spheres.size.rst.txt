@@ -1,0 +1,6 @@
+size
+====
+
+.. currentmodule:: m3sh.vis
+
+.. autoproperty:: Spheres.size
