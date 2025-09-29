@@ -1,0 +1,6 @@
+RESERVED
+========
+
+.. currentmodule:: m3sh.flags
+
+.. autoattribute:: FaceFlag.RESERVED
