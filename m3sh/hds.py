@@ -131,9 +131,10 @@ class Mesh:
             for face in faces:
                 self.add_face(face)
 
-        # Typically one does not expect isolated vertices in a mesh.
-        if any(v.isolated for v in self._verts):
-            print(f'{CWHITERED}there are isolated vertices{CEND}')
+            # Typically one does not expect isolated vertices in a mesh 
+            # that does define faces (i.e., not a point cloud).
+            if any(v.isolated for v in self._verts):
+                print(f'{CWHITERED}there are isolated vertices{CEND}')
 
         # Vertex neighborhood iterators will not work properly in the
         # presence of non-manifold vertices.
@@ -357,6 +358,67 @@ class Mesh:
     @name.setter
     def name(self, value):
         self._name = value if value is None else Path(value).stem
+
+    @classmethod
+    def from_grid(cls, x, y, z=None, *, triangulate=False, name=None):
+        """ Alternative constructor.
+
+        Construct mesh from grid data. By default a quadrilateral mesh with
+        `mn` faces is generated from coordinate arrays of shape `(m, n)`.
+
+        Parameters
+        ----------
+        x, y : ~numpy.ndarray, shape (m, n)
+            Coordinate arrays.
+        z : ~numpy.ndarray, shape (m, n), optional
+            Coordinate array.
+        triangulate : bool, optional
+            Triangulate quadrilateral faces.
+        name : str, optional
+            Name tag.
+
+        Returns
+        -------
+        Mesh
+            Mesh instance.
+
+        Note
+        ----
+        Currently no `array_like` arguments are accepted.
+        """
+        # Raises an error if x has not the proper number of axis. Shapes
+        # of y (and z if not None) have to match.
+        m, n = x.shape
+
+        if y.shape != (m, n):
+            raise ValueError(f"{y.shape=} != ({m}, {n})")
+        
+        if z is not None and z.shape != (m, n):
+            raise ValueError(f"{z.shape=} != ({m}, {n})")
+
+        # ravel() should not make copies and flatten in C-order, i.e.
+        # rows are stored contiguously (stride n).
+        if z is None:
+            points = np.column_stack((x.ravel(), y.ravel()))
+        else:
+            points = np.column_stack((x.ravel(), y.ravel(), z.ravel()))
+
+        # Point cloud, faces are defined (and possibly triangulated) in the 
+        # nested for-loop.
+        mesh = cls(points, name=name)
+
+        for i in range(m-1):
+            for j in range(n-1):
+                if triangulate:
+                    mesh.add_face(n*i + j, n*i + (j+1), n*(i+1) + (j+1))
+                    mesh.add_face(n*i + j, n*(i+1) + (j+1), n*(i+1) + j)      
+                else:
+                    mesh.add_face(n*i + j, 
+                                  n*i + j + 1, 
+                                  n*(i+1) + j + 1, 
+                                  n*(i+1) + j)
+
+        return mesh
 
     @classmethod
     def read(cls, filename, *args, merge=False, quiet=True):
