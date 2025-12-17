@@ -131,7 +131,7 @@ class Mesh:
             for face in faces:
                 self.add_face(face)
 
-            # Typically one does not expect isolated vertices in a mesh 
+            # Typically one does not expect isolated vertices in a mesh
             # that does define faces (i.e., not a point cloud).
             if any(v.isolated for v in self._verts):
                 print(f'{CWHITERED}there are isolated vertices{CEND}')
@@ -360,8 +360,8 @@ class Mesh:
         self._name = value if value is None else Path(value).stem
 
     @classmethod
-    def from_grid(cls, x, y, z=None, *, triangulate=False, name=None):
-        """ Alternative constructor.
+    def _from_grid(cls, x, y, z=None, *, triangulate=False, name=None):
+        """ Alternative constructor (legacy).
 
         Construct mesh from grid data. By default a quadrilateral mesh with
         `mn` faces is generated from coordinate arrays of shape `(m, n)`.
@@ -392,7 +392,7 @@ class Mesh:
 
         if y.shape != (m, n):
             raise ValueError(f"{y.shape=} != ({m}, {n})")
-        
+
         if z is not None and z.shape != (m, n):
             raise ValueError(f"{z.shape=} != ({m}, {n})")
 
@@ -403,7 +403,7 @@ class Mesh:
         else:
             points = np.column_stack((x.ravel(), y.ravel(), z.ravel()))
 
-        # Point cloud, faces are defined (and possibly triangulated) in the 
+        # Point cloud, faces are defined (and possibly triangulated) in the
         # nested for-loop.
         mesh = cls(points, name=name)
 
@@ -411,11 +411,11 @@ class Mesh:
             for j in range(n-1):
                 if triangulate:
                     mesh.add_face(n*i + j, n*i + (j+1), n*(i+1) + (j+1))
-                    mesh.add_face(n*i + j, n*(i+1) + (j+1), n*(i+1) + j)      
+                    mesh.add_face(n*i + j, n*(i+1) + (j+1), n*(i+1) + j)
                 else:
-                    mesh.add_face(n*i + j, 
-                                  n*i + j + 1, 
-                                  n*(i+1) + j + 1, 
+                    mesh.add_face(n*i + j,
+                                  n*i + j + 1,
+                                  n*(i+1) + j + 1,
                                   n*(i+1) + j)
 
         return mesh
@@ -1926,6 +1926,59 @@ class Mesh:
             self._fan_triangulation(hh)
 
         return v
+
+    @classmethod
+    def from_grid(cls, *arr, triangulate=False, order='C', name=None):
+        """ Alternative constructor.
+
+        Construct mesh from grid data. A quadrilateral mesh with `mn`
+        faces is generated from coordinate arrays of shape `(m, n)`.
+
+        Parameters
+        ----------
+        *arr : ~numpy.ndarray, shape (m, n)
+            Arbitrary number of coordinate arrays.
+        triangulate : bool, optional
+            Triangulate quadrilateral faces.
+        order : str, optional
+            Flatten coordinate arrays in row-major mode 'C' or
+            column-major mode 'F'.
+        name : str, optional
+            Name tag.
+
+        Returns
+        -------
+        Mesh
+            Mesh instance.
+        """
+        match order:
+            case 'C':
+                m, n = arr[0].shape
+            case 'F':
+                n, m = arr[0].shape
+            case _:
+                raise ValueError(f"invalid order argument {order}")
+
+        def face(m, n):
+            for major_idx in range(m - 1):
+                ofs = major_idx * n
+
+                for j in range(n - 1):
+                    if triangulate:
+                        yield [ofs + j, ofs + j + 1, ofs + j + n + 1]
+                        yield [ofs + j, ofs + j + n + 1, ofs + j + n]
+                    else:
+                        yield [ofs + j, ofs + j + 1,
+                               ofs + j + n + 1, ofs + j + n]
+
+        # Passing only a single coordinate array results in a vertex
+        # coordinate array of shape (mn, 1). The empty dimension can be
+        # removed using np.squeeze().
+        arrays = tuple(a.reshape(-1, order=order) for a in arr)
+        points = np.stack(arrays, axis=-1)
+        faces = [f for f in face(m, n)]
+
+        return cls(points, faces, name=name)
 
     def _add_attr_values(self, key, *args, **kwargs):
         """ Add attribute values.
