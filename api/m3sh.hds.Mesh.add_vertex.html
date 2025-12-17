@@ -1,0 +1,216 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>add_vertex &mdash; m3sh 1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+
+  
+    <link rel="shortcut icon" href="../_static/ghems_red.ico"/>
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=f2a433a1"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="add_vertex_data" href="m3sh.hds.Mesh.add_vertex_data.html" />
+    <link rel="prev" title="add_halfedge_data" href="m3sh.hds.Mesh.add_halfedge_data.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            m3sh
+              <img src="../_static/logo-small.png" class="logo" alt="Logo"/>
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+   
+              <p class="caption" role="heading"><span class="caption-text">Basic usage and examples</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../basics.html">Mesh basics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../usage.html">Quickstart</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../iterators.html">Neighborhood traversal</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Modules - API</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="../mesh.html">Halfedge data structure</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="m3sh.hds.html">m3sh.hds</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="m3sh.hds.Face.html">Face</a></li>
+<li class="toctree-l3"><a class="reference internal" href="m3sh.hds.Halfedge.html">Halfedge</a></li>
+<li class="toctree-l3 current"><a class="reference internal" href="m3sh.hds.Mesh.html">Mesh</a><ul class="current">
+<li class="toctree-l4"><a class="reference internal" href="m3sh.hds.Mesh.faces.html">faces</a></li>
+<li class="toctree-l4"><a class="reference internal" href="m3sh.hds.Mesh.halfedges.html">halfedges</a></li>
+<li class="toctree-l4"><a class="reference internal" href="m3sh.hds.Mesh.name.html">name</a></li>
+<li class="toctree-l4"><a class="reference internal" href="m3sh.hds.Mesh.points.html">points</a></li>
+<li class="toctree-l4"><a class="reference internal" href="m3sh.hds.Mesh.size.html">size</a></li>
+<li class="toctree-l4"><a class="reference internal" href="m3sh.hds.Mesh.vertices.html">vertices</a></li>
+<li class="toctree-l4"><a class="reference internal" href="m3sh.hds.Mesh.add_face.html">add_face</a></li>
+<li class="toctree-l4"><a class="reference internal" href="m3sh.hds.Mesh.add_face_data.html">add_face_data</a></li>
+<li class="toctree-l4"><a class="reference internal" href="m3sh.hds.Mesh.add_halfedge_data.html">add_halfedge_data</a></li>
+<li class="toctree-l4 current"><a class="current reference internal" href="#">add_vertex</a></li>
+<li class="toctree-l4"><a class="reference internal" href="m3sh.hds.Mesh.add_vertex_data.html">add_vertex_data</a></li>
+<li class="toctree-l4"><a class="reference internal" href="m3sh.hds.Mesh.clean.html">clean</a></li>
+<li class="toctree-l4"><a class="reference internal" href="m3sh.hds.Mesh.clear.html">clear</a></li>
+<li class="toctree-l4"><a class="reference internal" href="m3sh.hds.Mesh.clone.html">clone</a></li>
+<li class="toctree-l4"><a class="reference internal" href="m3sh.hds.Mesh.collapse_halfedge.html">collapse_halfedge</a></li>
+<li class="toctree-l4"><a class="reference internal" href="m3sh.hds.Mesh.copy.html">copy</a></li>
+<li class="toctree-l4"><a class="reference internal" href="m3sh.hds.Mesh.delete_face.html">delete_face</a></li>
+<li class="toctree-l4"><a class="reference internal" href="m3sh.hds.Mesh.delete_halfedge.html">delete_halfedge</a></li>
+<li class="toctree-l4"><a class="reference internal" href="m3sh.hds.Mesh.delete_vertex.html">delete_vertex</a></li>
+<li class="toctree-l4"><a class="reference internal" href="m3sh.hds.Mesh.flip_halfedge.html">flip_halfedge</a></li>
+<li class="toctree-l4"><a class="reference internal" href="m3sh.hds.Mesh.from_grid.html">from_grid</a></li>
+<li class="toctree-l4"><a class="reference internal" href="m3sh.hds.Mesh.insert_halfedge.html">insert_halfedge</a></li>
+<li class="toctree-l4"><a class="reference internal" href="m3sh.hds.Mesh.read.html">read</a></li>
+<li class="toctree-l4"><a class="reference internal" href="m3sh.hds.Mesh.split_halfedge.html">split_halfedge</a></li>
+<li class="toctree-l4"><a class="reference internal" href="m3sh.hds.Mesh.write.html">write</a></li>
+<li class="toctree-l4"><a class="reference internal" href="m3sh.hds.Mesh.__getitem__.html">__getitem__</a></li>
+<li class="toctree-l4"><a class="reference internal" href="m3sh.hds.Mesh.__iter__.html">__iter__</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="m3sh.hds.Vertex.html">Vertex</a></li>
+<li class="toctree-l3"><a class="reference internal" href="m3sh.hds.NonManifoldError.html">NonManifoldError</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="m3sh.iterators.html">m3sh.iterators</a></li>
+<li class="toctree-l2"><a class="reference internal" href="m3sh.traits.html">m3sh.traits</a></li>
+<li class="toctree-l2"><a class="reference internal" href="m3sh.flags.html">m3sh.flags</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../helper.html">Auxiliary modules</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../vis.html">Visualization</a></li>
+</ul>
+
+   <p class="caption">
+     <span class="caption-text">Indices</span>
+   </p>
+   <ul>
+        <li class="toctree-l1"><a href= "../genindex.html">Index</a></li>
+        <li class="toctree-l1"><a href= "../py-modindex.html">Module index</a></li>
+        <li class="toctree-l1"><a href= "https://github.com/m3shware/m3sh">Package source</a></li>
+   </ul>
+    
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">m3sh</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../mesh.html">Halfedge data structure</a></li>
+          <li class="breadcrumb-item"><a href="m3sh.hds.html">m3sh.hds</a></li>
+          <li class="breadcrumb-item"><a href="m3sh.hds.Mesh.html">Mesh</a></li>
+      <li class="breadcrumb-item active">add_vertex</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/api/m3sh.hds.Mesh.add_vertex.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="add-vertex">
+<h1>add_vertex<a class="headerlink" href="#add-vertex" title="Link to this heading"></a></h1>
+<dl class="py method">
+<dt class="sig sig-object py" id="m3sh.hds.Mesh.add_vertex">
+<span class="sig-prename descclassname"><span class="pre">Mesh.</span></span><span class="sig-name descname"><span class="pre">add_vertex</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">point</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/m3sh/hds.html#Mesh.add_vertex"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#m3sh.hds.Mesh.add_vertex" title="Link to this definition"></a></dt>
+<dd><p>Create and add new vertex.</p>
+<p>The first point added to a mesh determines the dimensionality
+of all mesh vertices.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>point</strong> (<em>array_like</em><em> or </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – Vertex coordinates.</p></li>
+<li><p><strong>*args</strong> – Variable number of scalars.</p></li>
+<li><p><strong>**kwargs</strong> – Attribute name and value pairs.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.14)"><strong>ValueError</strong></a> – If <cite>point</cite> has the wrong shape.</p>
+</dd>
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>The newly created <a class="reference internal" href="m3sh.hds.Vertex.html#m3sh.hds.Vertex" title="m3sh.hds.Vertex"><code class="xref py py-class docutils literal notranslate"><span class="pre">Vertex</span></code></a> instance.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="m3sh.hds.Vertex.html#m3sh.hds.Vertex" title="m3sh.hds.Vertex">Vertex</a></p>
+</dd>
+</dl>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>When adding a new vertex all vertex data blocks are extended by
+a correponding value:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>either by using the <cite>default</cite> value specified when
+the data block was added,</p></li>
+<li><p>or by using a value provided as keyword argument.</p></li>
+</ul>
+</div></blockquote>
+<p>Values specified as keyword arguments that don’t fit this pattern
+are added as <a class="reference internal" href="m3sh.hds.Vertex.html#m3sh.hds.Vertex" title="m3sh.hds.Vertex"><code class="xref py py-class docutils literal notranslate"><span class="pre">Vertex</span></code></a> instance attributes and only availabe
+as attributes of this particular instance.</p>
+</div>
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="m3sh.hds.Mesh.add_halfedge_data.html" class="btn btn-neutral float-left" title="add_halfedge_data" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="m3sh.hds.Mesh.add_vertex_data.html" class="btn btn-neutral float-right" title="add_vertex_data" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, m3shware.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -1,0 +1,68 @@
+Mesh
+====
+
+.. currentmodule:: m3sh.hds
+ 
+.. autoclass:: Mesh
+   :no-inherited-members:
+    
+   
+   
+   .. rubric:: Attributes
+ 
+   .. autosummary::
+      :toctree:
+      :template: attribute.rst
+   
+      ~Mesh.faces
+      ~Mesh.halfedges
+      ~Mesh.name
+      ~Mesh.points
+      ~Mesh.size
+      ~Mesh.vertices
+   
+   
+ 
+   
+   
+   .. rubric:: Methods
+ 
+   .. autosummary::
+      :toctree: 
+      :template: function.rst
+   
+      ~Mesh.add_face
+      ~Mesh.add_face_data
+      ~Mesh.add_halfedge_data
+      ~Mesh.add_vertex
+      ~Mesh.add_vertex_data
+      ~Mesh.clean
+      ~Mesh.clear
+      ~Mesh.clone
+      ~Mesh.collapse_halfedge
+      ~Mesh.copy
+      ~Mesh.delete_face
+      ~Mesh.delete_halfedge
+      ~Mesh.delete_vertex
+      ~Mesh.flip_halfedge
+      ~Mesh.from_grid
+      ~Mesh.insert_halfedge
+      ~Mesh.read
+      ~Mesh.split_halfedge
+      ~Mesh.write
+   
+   
+   
+   
+   
+   .. rubric:: Special methods
+ 
+   .. autosummary::
+      :toctree: 
+      :template: function.rst
+   
+         ~Mesh.__getitem__
+         ~Mesh.__iter__
+   
+   
+   

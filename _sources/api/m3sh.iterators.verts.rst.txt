@@ -1,0 +1,6 @@
+verts
+=====
+
+.. currentmodule:: m3sh.iterators
+
+.. autofunction:: verts

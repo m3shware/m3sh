@@ -1,0 +1,717 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>m3sh.traits &mdash; m3sh 1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=e59714d7" />
+
+  
+    <link rel="shortcut icon" href="../../_static/ghems_red.ico"/>
+      <script src="../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../_static/documentation_options.js?v=f2a433a1"></script>
+      <script src="../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            m3sh
+              <img src="../../_static/logo-small.png" class="logo" alt="Logo"/>
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+   
+              <p class="caption" role="heading"><span class="caption-text">Basic usage and examples</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../basics.html">Mesh basics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../usage.html">Quickstart</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../iterators.html">Neighborhood traversal</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Modules - API</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../mesh.html">Halfedge data structure</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../helper.html">Auxiliary modules</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../vis.html">Visualization</a></li>
+</ul>
+
+   <p class="caption">
+     <span class="caption-text">Indices</span>
+   </p>
+   <ul>
+        <li class="toctree-l1"><a href= "../../genindex.html">Index</a></li>
+        <li class="toctree-l1"><a href= "../../py-modindex.html">Module index</a></li>
+        <li class="toctree-l1"><a href= "https://github.com/m3shware/m3sh">Package source</a></li>
+   </ul>
+    
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">m3sh</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">m3sh.traits</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for m3sh.traits</h1><div class="highlight"><pre>
+<span></span><span class="c1"># Copyright 2024, m3shware</span>
+<span class="c1">#</span>
+<span class="c1"># Permission is hereby granted, free of charge, to any person obtaining a</span>
+<span class="c1"># copy of this software and associated documentation files (the &quot;Software&quot;),</span>
+<span class="c1"># to deal in the Software without restriction, including without limitation</span>
+<span class="c1"># the rights to use, copy, modify, merge, publish, distribute, sublicense,</span>
+<span class="c1"># and/or sell copies of the Software, and to permit persons to whom the</span>
+<span class="c1"># Software is furnished to do so, subject to the following conditions:</span>
+<span class="c1">#</span>
+<span class="c1"># The above copyright notice and this permission notice shall be included in</span>
+<span class="c1"># all copies or substantial portions of the Software.</span>
+<span class="c1">#</span>
+<span class="c1"># THE SOFTWARE IS PROVIDED &quot;AS IS&quot;, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR</span>
+<span class="c1"># IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,</span>
+<span class="c1"># FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE</span>
+<span class="c1"># AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER</span>
+<span class="c1"># LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING</span>
+<span class="c1"># FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS</span>
+<span class="c1"># IN THE SOFTWARE.</span>
+
+<span class="sd">&quot;&quot;&quot; Geometric mesh traits.</span>
+
+<span class="sd">Convenience functions to compute common and often used geometric mesh</span>
+<span class="sd">traits like vertex and face normals, etc.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">math</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+
+<span class="kn">import</span> <span class="nn">m3sh.linalg</span> <span class="k">as</span> <span class="nn">linalg</span>
+
+
+<span class="k">def</span> <span class="nf">_axis_angles</span><span class="p">(</span><span class="n">mesh</span><span class="p">,</span> <span class="n">normals</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    mesh : Mesh</span>
+<span class="sd">        Triangle mesh instance.</span>
+<span class="sd">    normals : ~numpy.ndarray</span>
+<span class="sd">        Face normal vectors.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    dict</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">normals</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">normals</span> <span class="o">=</span> <span class="n">face_normals</span><span class="p">(</span><span class="n">mesh</span><span class="p">)</span>
+
+    <span class="n">axis_angles</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+
+    <span class="k">for</span> <span class="n">h</span> <span class="ow">in</span> <span class="n">mesh</span><span class="o">.</span><span class="n">_eiter</span><span class="p">():</span>
+        <span class="n">axis</span> <span class="o">=</span> <span class="n">h</span><span class="o">.</span><span class="n">vector</span> <span class="o">/</span> <span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">h</span><span class="o">.</span><span class="n">vector</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">h</span><span class="o">.</span><span class="n">boundary</span> <span class="ow">or</span> <span class="n">h</span><span class="o">.</span><span class="n">pair</span><span class="o">.</span><span class="n">boundary</span><span class="p">:</span>
+            <span class="n">cos_phi</span><span class="p">,</span> <span class="n">sin_phi</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">cos_phi</span><span class="p">,</span> <span class="n">sin_phi</span> <span class="o">=</span> <span class="n">linalg</span><span class="o">.</span><span class="n">rotation</span><span class="p">(</span><span class="n">normals</span><span class="p">[</span><span class="n">h</span><span class="o">.</span><span class="n">face</span><span class="p">],</span>
+                                               <span class="n">normals</span><span class="p">[</span><span class="n">h</span><span class="o">.</span><span class="n">pair</span><span class="o">.</span><span class="n">face</span><span class="p">],</span> <span class="n">axis</span><span class="p">)</span>
+
+        <span class="n">axis_angles</span><span class="p">[</span><span class="n">h</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">axis</span><span class="p">,</span> <span class="n">cos_phi</span><span class="p">,</span> <span class="n">sin_phi</span><span class="p">)</span>
+        <span class="n">axis_angles</span><span class="p">[</span><span class="n">h</span><span class="o">.</span><span class="n">pair</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="o">-</span><span class="n">axis</span><span class="p">,</span> <span class="n">cos_phi</span><span class="p">,</span> <span class="n">sin_phi</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">axis_angles</span>
+
+
+<div class="viewcode-block" id="bounds">
+<a class="viewcode-back" href="../../api/m3sh.traits.bounds.html#m3sh.traits.bounds">[docs]</a>
+<span class="k">def</span> <span class="nf">bounds</span><span class="p">(</span><span class="n">points</span><span class="p">):</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot; Bounding box vertices.</span>
+
+<span class="sd">    Corner vertices of the axis-aligned bounding box.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    points : array_like, shape (n, k)</span>
+<span class="sd">        Coordinates of :math:`n` points in :math:`\mathbb{R}^k`,</span>
+<span class="sd">        one point per row.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    a : ~numpy.ndarray</span>
+<span class="sd">        Holds the minimum value for each dimension.</span>
+<span class="sd">    b : ~numpy.ndarray</span>
+<span class="sd">        Holds the maximum value for each dimension.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">points</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">points</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="vertex_normal">
+<a class="viewcode-back" href="../../api/m3sh.traits.vertex_normal.html#m3sh.traits.vertex_normal">[docs]</a>
+<span class="k">def</span> <span class="nf">vertex_normal</span><span class="p">(</span><span class="n">vertex</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot; Vertex normal.</span>
+
+<span class="sd">    Compute vertex normal as average of triangle normals. For</span>
+<span class="sd">    non-triangular meshes, incident triangles are defined by the</span>
+<span class="sd">    planes spanned by consecutive edges in a counter-clockwise</span>
+<span class="sd">    traversal of all incident edges.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    vertex : Vertex</span>
+<span class="sd">        Vertex of a mesh.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    ~numpy.ndarray, shape (3, )</span>
+<span class="sd">        Unit normal vector.</span>
+
+<span class="sd">    Note</span>
+<span class="sd">    ----</span>
+<span class="sd">    Vertex normals are not well defined for isolated vertices.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Triggers an assertion for deleted vertices. Alternative: quitely</span>
+    <span class="c1"># assign nan normal vector to deleted vertices.</span>
+    <span class="k">if</span> <span class="n">vertex</span><span class="o">.</span><span class="n">degree</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">full_like</span><span class="p">(</span><span class="n">vertex</span><span class="o">.</span><span class="n">point</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)</span>
+
+    <span class="n">normal</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">vertex</span><span class="o">.</span><span class="n">point</span><span class="p">)</span>
+
+    <span class="c1"># We checked for vanishing degree, hence this iterator cannot be</span>
+    <span class="c1"># empty.</span>
+    <span class="k">for</span> <span class="n">h</span> <span class="ow">in</span> <span class="n">vertex</span><span class="o">.</span><span class="n">_hiter</span><span class="p">():</span>
+        <span class="k">if</span> <span class="n">h</span><span class="o">.</span><span class="n">_face</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">normal</span> <span class="o">+=</span> <span class="n">linalg</span><span class="o">.</span><span class="n">unit</span><span class="p">(</span><span class="n">linalg</span><span class="o">.</span><span class="n">cross</span><span class="p">(</span><span class="n">h</span><span class="o">.</span><span class="n">prev</span><span class="o">.</span><span class="n">vector</span><span class="p">,</span>
+                                               <span class="n">h</span><span class="o">.</span><span class="n">vector</span><span class="p">))</span>
+
+    <span class="k">return</span> <span class="n">linalg</span><span class="o">.</span><span class="n">unit</span><span class="p">(</span><span class="n">normal</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="vertex_normals">
+<a class="viewcode-back" href="../../api/m3sh.traits.vertex_normals.html#m3sh.traits.vertex_normals">[docs]</a>
+<span class="k">def</span> <span class="nf">vertex_normals</span><span class="p">(</span><span class="n">mesh</span><span class="p">,</span> <span class="n">broadcast</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot; Vertex normals.</span>
+
+<span class="sd">    Compute vertex normals as average of face normals.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    mesh : Mesh</span>
+<span class="sd">        A mesh.</span>
+<span class="sd">    broadcast : bool, optional</span>
+<span class="sd">        Broadcast or gather face normals.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    ~numpy.ndarray, shape (n, 3)</span>
+<span class="sd">        Unit normal vectors for a mesh with n vertices.</span>
+
+<span class="sd">    Note</span>
+<span class="sd">    ----</span>
+<span class="sd">    Vertex normals are not well defined for isolated vertices. The</span>
+<span class="sd">    result includes :obj:`np.nan` values in this case.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">broadcast</span><span class="p">:</span>
+        <span class="c1"># Outer loop runs over faces. Each face broadcasts is normal</span>
+        <span class="c1"># vector to each incident vertex. This is typically faster.</span>
+        <span class="n">normals</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">mesh</span><span class="o">.</span><span class="n">points</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">mesh</span><span class="o">.</span><span class="n">faces</span><span class="p">:</span>
+            <span class="n">normals</span><span class="p">[</span><span class="n">f</span><span class="p">]</span> <span class="o">+=</span> <span class="n">face_normal</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+
+        <span class="c1"># Division by 0 results in nan entries for normal vectors of</span>
+        <span class="c1"># deleted and isolated vertices.</span>
+        <span class="n">normals</span> <span class="o">/=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">normals</span><span class="p">,</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">)[:,</span> <span class="kc">None</span><span class="p">]</span>
+        <span class="k">return</span> <span class="n">normals</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="c1"># Outer loop runs over vertices. Gather normals of incident</span>
+        <span class="c1"># faces to compute the vertex normal.</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">vertex_normal</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">mesh</span><span class="o">.</span><span class="n">vertices</span><span class="p">])</span></div>
+
+
+
+<span class="k">def</span> <span class="nf">_vertex_normals</span><span class="p">(</span><span class="n">mesh</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot; Vertex normals.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    mesh : Mesh</span>
+<span class="sd">        A mesh.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    ~numpy.ndarray, shape (n, 3)</span>
+<span class="sd">        Unit normal vectors for a mesh with n vertices.</span>
+
+<span class="sd">    Note</span>
+<span class="sd">    ----</span>
+<span class="sd">    Vertex normals are not well defined for isolated vertices.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">normals</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">mesh</span><span class="o">.</span><span class="n">points</span><span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">mesh</span><span class="o">.</span><span class="n">faces</span><span class="p">:</span>
+        <span class="n">n</span> <span class="o">=</span> <span class="n">linalg</span><span class="o">.</span><span class="n">unit</span><span class="p">(</span><span class="n">linalg</span><span class="o">.</span><span class="n">cross</span><span class="p">(</span><span class="n">f</span><span class="o">.</span><span class="n">halfedge</span><span class="o">.</span><span class="n">vector</span><span class="p">,</span>
+                                     <span class="n">f</span><span class="o">.</span><span class="n">halfedge</span><span class="o">.</span><span class="n">next</span><span class="o">.</span><span class="n">vector</span><span class="p">))</span>
+
+        <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">f</span><span class="o">.</span><span class="n">_viter</span><span class="p">():</span>
+            <span class="n">normals</span><span class="p">[</span><span class="n">v</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span> <span class="o">+=</span> <span class="n">n</span>
+
+    <span class="n">normals</span> <span class="o">/=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">normals</span><span class="p">,</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">)[:,</span> <span class="kc">None</span><span class="p">]</span>
+    <span class="k">return</span> <span class="n">normals</span>
+
+
+<span class="k">def</span> <span class="nf">_vertex_angle</span><span class="p">(</span><span class="n">vertex</span><span class="p">):</span>
+    <span class="n">clamp</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">x</span><span class="p">,</span> <span class="n">l</span><span class="p">,</span> <span class="n">h</span><span class="p">:</span> <span class="n">l</span> <span class="k">if</span> <span class="n">x</span> <span class="o">&lt;</span> <span class="n">l</span> <span class="k">else</span> <span class="n">h</span> <span class="k">if</span> <span class="n">x</span> <span class="o">&gt;</span> <span class="n">h</span> <span class="k">else</span> <span class="n">x</span>
+    <span class="n">angle</span> <span class="o">=</span> <span class="mf">2.0</span> <span class="o">*</span> <span class="n">math</span><span class="o">.</span><span class="n">pi</span>
+
+    <span class="k">for</span> <span class="n">h</span> <span class="ow">in</span> <span class="n">vertex</span><span class="o">.</span><span class="n">_hiter</span><span class="p">():</span>
+        <span class="k">if</span> <span class="n">h</span><span class="o">.</span><span class="n">_face</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">u</span> <span class="o">=</span> <span class="n">linalg</span><span class="o">.</span><span class="n">unit</span><span class="p">(</span><span class="n">h</span><span class="o">.</span><span class="n">_prev</span><span class="o">.</span><span class="n">_pair</span><span class="o">.</span><span class="n">vector</span><span class="p">)</span>
+            <span class="n">v</span> <span class="o">=</span> <span class="n">linalg</span><span class="o">.</span><span class="n">unit</span><span class="p">(</span><span class="n">h</span><span class="o">.</span><span class="n">vector</span><span class="p">)</span>
+
+            <span class="n">angle</span> <span class="o">+=</span> <span class="n">math</span><span class="o">.</span><span class="n">acos</span><span class="p">(</span><span class="n">clamp</span><span class="p">(</span><span class="n">u</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">v</span><span class="p">),</span> <span class="o">-</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">))</span>
+
+    <span class="k">return</span> <span class="n">angle</span>
+
+
+<span class="k">def</span> <span class="nf">_vertex_area_simple</span><span class="p">(</span><span class="n">vertex</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="nb">sum</span><span class="p">(</span><span class="n">face_area</span><span class="p">(</span><span class="n">f</span><span class="p">)</span> <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">vertex</span><span class="o">.</span><span class="n">_fiter</span><span class="p">())</span> <span class="o">/</span> <span class="mf">3.0</span>
+
+
+<span class="k">def</span> <span class="nf">_vertex_area_mixed</span><span class="p">(</span><span class="n">vertex</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">a</span> <span class="o">=</span> <span class="n">vertex</span><span class="o">.</span><span class="n">point</span>
+    <span class="n">weight</span> <span class="o">=</span> <span class="mf">0.0</span>
+    <span class="n">val</span> <span class="o">=</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="n">math</span><span class="o">.</span><span class="n">pi</span>
+
+    <span class="k">for</span> <span class="n">h</span> <span class="ow">in</span> <span class="n">vertex</span><span class="o">.</span><span class="n">_hiter</span><span class="p">():</span>
+        <span class="k">if</span> <span class="n">h</span><span class="o">.</span><span class="n">boundary</span><span class="p">:</span>
+            <span class="k">continue</span>
+
+        <span class="n">b</span> <span class="o">=</span> <span class="n">h</span><span class="o">.</span><span class="n">target</span><span class="o">.</span><span class="n">point</span>
+        <span class="n">c</span> <span class="o">=</span> <span class="n">h</span><span class="o">.</span><span class="n">next</span><span class="o">.</span><span class="n">target</span><span class="o">.</span><span class="n">point</span>
+
+        <span class="n">area</span> <span class="o">=</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">linalg</span><span class="o">.</span><span class="n">cross</span><span class="p">(</span><span class="n">b</span><span class="o">-</span><span class="n">a</span><span class="p">,</span> <span class="n">c</span><span class="o">-</span><span class="n">b</span><span class="p">))</span>
+
+        <span class="n">angle_a</span> <span class="o">=</span> <span class="n">linalg</span><span class="o">.</span><span class="n">angle</span><span class="p">(</span><span class="n">b</span><span class="o">-</span><span class="n">a</span><span class="p">,</span> <span class="n">c</span><span class="o">-</span><span class="n">a</span><span class="p">)</span>
+        <span class="n">angle_b</span> <span class="o">=</span> <span class="n">linalg</span><span class="o">.</span><span class="n">angle</span><span class="p">(</span><span class="n">c</span><span class="o">-</span><span class="n">b</span><span class="p">,</span> <span class="n">a</span><span class="o">-</span><span class="n">b</span><span class="p">)</span>
+        <span class="n">angle_c</span> <span class="o">=</span> <span class="n">linalg</span><span class="o">.</span><span class="n">angle</span><span class="p">(</span><span class="n">a</span><span class="o">-</span><span class="n">c</span><span class="p">,</span> <span class="n">b</span><span class="o">-</span><span class="n">c</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">angle_a</span> <span class="o">&lt;</span> <span class="n">val</span> <span class="ow">and</span> <span class="n">angle_b</span> <span class="o">&lt;</span> <span class="n">val</span> <span class="ow">and</span> <span class="n">angle_c</span> <span class="o">&lt;</span> <span class="n">val</span><span class="p">:</span>
+            <span class="n">weight</span> <span class="o">+=</span> <span class="mf">0.125</span> <span class="o">*</span> <span class="p">(</span>  <span class="n">linalg</span><span class="o">.</span><span class="n">sqrd</span><span class="p">(</span><span class="n">b</span><span class="o">-</span><span class="n">a</span><span class="p">)</span> <span class="o">*</span> <span class="n">angle_c</span>
+                               <span class="o">+</span> <span class="n">linalg</span><span class="o">.</span><span class="n">sqrd</span><span class="p">(</span><span class="n">c</span><span class="o">-</span><span class="n">a</span><span class="p">)</span> <span class="o">*</span> <span class="n">angle_b</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">angle_a</span> <span class="o">&gt;</span> <span class="n">val</span><span class="p">:</span>
+            <span class="n">weight</span> <span class="o">+=</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="n">area</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">weight</span> <span class="o">+=</span> <span class="mf">0.25</span> <span class="o">*</span> <span class="n">area</span>
+
+    <span class="k">return</span> <span class="n">weight</span>
+
+
+<div class="viewcode-block" id="edge_length">
+<a class="viewcode-back" href="../../api/m3sh.traits.edge_length.html#m3sh.traits.edge_length">[docs]</a>
+<span class="k">def</span> <span class="nf">edge_length</span><span class="p">(</span><span class="n">item</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot; Edge length statistics.</span>
+
+<span class="sd">    Minimal, maximal, and average edge length for a mesh or an</span>
+<span class="sd">    individual face.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    item : Face or Mesh</span>
+<span class="sd">        Mesh or face of a mesh.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    min : float</span>
+<span class="sd">        Minimal edge length.</span>
+<span class="sd">    max : float</span>
+<span class="sd">        Maximal edge length.</span>
+<span class="sd">    avg : float</span>
+<span class="sd">        Average edge length.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="nb">min</span><span class="p">,</span> <span class="nb">max</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">inf</span><span class="p">,</span> <span class="o">-</span><span class="n">np</span><span class="o">.</span><span class="n">inf</span>
+    <span class="n">avg</span><span class="p">,</span> <span class="n">cnt</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mi">0</span>
+
+    <span class="k">for</span> <span class="n">h</span> <span class="ow">in</span> <span class="n">item</span><span class="o">.</span><span class="n">_eiter</span><span class="p">():</span>
+        <span class="n">length</span> <span class="o">=</span> <span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">h</span><span class="o">.</span><span class="n">vector</span><span class="p">)</span>
+
+        <span class="n">avg</span> <span class="o">+=</span> <span class="n">length</span>
+        <span class="n">cnt</span> <span class="o">+=</span> <span class="mi">1</span>
+
+        <span class="nb">min</span> <span class="o">=</span> <span class="n">length</span> <span class="k">if</span> <span class="n">length</span> <span class="o">&lt;</span> <span class="nb">min</span> <span class="k">else</span> <span class="nb">min</span>
+        <span class="nb">max</span> <span class="o">=</span> <span class="n">length</span> <span class="k">if</span> <span class="n">length</span> <span class="o">&gt;</span> <span class="nb">max</span> <span class="k">else</span> <span class="nb">max</span>
+
+    <span class="k">return</span> <span class="nb">min</span><span class="p">,</span> <span class="nb">max</span><span class="p">,</span> <span class="n">avg</span> <span class="o">/</span> <span class="n">cnt</span></div>
+
+
+
+<span class="k">def</span> <span class="nf">_angle_defect</span><span class="p">(</span><span class="n">vertex</span><span class="p">):</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot; Angle defect.</span>
+
+<span class="sd">    For a vertex with :math:`k` incident angles :math:`\alpha_i`,</span>
+<span class="sd">    the value :math:`2\pi - \sum_{i=1}^k \alpha_i` is called angular</span>
+<span class="sd">    defect or discrete Gaussian curvature.</span>
+
+<span class="sd">    Note</span>
+<span class="sd">    ----</span>
+<span class="sd">    Values obtained for boundary vertices (when interpreted as discrete</span>
+<span class="sd">    Gaussian curvature) are questionable.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">clamp</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">x</span><span class="p">,</span> <span class="n">l</span><span class="p">,</span> <span class="n">h</span><span class="p">:</span> <span class="n">l</span> <span class="k">if</span> <span class="n">x</span> <span class="o">&lt;</span> <span class="n">l</span> <span class="k">else</span> <span class="n">h</span> <span class="k">if</span> <span class="n">x</span> <span class="o">&gt;</span> <span class="n">h</span> <span class="k">else</span> <span class="n">x</span>
+    <span class="n">defect</span> <span class="o">=</span> <span class="mf">2.0</span> <span class="o">*</span> <span class="n">math</span><span class="o">.</span><span class="n">pi</span>
+
+    <span class="k">for</span> <span class="n">h</span> <span class="ow">in</span> <span class="n">vertex</span><span class="o">.</span><span class="n">_hiter</span><span class="p">():</span>
+        <span class="k">if</span> <span class="n">h</span><span class="o">.</span><span class="n">_face</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">u</span> <span class="o">=</span> <span class="n">linalg</span><span class="o">.</span><span class="n">unit</span><span class="p">(</span><span class="n">h</span><span class="o">.</span><span class="n">_prev</span><span class="o">.</span><span class="n">_pair</span><span class="o">.</span><span class="n">vector</span><span class="p">)</span>
+            <span class="n">v</span> <span class="o">=</span> <span class="n">linalg</span><span class="o">.</span><span class="n">unit</span><span class="p">(</span><span class="n">h</span><span class="o">.</span><span class="n">vector</span><span class="p">)</span>
+
+            <span class="n">defect</span> <span class="o">-=</span> <span class="n">math</span><span class="o">.</span><span class="n">acos</span><span class="p">(</span><span class="n">clamp</span><span class="p">(</span><span class="n">u</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">v</span><span class="p">),</span> <span class="o">-</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">))</span>
+
+    <span class="k">return</span> <span class="n">defect</span>
+
+
+<span class="k">def</span> <span class="nf">_halfedge_normal</span><span class="p">(</span><span class="n">halfedge</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot; Mean curvature vector.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">pass</span>
+
+
+<span class="k">def</span> <span class="nf">_halfedge_angle</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot; Edge angle.</span>
+
+<span class="sd">    Angle (in radians) between normals of adjacent faces. The angle</span>
+<span class="sd">    is positive for convex edges. Applying the corresponding rotation</span>
+<span class="sd">    (cf. :attr:`_rotation`) aligns adjacent face planes.</span>
+
+<span class="sd">    :type: float</span>
+
+<span class="sd">    Raises</span>
+<span class="sd">    ------</span>
+<span class="sd">    ValueError</span>
+<span class="sd">        If called for a boundary halfedge.</span>
+
+<span class="sd">    Note</span>
+<span class="sd">    ----</span>
+<span class="sd">    Our definition of a convex edge depends on the surface orientation.</span>
+<span class="sd">    Typically one assumes outward normals.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">assert</span> <span class="kc">False</span>
+
+    <span class="c1"># Do not use this function. The angle is not defined for boundary</span>
+    <span class="c1"># edges. If the normals of adjacent faces are know the oriented</span>
+    <span class="c1"># angle can be obtained as</span>
+    <span class="c1">#</span>
+    <span class="c1"># linalg.angle(normal[h.face],</span>
+    <span class="c1">#              normal[h.pair.face],</span>
+    <span class="c1">#              h.vector)</span>
+
+    <span class="k">assert</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_deleted</span>
+
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_face</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;attribute undefined for boundary halfedge&#39;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_pair</span><span class="o">.</span><span class="n">_face</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="mf">0.0</span>
+
+    <span class="n">u</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_face</span><span class="o">.</span><span class="n">_compute_normal</span><span class="p">()</span>
+    <span class="n">v</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_pair</span><span class="o">.</span><span class="n">_face</span><span class="o">.</span><span class="n">_compute_normal</span><span class="p">()</span>
+
+    <span class="n">clamp</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">x</span><span class="p">,</span> <span class="n">l</span><span class="p">,</span> <span class="n">h</span><span class="p">:</span> <span class="n">l</span> <span class="k">if</span> <span class="n">x</span> <span class="o">&lt;</span> <span class="n">l</span> <span class="k">else</span> <span class="n">h</span> <span class="k">if</span> <span class="n">x</span> <span class="o">&gt;</span> <span class="n">h</span> <span class="k">else</span> <span class="n">x</span>
+    <span class="n">alpha</span> <span class="o">=</span> <span class="n">math</span><span class="o">.</span><span class="n">acos</span><span class="p">(</span><span class="n">clamp</span><span class="p">(</span><span class="n">u</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">v</span><span class="p">),</span> <span class="o">-</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">))</span>
+
+    <span class="c1"># The vector orthogonal to both face normals (oriented according</span>
+    <span class="c1"># to the right hand rule) determines the sign of alpha.</span>
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">vector</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">linalg</span><span class="o">.</span><span class="n">cross</span><span class="p">(</span><span class="n">u</span><span class="p">,</span> <span class="n">v</span><span class="p">))</span> <span class="o">&lt;</span> <span class="mf">0.0</span><span class="p">:</span>
+        <span class="n">alpha</span> <span class="o">*=</span> <span class="o">-</span><span class="mf">1.0</span>
+
+    <span class="k">return</span> <span class="n">alpha</span>
+
+
+<span class="k">def</span> <span class="nf">_halfedge_rotation</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot; Rotation parameters.</span>
+
+<span class="sd">    Computes the parameters :math:`\cos(\varphi)` and</span>
+<span class="sd">    :math:`\sin(\varphi)` of a rotation that aligns the face plane</span>
+<span class="sd">    of the halfedge&#39;s face with the face plane of the opposite face.</span>
+<span class="sd">    The halfedge serves as oriented rotation axis. The rotation</span>
+<span class="sd">    aligns the normal of adjacent faces.</span>
+
+<span class="sd">    :type: (float, float)</span>
+
+<span class="sd">    Raises</span>
+<span class="sd">    ------</span>
+<span class="sd">    ValueError</span>
+<span class="sd">        If called for a boundary halfedge.</span>
+
+<span class="sd">    Note</span>
+<span class="sd">    ----</span>
+<span class="sd">    Results in the identity along the boundary.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">assert</span> <span class="kc">False</span>
+
+    <span class="c1"># Do not use this function. It is superseded by axis_angle().</span>
+
+    <span class="k">assert</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_deleted</span>
+
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_face</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;attribute undefined for boundary halfedge&#39;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_pair</span><span class="o">.</span><span class="n">_face</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span>
+
+    <span class="n">u</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_face</span><span class="o">.</span><span class="n">_compute_normal</span><span class="p">()</span>
+    <span class="n">v</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_pair</span><span class="o">.</span><span class="n">_face</span><span class="o">.</span><span class="n">_compute_normal</span><span class="p">()</span>
+
+    <span class="c1"># The vector orthogonal to both face normals. Oriented according</span>
+    <span class="c1"># to the right hand rule.</span>
+    <span class="n">vector</span> <span class="o">=</span> <span class="n">linalg</span><span class="o">.</span><span class="n">cross</span><span class="p">(</span><span class="n">u</span><span class="p">,</span> <span class="n">v</span><span class="p">)</span>
+
+    <span class="n">cos_alpha</span> <span class="o">=</span> <span class="n">u</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">v</span><span class="p">)</span>
+    <span class="n">sin_alpha</span> <span class="o">=</span> <span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">vector</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">vector</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">vector</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mf">0.0</span><span class="p">:</span>
+        <span class="n">sin_alpha</span> <span class="o">*=</span> <span class="o">-</span><span class="mf">1.0</span>
+
+    <span class="c1"># assert abs(math.sin(self._angle) - sin_alpha) &lt; 1e-6</span>
+
+    <span class="k">return</span> <span class="n">cos_alpha</span><span class="p">,</span> <span class="n">sin_alpha</span>
+
+
+<div class="viewcode-block" id="face_normal">
+<a class="viewcode-back" href="../../api/m3sh.traits.face_normal.html#m3sh.traits.face_normal">[docs]</a>
+<span class="k">def</span> <span class="nf">face_normal</span><span class="p">(</span><span class="n">face</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot; Face normal.</span>
+
+<span class="sd">    Compute face normal as cross product of edge vectors.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    face : Face</span>
+<span class="sd">        Face of a mesh.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    ~numpy.ndarray, shape (3, )</span>
+<span class="sd">        Unit normal vector.</span>
+
+<span class="sd">    Note</span>
+<span class="sd">    ----</span>
+<span class="sd">    For a non-triangular face the normal is computed by averaging</span>
+<span class="sd">    vectors obtained as cross products of consecutive edges around</span>
+<span class="sd">    the faces.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Should deleted faces be quitely assigned a normal with nan</span>
+    <span class="c1"># entries? Currenlty this case triggers an assertion error.</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">face</span><span class="p">)</span> <span class="o">==</span> <span class="mi">3</span><span class="p">:</span>
+        <span class="n">vector</span> <span class="o">=</span> <span class="n">linalg</span><span class="o">.</span><span class="n">cross</span><span class="p">(</span><span class="n">face</span><span class="o">.</span><span class="n">halfedge</span><span class="o">.</span><span class="n">vector</span><span class="p">,</span>
+                              <span class="n">face</span><span class="o">.</span><span class="n">halfedge</span><span class="o">.</span><span class="n">next</span><span class="o">.</span><span class="n">vector</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">vector</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">h</span> <span class="ow">in</span> <span class="n">face</span><span class="o">.</span><span class="n">_hiter</span><span class="p">():</span>
+            <span class="c1"># For non-convex faces some normals computed in this</span>
+            <span class="c1"># way point to the wrong side.</span>
+            <span class="n">vector</span> <span class="o">+=</span> <span class="n">linalg</span><span class="o">.</span><span class="n">unit_inplace</span><span class="p">(</span><span class="n">linalg</span><span class="o">.</span><span class="n">cross</span><span class="p">(</span><span class="n">h</span><span class="o">.</span><span class="n">vector</span><span class="p">,</span>
+                                                       <span class="n">h</span><span class="o">.</span><span class="n">next</span><span class="o">.</span><span class="n">vector</span><span class="p">))</span>
+
+    <span class="k">return</span> <span class="n">linalg</span><span class="o">.</span><span class="n">unit_inplace</span><span class="p">(</span><span class="n">vector</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="face_normals">
+<a class="viewcode-back" href="../../api/m3sh.traits.face_normals.html#m3sh.traits.face_normals">[docs]</a>
+<span class="k">def</span> <span class="nf">face_normals</span><span class="p">(</span><span class="n">mesh</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot; Face normals estimate.</span>
+
+<span class="sd">    Estimate face normals by averaging the cross product of consecutive</span>
+<span class="sd">    edge vectors around each face.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    mesh : Mesh</span>
+<span class="sd">        Mesh with polygonal faces.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    ~numpy.ndarray</span>
+<span class="sd">        Array of face normal vectors.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Should deleted faces be quitely assigned a normal with nan</span>
+    <span class="c1"># entries?</span>
+    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">face_normal</span><span class="p">(</span><span class="n">f</span><span class="p">)</span> <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">mesh</span><span class="o">.</span><span class="n">faces</span><span class="p">])</span></div>
+
+
+
+<div class="viewcode-block" id="face_area">
+<a class="viewcode-back" href="../../api/m3sh.traits.face_area.html#m3sh.traits.face_area">[docs]</a>
+<span class="k">def</span> <span class="nf">face_area</span><span class="p">(</span><span class="n">face</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot; Face area.</span>
+
+<span class="sd">    Areas are only computed for triangular faces.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    face : Face</span>
+<span class="sd">        A triangular face.</span>
+
+<span class="sd">    Raises</span>
+<span class="sd">    ------</span>
+<span class="sd">    NotImplementedError</span>
+<span class="sd">        For non-triangular faces.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    float</span>
+<span class="sd">        Face area.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">face</span><span class="p">)</span> <span class="o">==</span> <span class="mi">3</span><span class="p">:</span>
+        <span class="n">vector</span> <span class="o">=</span> <span class="n">linalg</span><span class="o">.</span><span class="n">cross</span><span class="p">(</span><span class="n">face</span><span class="o">.</span><span class="n">halfedge</span><span class="o">.</span><span class="n">vector</span><span class="p">,</span>
+                              <span class="n">face</span><span class="o">.</span><span class="n">halfedge</span><span class="o">.</span><span class="n">next</span><span class="o">.</span><span class="n">vector</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s1">&#39;triangular face required&#39;</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">vector</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="planarity_score">
+<a class="viewcode-back" href="../../api/m3sh.traits.planarity_score.html#m3sh.traits.planarity_score">[docs]</a>
+<span class="k">def</span> <span class="nf">planarity_score</span><span class="p">(</span><span class="n">face</span><span class="p">,</span> <span class="n">denom</span><span class="o">=</span><span class="mf">0.0</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot; Planarity score of skew quadrilateral.</span>
+
+<span class="sd">    Distance of diagonals. Can be normalized to make the measure scale</span>
+<span class="sd">    independent.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    face : array_like, shape (4, 3)</span>
+<span class="sd">        Vertex coordinate array.</span>
+<span class="sd">    denom : float, optional</span>
+<span class="sd">        Zero divides by mean edge length.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    float</span>
+<span class="sd">        Planarity score. Can result in inf and nan values in case of</span>
+<span class="sd">        flipped or degenerate quadrilaterals.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">f</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">face</span><span class="p">)</span>
+
+    <span class="c1"># Return 0.0 for triangular faces and NaN for faces of higher valence.</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">f</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">4</span><span class="p">:</span>
+        <span class="k">return</span> <span class="mf">0.0</span>
+    <span class="k">elif</span> <span class="nb">len</span><span class="p">(</span><span class="n">f</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">4</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+
+    <span class="c1"># For bow tie shaped quadrilateral the vectors v and w can be linear</span>
+    <span class="c1"># depedent without one of them vanishing.</span>
+    <span class="n">v</span> <span class="o">=</span> <span class="n">f</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">-</span> <span class="n">f</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">w</span> <span class="o">=</span> <span class="n">f</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span> <span class="o">-</span> <span class="n">f</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+
+    <span class="c1"># Distance of diagnoals can result in inf and nan values in case of</span>
+    <span class="c1"># flipped or degenerate quadrilaterals.</span>
+    <span class="n">n</span> <span class="o">=</span> <span class="n">linalg</span><span class="o">.</span><span class="n">cross</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">w</span><span class="p">)</span>
+    <span class="n">d</span> <span class="o">=</span> <span class="nb">abs</span><span class="p">(</span><span class="n">n</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">f</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">f</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">/</span> <span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">n</span><span class="p">))</span>
+
+    <span class="k">if</span> <span class="n">denom</span> <span class="o">==</span> <span class="mf">0.0</span><span class="p">:</span>
+        <span class="n">denom</span> <span class="o">=</span> <span class="mf">0.25</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">([</span><span class="n">f</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="n">f</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
+                                              <span class="n">f</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">-</span><span class="n">f</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span>
+                                              <span class="n">f</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span><span class="o">-</span><span class="n">f</span><span class="p">[</span><span class="mi">2</span><span class="p">],</span>
+                                              <span class="n">f</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">-</span><span class="n">f</span><span class="p">[</span><span class="mi">3</span><span class="p">]],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">))</span>
+
+    <span class="c1"># Using 1.0 for normalization one gets the unscaled distance of</span>
+    <span class="c1"># diagonals in whatever unit one is computing.</span>
+    <span class="k">return</span> <span class="n">d</span> <span class="o">/</span> <span class="n">denom</span></div>
+
+
+
+<div class="viewcode-block" id="planarity_scores">
+<a class="viewcode-back" href="../../api/m3sh.traits.planarity_scores.html#m3sh.traits.planarity_scores">[docs]</a>
+<span class="k">def</span> <span class="nf">planarity_scores</span><span class="p">(</span><span class="n">mesh</span><span class="p">,</span> <span class="n">denom</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">offset</span><span class="o">=</span><span class="mf">0.0</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot; Face planarity scores.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    mesh : Mesh</span>
+<span class="sd">        Mesh instance.</span>
+<span class="sd">    denom :  float, optional</span>
+<span class="sd">        Zero divides by mean edge length.</span>
+<span class="sd">    offset : float, optional</span>
+<span class="sd">        Added to each planarity score.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    list[float]</span>
+<span class="sd">        Face planarity scores plus an additional offset value.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="p">[</span><span class="n">offset</span> <span class="o">+</span> <span class="n">planarity_score</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="n">denom</span><span class="p">)</span> <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">mesh</span><span class="p">]</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, m3shware.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

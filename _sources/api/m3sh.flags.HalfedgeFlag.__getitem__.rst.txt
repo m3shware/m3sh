@@ -1,0 +1,6 @@
+\_\_getitem\_\_
+===============
+
+.. currentmodule:: m3sh.flags
+
+.. automethod:: HalfedgeFlag.__getitem__
