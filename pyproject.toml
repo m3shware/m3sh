@@ -1,0 +1,17 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "m3sh"
+version = "1.0.0"
+dependencies = ["numpy>=1.21", "vtk>=9.1"]
+authors = [{name = "Martin Kilian"}]
+license = "MIT"
+requires-python = ">=3.10"
+
+[project.scripts]
+m3sh_vis = "m3sh.vis:_main"
+
+[tool.setuptools.packages.find]
+where = ["."]
