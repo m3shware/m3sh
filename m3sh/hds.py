@@ -47,6 +47,9 @@ import numpy as np
 import m3sh.obj as obj
 import m3sh.flags as flags
 
+# from . import obj
+# from . import flags
+
 
 class Mesh:
     """ Mesh kernel.
