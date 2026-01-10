@@ -1,0 +1,6 @@
+flippable
+=========
+
+.. currentmodule:: m3sh.hds
+
+.. autoproperty:: Halfedge.flippable

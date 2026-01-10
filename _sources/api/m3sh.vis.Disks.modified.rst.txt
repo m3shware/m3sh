@@ -1,0 +1,6 @@
+modified
+========
+
+.. currentmodule:: m3sh.vis
+
+.. automethod:: Disks.modified

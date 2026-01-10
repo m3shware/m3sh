@@ -1,0 +1,6 @@
+radius
+======
+
+.. currentmodule:: m3sh.vis
+
+.. autoproperty:: Circles.radius

@@ -1,0 +1,42 @@
+Cones
+=====
+
+.. currentmodule:: m3sh.vis
+ 
+.. autoclass:: Cones
+   :show-inheritance:
+   :no-inherited-members:
+    
+   
+   
+   .. rubric:: Attributes
+ 
+   .. autosummary::
+      :toctree:
+      :template: attribute.rst
+   
+      ~Cones.actor
+      ~Cones.bounds
+      ~Cones.color
+      ~Cones.name
+      ~Cones.opacity
+      ~Cones.pickable
+      ~Cones.prop
+      ~Cones.visible
+   
+   
+ 
+   
+   
+   .. rubric:: Methods
+ 
+   .. autosummary::
+      :toctree: 
+      :template: function.rst
+   
+      ~Cones.colorize
+      ~Cones.lookuptable
+   
+   
+   
+   

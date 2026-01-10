@@ -1,0 +1,39 @@
+﻿m3sh.hds
+========
+
+.. automodule:: m3sh.hds
+
+   
+   
+   
+
+   
+   
+   .. rubric:: Classes
+
+   .. autosummary::
+      :toctree:
+      :template: class-toc.rst
+   
+      Face
+      Halfedge
+      Mesh
+      Vertex
+   
+   
+
+   
+   
+   .. rubric:: Exceptions
+
+   .. autosummary::
+      :toctree:
+      :template: exception.rst
+   
+      NonManifoldError
+   
+   
+   
+   
+   
+   

@@ -1,0 +1,6 @@
+edges
+=====
+
+.. currentmodule:: m3sh.vis
+
+.. automethod:: PolyGraph.edges

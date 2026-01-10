@@ -1,0 +1,6 @@
+scale
+=====
+
+.. currentmodule:: m3sh.vis
+
+.. automethod:: GlyphMixin.scale

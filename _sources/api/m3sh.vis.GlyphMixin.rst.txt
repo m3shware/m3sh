@@ -1,0 +1,37 @@
+GlyphMixin
+==========
+
+.. currentmodule:: m3sh.vis
+ 
+.. autoclass:: GlyphMixin
+   :show-inheritance:
+   :no-inherited-members:
+    
+   
+   
+   .. rubric:: Attributes
+ 
+   .. autosummary::
+      :toctree:
+      :template: attribute.rst
+   
+      ~GlyphMixin.color
+      ~GlyphMixin.size
+   
+   
+ 
+   
+   
+   .. rubric:: Methods
+ 
+   .. autosummary::
+      :toctree: 
+      :template: function.rst
+   
+      ~GlyphMixin.colorize
+      ~GlyphMixin.modified
+      ~GlyphMixin.scale
+   
+   
+   
+   

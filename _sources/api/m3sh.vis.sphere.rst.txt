@@ -1,0 +1,6 @@
+sphere
+======
+
+.. currentmodule:: m3sh.vis
+
+.. autofunction:: sphere

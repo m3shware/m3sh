@@ -1,0 +1,6 @@
+prop
+====
+
+.. currentmodule:: m3sh.vis
+
+.. autoproperty:: Cones.prop

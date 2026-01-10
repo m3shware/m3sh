@@ -1,0 +1,38 @@
+﻿m3sh.linalg
+===========
+
+.. automodule:: m3sh.linalg
+
+   
+   
+   
+
+   
+   
+   
+
+   
+   
+   
+   
+   
+   
+   .. rubric:: Functions
+
+   .. autosummary::
+      :toctree:
+      :template: function.rst
+   
+      angle
+      clamp
+      cross
+      cross_mat
+      norm
+      rank
+      rotate
+      rotation
+      sqrd
+      unit
+      unit_inplace
+   
+   

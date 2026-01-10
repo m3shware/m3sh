@@ -1,0 +1,6 @@
+clamp
+=====
+
+.. currentmodule:: m3sh.linalg
+
+.. autofunction:: clamp

@@ -1,0 +1,30 @@
+﻿m3sh.flags
+==========
+
+.. automodule:: m3sh.flags
+
+   
+   
+   
+
+   
+   
+   .. rubric:: Classes
+
+   .. autosummary::
+      :toctree:
+      :template: class-toc.rst
+   
+      FaceFlag
+      HalfedgeFlag
+      VertexFlag
+   
+   
+
+   
+   
+   
+   
+   
+   
+   

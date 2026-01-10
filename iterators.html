@@ -1,0 +1,301 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Neighborhood traversal &mdash; m3sh 1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+
+  
+    <link rel="shortcut icon" href="_static/ghems_red.ico"/>
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=f2a433a1"></script>
+      <script src="_static/doctools.js?v=9bcbadda"></script>
+      <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script async="async" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Halfedge data structure" href="mesh.html" />
+    <link rel="prev" title="Quickstart" href="usage.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            m3sh
+              <img src="_static/logo-small.png" class="logo" alt="Logo"/>
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+   
+              <p class="caption" role="heading"><span class="caption-text">Basic usage and examples</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="basics.html">Mesh basics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="usage.html">Quickstart</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Neighborhood traversal</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#accessing-vertices-faces-and-halfedges">Accessing vertices, faces, and halfedges</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#modifying-vertex-coordinates">Modifying vertex coordinates</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#computing-edge-midpoints">Computing edge midpoints</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#extracting-face-definitions">Extracting face definitions</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#local-neighborhood-traversal">Local neighborhood traversal</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#vertex-neighborhood-iterators">Vertex neighborhood iterators</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#face-neighborhood-iterators">Face neighborhood iterators</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Modules - API</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="mesh.html">Halfedge data structure</a></li>
+<li class="toctree-l1"><a class="reference internal" href="helper.html">Auxiliary modules</a></li>
+<li class="toctree-l1"><a class="reference internal" href="vis.html">Visualization</a></li>
+</ul>
+
+   <p class="caption">
+     <span class="caption-text">Indices</span>
+   </p>
+   <ul>
+        <li class="toctree-l1"><a href= "genindex.html">Index</a></li>
+        <li class="toctree-l1"><a href= "py-modindex.html">Module index</a></li>
+        <li class="toctree-l1"><a href= "https://github.com/m3shware/m3sh">Package source</a></li>
+   </ul>
+    
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">m3sh</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Neighborhood traversal</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/iterators.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="neighborhood-traversal">
+<span id="mesh-iter-label"></span><h1>Neighborhood traversal<a class="headerlink" href="#neighborhood-traversal" title="Link to this heading"></a></h1>
+<p>A basic task in any mesh processing algorithm is the systematic traversal
+of mesh items and their local neighborhoods. The halfedge based mesh
+representation is very efficient in this respect.</p>
+<section id="accessing-vertices-faces-and-halfedges">
+<h2>Accessing vertices, faces, and halfedges<a class="headerlink" href="#accessing-vertices-faces-and-halfedges" title="Link to this heading"></a></h2>
+<p>Once a mesh has been constructed, its items (vertices, halfedges, and
+faces) can be accessed via properties <a class="reference internal" href="api/m3sh.hds.Mesh.vertices.html#m3sh.hds.Mesh.vertices" title="m3sh.hds.Mesh.vertices"><code class="xref py py-attr docutils literal notranslate"><span class="pre">vertices</span></code></a>,
+<a class="reference internal" href="api/m3sh.hds.Mesh.halfedges.html#m3sh.hds.Mesh.halfedges" title="m3sh.hds.Mesh.halfedges"><code class="xref py py-attr docutils literal notranslate"><span class="pre">halfedges</span></code></a>, and <a class="reference internal" href="api/m3sh.hds.Mesh.faces.html#m3sh.hds.Mesh.faces" title="m3sh.hds.Mesh.faces"><code class="xref py py-attr docutils literal notranslate"><span class="pre">faces</span></code></a>. The vertex coordinate
+array is exposed via <a class="reference internal" href="api/m3sh.hds.Mesh.points.html#m3sh.hds.Mesh.points" title="m3sh.hds.Mesh.points"><code class="xref py py-attr docutils literal notranslate"><span class="pre">points</span></code></a>. Note the distinction between
+vertices and points in <span class="math notranslate nohighlight">\(\mathbb{R}^3\)</span> – vertices are topological
+entities that have a location attribute <a class="reference internal" href="api/m3sh.hds.Vertex.point.html#m3sh.hds.Vertex.point" title="m3sh.hds.Vertex.point"><code class="xref py py-attr docutils literal notranslate"><span class="pre">point</span></code></a>,
+vertex coordinates can change without changing mesh topology.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Elements of the vertex list and rows of the coordinate array correspond
+by index. Elements are stored in insertion order. The same is true for
+the face list.</p>
+</div>
+<section id="modifying-vertex-coordinates">
+<h3>Modifying vertex coordinates<a class="headerlink" href="#modifying-vertex-coordinates" title="Link to this heading"></a></h3>
+<p>We want to project the mesh onto the <span class="math notranslate nohighlight">\(xy\)</span>-plane. There are several
+equivalent ways to do this. We can use the vertex list of a mesh and access
+vertex coordinates via the <a class="reference internal" href="api/m3sh.hds.Vertex.point.html#m3sh.hds.Vertex.point" title="m3sh.hds.Vertex.point"><code class="xref py py-attr docutils literal notranslate"><span class="pre">point</span></code></a> property of a
+vertex:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">mesh</span><span class="o">.</span><span class="n">vertices</span><span class="p">:</span>                     <span class="c1"># mesh.vertices is a list</span>
+    <span class="n">v</span><span class="o">.</span><span class="n">point</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.0</span>                        <span class="c1"># set the z-coordinate to zero</span>
+</pre></div>
+</div>
+<p>We can directly access the vertex coordinate array. The correspondence of
+vertices to coordinates is given by index but not needed for this task:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">mesh</span><span class="o">.</span><span class="n">points</span><span class="p">:</span>                       <span class="c1"># mesh.points is of type ndarray</span>
+    <span class="n">p</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.0</span>                              <span class="c1"># set the z-coordinate to zero</span>
+</pre></div>
+</div>
+<p>Since the vertex coordinate array is of type <a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.4)"><code class="xref py py-class docutils literal notranslate"><span class="pre">ndarray</span></code></a> we can
+use slicing to set all <span class="math notranslate nohighlight">\(z\)</span>-coordinates:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">mesh</span><span class="o">.</span><span class="n">points</span><span class="p">[:,</span> <span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.0</span>                     <span class="c1"># set all z-coordinates to zero</span>
+</pre></div>
+</div>
+</section>
+<section id="computing-edge-midpoints">
+<h3>Computing edge midpoints<a class="headerlink" href="#computing-edge-midpoints" title="Link to this heading"></a></h3>
+<p>The <a class="reference internal" href="api/m3sh.hds.Mesh.halfedges.html#m3sh.hds.Mesh.halfedges" title="m3sh.hds.Mesh.halfedges"><code class="xref py py-attr docutils literal notranslate"><span class="pre">halfedges</span></code></a> dictionary maps pairs of <a class="reference internal" href="api/m3sh.hds.Vertex.html#m3sh.hds.Vertex" title="m3sh.hds.Vertex"><code class="xref py py-class docutils literal notranslate"><span class="pre">Vertex</span></code></a> objects to
+<a class="reference internal" href="api/m3sh.hds.Halfedge.html#m3sh.hds.Halfedge" title="m3sh.hds.Halfedge"><code class="xref py py-class docutils literal notranslate"><span class="pre">Halfedge</span></code></a> objects. The following loop will compute (half)edge midpoints:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">for</span> <span class="n">h</span> <span class="ow">in</span> <span class="n">mesh</span><span class="o">.</span><span class="n">halfedges</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
+    <span class="n">m</span> <span class="o">=</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="p">(</span><span class="n">h</span><span class="o">.</span><span class="n">origin</span><span class="o">.</span><span class="n">point</span> <span class="o">+</span> <span class="n">h</span><span class="o">.</span><span class="n">target</span><span class="o">.</span><span class="n">point</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="extracting-face-definitions">
+<h3>Extracting face definitions<a class="headerlink" href="#extracting-face-definitions" title="Link to this heading"></a></h3>
+<p>As already explained the face defining sequence of vertices of a face <span class="math notranslate nohighlight">\(f\)</span>
+can be extracted from any incident halfedge of <span class="math notranslate nohighlight">\(f\)</span> by following its
+<a class="reference internal" href="api/m3sh.hds.Halfedge.next.html#m3sh.hds.Halfedge.next" title="m3sh.hds.Halfedge.next"><code class="xref py py-attr docutils literal notranslate"><span class="pre">next</span></code></a> attribute:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">v</span> <span class="o">=</span> <span class="p">[</span><span class="n">f</span><span class="o">.</span><span class="n">halfedge</span><span class="o">.</span><span class="n">origin</span><span class="o">.</span><span class="n">index</span><span class="p">]</span>
+<span class="n">h</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">halfedge</span><span class="o">.</span><span class="n">next</span>
+
+<span class="k">while</span> <span class="n">h</span> <span class="ow">is</span> <span class="ow">not</span> <span class="n">f</span><span class="o">.</span><span class="n">halfedge</span><span class="p">:</span>
+    <span class="n">v</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">h</span><span class="o">.</span><span class="n">origin</span><span class="o">.</span><span class="n">index</span><span class="p">)</span>
+    <span class="n">h</span> <span class="o">=</span> <span class="n">h</span><span class="o">.</span><span class="n">next</span>
+</pre></div>
+</div>
+<p>The above loop is equivalent to the following list comprehension:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">v</span> <span class="o">=</span> <span class="p">[</span><span class="n">x</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">f</span><span class="p">]</span>
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>The <a class="reference internal" href="api/m3sh.hds.Mesh.vertices.html#m3sh.hds.Mesh.vertices" title="m3sh.hds.Mesh.vertices"><code class="xref py py-attr docutils literal notranslate"><span class="pre">vertices</span></code></a> and <a class="reference internal" href="api/m3sh.hds.Mesh.faces.html#m3sh.hds.Mesh.faces" title="m3sh.hds.Mesh.faces"><code class="xref py py-attr docutils literal notranslate"><span class="pre">faces</span></code></a>
+attributes of a mesh expose deleted mesh items. Applying one of the
+corresponding predefined iterators <a class="reference internal" href="api/m3sh.iterators.verts.html#m3sh.iterators.verts" title="m3sh.iterators.verts"><code class="xref py py-func docutils literal notranslate"><span class="pre">verts()</span></code></a> and
+<a class="reference internal" href="api/m3sh.iterators.faces.html#m3sh.iterators.faces" title="m3sh.iterators.faces"><code class="xref py py-func docutils literal notranslate"><span class="pre">faces()</span></code></a> to a mesh will skip those items.</p>
+</div>
+</section>
+</section>
+<section id="local-neighborhood-traversal">
+<h2>Local neighborhood traversal<a class="headerlink" href="#local-neighborhood-traversal" title="Link to this heading"></a></h2>
+<p>The following recipe will visit adjacent vertices of a vertex <span class="math notranslate nohighlight">\(v\)</span> in
+counter-clockwise order:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Start with the halfedge stored as attribute of a vertex v</span>
+<span class="n">h</span> <span class="o">=</span> <span class="n">v</span><span class="o">.</span><span class="n">halfedge</span>
+
+<span class="c1"># Visit the adjacent vertices of v in ccw-order.</span>
+<span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+    <span class="c1"># Get the target vertex of h and do something with it.</span>
+    <span class="n">w</span> <span class="o">=</span> <span class="n">h</span><span class="o">.</span><span class="n">target</span>
+    <span class="o">...</span>
+    <span class="c1"># Rotate the halfedge counter-clockwise.</span>
+    <span class="n">h</span> <span class="o">=</span> <span class="n">h</span><span class="o">.</span><span class="n">prev</span><span class="o">.</span><span class="n">pair</span>
+
+    <span class="c1"># Check if we have reached the starting halfedge again.</span>
+    <span class="k">if</span> <span class="n">h</span> <span class="ow">is</span> <span class="n">v</span><span class="o">.</span><span class="n">halfedge</span><span class="p">:</span>
+        <span class="k">break</span>
+</pre></div>
+</div>
+<p>The <a class="reference internal" href="api/m3sh.iterators.html#module-m3sh.iterators" title="m3sh.iterators"><code class="xref py py-mod docutils literal notranslate"><span class="pre">iterators</span></code></a> module provides several generic iterators. The most
+basic ones being <a class="reference internal" href="api/m3sh.iterators.verts.html#m3sh.iterators.verts" title="m3sh.iterators.verts"><code class="xref py py-func docutils literal notranslate"><span class="pre">verts()</span></code></a>, <a class="reference internal" href="api/m3sh.iterators.halfs.html#m3sh.iterators.halfs" title="m3sh.iterators.halfs"><code class="xref py py-func docutils literal notranslate"><span class="pre">halfs()</span></code></a>,
+<a class="reference internal" href="api/m3sh.iterators.edges.html#m3sh.iterators.edges" title="m3sh.iterators.edges"><code class="xref py py-func docutils literal notranslate"><span class="pre">edges()</span></code></a>, and <a class="reference internal" href="api/m3sh.iterators.faces.html#m3sh.iterators.faces" title="m3sh.iterators.faces"><code class="xref py py-func docutils literal notranslate"><span class="pre">faces()</span></code></a>. The behavior
+of an iterator depends on the type of the provided argument. Using the
+<a class="reference internal" href="api/m3sh.iterators.verts.html#m3sh.iterators.verts" title="m3sh.iterators.verts"><code class="xref py py-func docutils literal notranslate"><span class="pre">verts()</span></code></a> iterator, the above recipe simplifies to</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">m3sh.iterators</span> <span class="k">as</span> <span class="nn">it</span>
+
+<span class="c1"># Visit the adjacent vertices of v in ccw-order.</span>
+<span class="k">for</span> <span class="n">w</span> <span class="ow">in</span> <span class="n">it</span><span class="o">.</span><span class="n">verts</span><span class="p">(</span><span class="n">v</span><span class="p">):</span>
+    <span class="c1"># Do something with w ...</span>
+    <span class="o">...</span>
+</pre></div>
+</div>
+<section id="vertex-neighborhood-iterators">
+<h3>Vertex neighborhood iterators<a class="headerlink" href="#vertex-neighborhood-iterators" title="Link to this heading"></a></h3>
+<p>When applied to a vertex instance, the <a class="reference internal" href="api/m3sh.iterators.verts.html#m3sh.iterators.verts" title="m3sh.iterators.verts"><code class="xref py py-func docutils literal notranslate"><span class="pre">verts()</span></code></a> iterator
+can be used to visit the 1-ring neighbors of a vertex in counter-clockwise
+order as induced by the mesh orientation:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">m3sh.iterators</span> <span class="k">as</span> <span class="nn">it</span>
+
+<span class="c1"># Visit all vertices of a mesh in the order they were added.</span>
+<span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">mesh</span><span class="o">.</span><span class="n">vertices</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;1-ring neighbors of vertex </span><span class="si">{</span><span class="nb">int</span><span class="p">(</span><span class="n">v</span><span class="p">)</span><span class="si">}</span><span class="s1">:&#39;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\t</span><span class="s1">&#39;</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">)</span>
+
+    <span class="c1"># Visit all vertices adjacent to vertex v, i.e., all vertices</span>
+    <span class="c1"># connected to v via an edge.</span>
+    <span class="k">for</span> <span class="n">w</span> <span class="ow">in</span> <span class="n">it</span><span class="o">.</span><span class="n">verts</span><span class="p">(</span><span class="n">v</span><span class="p">):</span>
+        <span class="nb">print</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">w</span><span class="p">),</span> <span class="n">end</span><span class="o">=</span><span class="s1">&#39; &#39;</span><span class="p">)</span>
+
+    <span class="nb">print</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>When applied to a vertex <span class="math notranslate nohighlight">\(v\)</span>, the <a class="reference internal" href="api/m3sh.iterators.faces.html#m3sh.iterators.faces" title="m3sh.iterators.faces"><code class="xref py py-func docutils literal notranslate"><span class="pre">faces()</span></code></a> iterator
+will traverse all faces <span class="math notranslate nohighlight">\(f\)</span> with <span class="math notranslate nohighlight">\(v \in f\)</span> in counter-clockwise
+order:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">m3sh.iterators</span> <span class="k">as</span> <span class="nn">it</span>
+
+<span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">mesh</span><span class="o">.</span><span class="n">vertices</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;Faces incident to vertex </span><span class="si">{</span><span class="nb">int</span><span class="p">(</span><span class="n">v</span><span class="p">)</span><span class="si">}</span><span class="s1">:&#39;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\t</span><span class="s1">&#39;</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">it</span><span class="o">.</span><span class="n">faces</span><span class="p">(</span><span class="n">v</span><span class="p">):</span>
+        <span class="nb">print</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">f</span><span class="p">),</span> <span class="n">end</span><span class="o">=</span><span class="s1">&#39; &#39;</span><span class="p">)</span>
+
+    <span class="nb">print</span><span class="p">()</span>
+</pre></div>
+</div>
+</section>
+<section id="face-neighborhood-iterators">
+<h3>Face neighborhood iterators<a class="headerlink" href="#face-neighborhood-iterators" title="Link to this heading"></a></h3>
+<p>Two facs are adjacent if they share a common edge. When applied to a face
+<span class="math notranslate nohighlight">\(f\)</span>, the <code class="xref py py-func docutils literal notranslate"><span class="pre">face()</span></code> iterator visits all adjacent
+faces in counter-clockwise order:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">m3sh.iterators</span> <span class="k">as</span> <span class="nn">it</span>
+
+<span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">it</span><span class="o">.</span><span class="n">faces</span><span class="p">(</span><span class="n">f</span><span class="p">):</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="usage.html" class="btn btn-neutral float-left" title="Quickstart" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="mesh.html" class="btn btn-neutral float-right" title="Halfedge data structure" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, m3shware.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

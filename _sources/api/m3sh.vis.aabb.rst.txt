@@ -1,0 +1,6 @@
+aabb
+====
+
+.. currentmodule:: m3sh.vis
+
+.. autofunction:: aabb

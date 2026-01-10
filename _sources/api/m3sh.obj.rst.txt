@@ -1,0 +1,30 @@
+﻿m3sh.obj
+========
+
+.. automodule:: m3sh.obj
+
+   
+   
+   
+
+   
+   
+   
+
+   
+   
+   
+   
+   
+   
+   .. rubric:: Functions
+
+   .. autosummary::
+      :toctree:
+      :template: function.rst
+   
+      merge
+      read
+      write
+   
+   

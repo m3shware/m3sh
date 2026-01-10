@@ -1,0 +1,6 @@
+opacity
+=======
+
+.. currentmodule:: m3sh.vis
+
+.. autoproperty:: PolyData.opacity

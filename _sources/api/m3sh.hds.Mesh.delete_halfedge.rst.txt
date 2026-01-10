@@ -1,0 +1,6 @@
+delete\_halfedge
+================
+
+.. currentmodule:: m3sh.hds
+
+.. automethod:: Mesh.delete_halfedge

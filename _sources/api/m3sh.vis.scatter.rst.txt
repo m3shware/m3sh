@@ -1,0 +1,6 @@
+scatter
+=======
+
+.. currentmodule:: m3sh.vis
+
+.. autofunction:: scatter

@@ -1,0 +1,6 @@
+\_\_contains\_\_
+================
+
+.. currentmodule:: m3sh.hds
+
+.. automethod:: Halfedge.__contains__

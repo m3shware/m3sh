@@ -1,0 +1,6 @@
+write
+=====
+
+.. currentmodule:: m3sh.obj
+
+.. autofunction:: write

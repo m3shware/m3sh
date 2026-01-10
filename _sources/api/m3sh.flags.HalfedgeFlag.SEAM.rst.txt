@@ -1,0 +1,6 @@
+SEAM
+====
+
+.. currentmodule:: m3sh.flags
+
+.. autoattribute:: HalfedgeFlag.SEAM

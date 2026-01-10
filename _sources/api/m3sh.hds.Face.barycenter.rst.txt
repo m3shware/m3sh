@@ -1,0 +1,6 @@
+barycenter
+==========
+
+.. currentmodule:: m3sh.hds
+
+.. autoproperty:: Face.barycenter

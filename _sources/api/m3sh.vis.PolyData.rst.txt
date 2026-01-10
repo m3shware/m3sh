@@ -1,0 +1,44 @@
+PolyData
+========
+
+.. currentmodule:: m3sh.vis
+ 
+.. autoclass:: PolyData
+   :show-inheritance:
+   :no-inherited-members:
+    
+   
+   
+   .. rubric:: Attributes
+ 
+   .. autosummary::
+      :toctree:
+      :template: attribute.rst
+   
+      ~PolyData.actor
+      ~PolyData.bounds
+      ~PolyData.color
+      ~PolyData.name
+      ~PolyData.opacity
+      ~PolyData.pickable
+      ~PolyData.points
+      ~PolyData.prop
+      ~PolyData.visible
+   
+   
+ 
+   
+   
+   .. rubric:: Methods
+ 
+   .. autosummary::
+      :toctree: 
+      :template: function.rst
+   
+      ~PolyData.colorize
+      ~PolyData.lookuptable
+      ~PolyData.modified
+   
+   
+   
+   

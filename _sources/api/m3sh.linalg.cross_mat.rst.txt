@@ -1,0 +1,6 @@
+cross\_mat
+==========
+
+.. currentmodule:: m3sh.linalg
+
+.. autofunction:: cross_mat

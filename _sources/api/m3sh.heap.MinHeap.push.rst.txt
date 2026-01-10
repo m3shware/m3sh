@@ -1,0 +1,6 @@
+push
+====
+
+.. currentmodule:: m3sh.heap
+
+.. automethod:: MinHeap.push

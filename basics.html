@@ -1,0 +1,213 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mesh basics &mdash; m3sh 1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+
+  
+    <link rel="shortcut icon" href="_static/ghems_red.ico"/>
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=f2a433a1"></script>
+      <script src="_static/doctools.js?v=9bcbadda"></script>
+      <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script async="async" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Quickstart" href="usage.html" />
+    <link rel="prev" title="m3sh – a mutable halfedge mesh data structure" href="index.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            m3sh
+              <img src="_static/logo-small.png" class="logo" alt="Logo"/>
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+   
+              <p class="caption" role="heading"><span class="caption-text">Basic usage and examples</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Mesh basics</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#manifold-meshes">Manifold meshes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#halfedge-representation">Halfedge representation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#references">References</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="usage.html">Quickstart</a></li>
+<li class="toctree-l1"><a class="reference internal" href="iterators.html">Neighborhood traversal</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Modules - API</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="mesh.html">Halfedge data structure</a></li>
+<li class="toctree-l1"><a class="reference internal" href="helper.html">Auxiliary modules</a></li>
+<li class="toctree-l1"><a class="reference internal" href="vis.html">Visualization</a></li>
+</ul>
+
+   <p class="caption">
+     <span class="caption-text">Indices</span>
+   </p>
+   <ul>
+        <li class="toctree-l1"><a href= "genindex.html">Index</a></li>
+        <li class="toctree-l1"><a href= "py-modindex.html">Module index</a></li>
+        <li class="toctree-l1"><a href= "https://github.com/m3shware/m3sh">Package source</a></li>
+   </ul>
+    
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">m3sh</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Mesh basics</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/basics.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="mesh-basics">
+<span id="mesh-rep-label"></span><h1>Mesh basics<a class="headerlink" href="#mesh-basics" title="Link to this heading"></a></h1>
+<img alt="_images/dragon_full.png" src="_images/dragon_full.png" />
+<p>We define a <strong>polygonal mesh</strong> by specifying two sequences:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>a sequence <span class="math notranslate nohighlight">\(V = (v_i)_{i=0}^{n-1}\)</span> of vertices such that
+<span class="math notranslate nohighlight">\(v_i \in \mathbb{R}^3\)</span> and</p></li>
+<li><p>a sequence <span class="math notranslate nohighlight">\(F = (f_j)_{j=0}^{m-1}\)</span> of faces.</p></li>
+</ul>
+</div></blockquote>
+<p>Faces <span class="math notranslate nohighlight">\(f \in F\)</span> are sequences themselves: a <span class="math notranslate nohighlight">\(k\)</span>-tuple
+<span class="math notranslate nohighlight">\(f = (i_0, \dots, i_{k-1})\)</span> of integers defines a face of valence
+<span class="math notranslate nohighlight">\(k\)</span> with vertices <span class="math notranslate nohighlight">\(v_{i_0}, \dots, v_{i_{k-1}}\)</span>. In general,
+faces are neither planar nor convex. If <span class="math notranslate nohighlight">\(k\)</span> is equal to three for
+all faces, the pair <span class="math notranslate nohighlight">\((V, F)\)</span> defines a <strong>triangle mesh</strong>.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>We can identify the ordered sequence of vertices with a matrix
+<span class="math notranslate nohighlight">\(V \in \mathbb{R}^{n \times 3}\)</span>. Replacing <span class="math notranslate nohighlight">\(V\)</span> with
+<span class="math notranslate nohighlight">\(W \in  \mathbb{R}^{n \times 3}\)</span> yields a mesh with identical
+<strong>combinatorics</strong> <span class="math notranslate nohighlight">\(F\)</span> but different vertex positions.</p>
+</div>
+<section id="manifold-meshes">
+<span id="manifold-mesh-label"></span><h2>Manifold meshes<a class="headerlink" href="#manifold-meshes" title="Link to this heading"></a></h2>
+<p>A pair <span class="math notranslate nohighlight">\((V,F)\)</span> as just defined can describe arbitrary collections of
+polygonal faces. For simplicity we only consider triangular faces in the
+following definitions. A triangle mesh is <strong>2-manifold</strong> if the faces incident
+to a vertex either form a closed or an open triangle fan.</p>
+<a class="reference internal image-reference" href="_images/manifold_fan.png"><img alt="_images/manifold_fan.png" class="align-center" src="_images/manifold_fan.png" style="width: 70%;" />
+</a>
+<p>The <strong>orientation</strong> of a face is defined by the cyclic ordering of its
+incident vertices as specified in the definition of <span class="math notranslate nohighlight">\(f\)</span>. The orientation
+of two adjacent faces is <strong>compatible</strong>, if the two vertices of the common edge
+appear in opposite order. A manifold mesh is <strong>orientable</strong> if any two adjacent
+faces have compatible orientation.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Both, manifoldness and orientability are determind by the mesh
+combinatorics <span class="math notranslate nohighlight">\(F\)</span> and do <strong>not</strong> depend on a concrete geometric
+realization (an embedding defined by specifying <span class="math notranslate nohighlight">\(V\)</span>).</p>
+</div>
+</section>
+<section id="halfedge-representation">
+<span id="halfedge-label"></span><h2>Halfedge representation<a class="headerlink" href="#halfedge-representation" title="Link to this heading"></a></h2>
+<p>Any orientable 2-manifold mesh can be represented using halfedges. Conceptually
+one splits each edge of a mesh into two so called halfedges. Each halfedge is
+oriented according to the orientation of its incident face. In this way
+adjacent faces give rise to oppositely oriented halfedges:</p>
+<a class="reference internal image-reference" href="_images/halfedge_all.png"><img alt="_images/halfedge_all.png" class="align-center" src="_images/halfedge_all.png" style="width: 90%;" />
+</a>
+<p>The <a class="reference internal" href="api/m3sh.hds.Mesh.html#m3sh.hds.Mesh" title="m3sh.hds.Mesh"><code class="xref py py-class docutils literal notranslate"><span class="pre">Mesh</span></code></a> class provides a generic halfedge data structure
+for orientable 2-manifold meshes. The combinatorics of a mesh is defined via
+its halfedges and their attributes. Each halfedge is aware of its incident
+<a class="reference internal" href="api/m3sh.hds.Halfedge.face.html#m3sh.hds.Halfedge.face" title="m3sh.hds.Halfedge.face"><code class="xref py py-attr docutils literal notranslate"><span class="pre">face</span></code></a>, its <a class="reference internal" href="api/m3sh.hds.Halfedge.origin.html#m3sh.hds.Halfedge.origin" title="m3sh.hds.Halfedge.origin"><code class="xref py py-attr docutils literal notranslate"><span class="pre">origin</span></code></a> and
+<a class="reference internal" href="api/m3sh.hds.Halfedge.target.html#m3sh.hds.Halfedge.target" title="m3sh.hds.Halfedge.target"><code class="xref py py-attr docutils literal notranslate"><span class="pre">target</span></code></a> vertex, the neighboring halfedge
+<a class="reference internal" href="api/m3sh.hds.Halfedge.pair.html#m3sh.hds.Halfedge.pair" title="m3sh.hds.Halfedge.pair"><code class="xref py py-attr docutils literal notranslate"><span class="pre">pair</span></code></a>, as well as its successor
+<a class="reference internal" href="api/m3sh.hds.Halfedge.next.html#m3sh.hds.Halfedge.next" title="m3sh.hds.Halfedge.next"><code class="xref py py-attr docutils literal notranslate"><span class="pre">next</span></code></a> and predecessor halfedge
+<a class="reference internal" href="api/m3sh.hds.Halfedge.prev.html#m3sh.hds.Halfedge.prev" title="m3sh.hds.Halfedge.prev"><code class="xref py py-attr docutils literal notranslate"><span class="pre">prev</span></code></a> in a face defining loop of halfedges.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>The explicit representation of a face as a list of its vertices can
+be reconstructed from the set of halfedges – hence, the sequence <span class="math notranslate nohighlight">\(F\)</span>
+is not stored explicitly. It is sufficient to know one halfedge per face
+to compute the face defining loop of halfedges (or vertices).</p>
+</div>
+</section>
+<section id="references">
+<h2>References<a class="headerlink" href="#references" title="Link to this heading"></a></h2>
+<ol class="arabic simple">
+<li><p>K. Crane: <a class="reference external" href="https://www.cs.cmu.edu/~kmcrane/Projects/OutOfCoreSurvey/">A Survey of Efficient Structures for Digital Geometry
+Processing</a>,
+2006.</p></li>
+<li><p>H. Brönnimann: <a class="reference external" href="https://link.springer.com/chapter/10.1007/3-540-44688-5_5">Designing and Implementing a General Purpose Halfedge
+Data Structure</a>,
+Proceedings of the 5th International Workshop on Algorithm Engineering,
+2001.</p></li>
+</ol>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="index.html" class="btn btn-neutral float-left" title="m3sh – a mutable halfedge mesh data structure" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="usage.html" class="btn btn-neutral float-right" title="Quickstart" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, m3shware.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -1,0 +1,6 @@
+canvas
+======
+
+.. currentmodule:: m3sh.vis
+
+.. autofunction:: canvas

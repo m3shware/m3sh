@@ -1,0 +1,6 @@
+style
+=====
+
+.. currentmodule:: m3sh.vis
+
+.. autoproperty:: Circles.style

@@ -1,0 +1,6 @@
+add\_vertex
+===========
+
+.. currentmodule:: m3sh.hds
+
+.. automethod:: Mesh.add_vertex

@@ -1,0 +1,263 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Quickstart &mdash; m3sh 1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+
+  
+    <link rel="shortcut icon" href="_static/ghems_red.ico"/>
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=f2a433a1"></script>
+      <script src="_static/doctools.js?v=9bcbadda"></script>
+      <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script async="async" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Neighborhood traversal" href="iterators.html" />
+    <link rel="prev" title="Mesh basics" href="basics.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            m3sh
+              <img src="_static/logo-small.png" class="logo" alt="Logo"/>
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+   
+              <p class="caption" role="heading"><span class="caption-text">Basic usage and examples</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="basics.html">Mesh basics</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Quickstart</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#building-a-cube">Building a cube</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#incremental-construction">Incremental construction</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#reading-and-writing-meshes">Reading and writing meshes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#visualization">Visualization</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="iterators.html">Neighborhood traversal</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Modules - API</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="mesh.html">Halfedge data structure</a></li>
+<li class="toctree-l1"><a class="reference internal" href="helper.html">Auxiliary modules</a></li>
+<li class="toctree-l1"><a class="reference internal" href="vis.html">Visualization</a></li>
+</ul>
+
+   <p class="caption">
+     <span class="caption-text">Indices</span>
+   </p>
+   <ul>
+        <li class="toctree-l1"><a href= "genindex.html">Index</a></li>
+        <li class="toctree-l1"><a href= "py-modindex.html">Module index</a></li>
+        <li class="toctree-l1"><a href= "https://github.com/m3shware/m3sh">Package source</a></li>
+   </ul>
+    
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">m3sh</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Quickstart</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/usage.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="quickstart">
+<span id="quickstart-label"></span><h1>Quickstart<a class="headerlink" href="#quickstart" title="Link to this heading"></a></h1>
+<p>The main purpose of this package is mesh processing. Surfaces are described by a
+finite number of vertices and faces as explained <a class="reference internal" href="basics.html#mesh-rep-label"><span class="std std-ref">here</span></a>.
+Put the m3sh package folder into a location that is searched by Python or augment
+the search path in your Python scripts before importing any m3sh modules:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+
+<span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span> <span class="o">&lt;</span><span class="n">relative_path_to_m3sh_package_folder</span><span class="o">&gt;</span> <span class="p">))</span>
+</pre></div>
+</div>
+<section id="building-a-cube">
+<h2>Building a cube<a class="headerlink" href="#building-a-cube" title="Link to this heading"></a></h2>
+<a class="reference internal image-reference" href="_images/cube_alpha.png"><img alt="_images/cube_alpha.png" class="align-center" src="_images/cube_alpha.png" style="width: 45%;" />
+</a>
+<p>We build a <a class="reference internal" href="api/m3sh.hds.Mesh.html#m3sh.hds.Mesh" title="m3sh.hds.Mesh"><code class="xref py py-class docutils literal notranslate"><span class="pre">Mesh</span></code></a> instance that holds the geometry of the unit cube
+<span class="math notranslate nohighlight">\([0, 1]^3\)</span> by specifying its vertex coordinates and how those vertices
+are connected to form the faces of the cube:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">m3sh.hds</span> <span class="kn">import</span> <span class="n">Mesh</span>
+
+<span class="c1"># The list of vertex coordinates. Their position in the list is</span>
+<span class="c1"># important when defining faces. Any array_like representation</span>
+<span class="c1"># can be used.</span>
+<span class="n">V</span> <span class="o">=</span> <span class="p">[[</span><span class="mf">0.</span><span class="p">,</span> <span class="mf">0.</span><span class="p">,</span> <span class="mf">0.</span><span class="p">],</span>
+     <span class="p">[</span><span class="mf">1.</span><span class="p">,</span> <span class="mf">0.</span><span class="p">,</span> <span class="mf">0.</span><span class="p">],</span>
+     <span class="p">[</span><span class="mf">1.</span><span class="p">,</span> <span class="mf">0.</span><span class="p">,</span> <span class="mf">1.</span><span class="p">],</span>
+     <span class="p">[</span><span class="mf">0.</span><span class="p">,</span> <span class="mf">0.</span><span class="p">,</span> <span class="mf">1.</span><span class="p">],</span>
+     <span class="p">[</span><span class="mf">0.</span><span class="p">,</span> <span class="mf">1.</span><span class="p">,</span> <span class="mf">0.</span><span class="p">],</span>
+     <span class="p">[</span><span class="mf">1.</span><span class="p">,</span> <span class="mf">1.</span><span class="p">,</span> <span class="mf">0.</span><span class="p">],</span>
+     <span class="p">[</span><span class="mf">1.</span><span class="p">,</span> <span class="mf">1.</span><span class="p">,</span> <span class="mf">1.</span><span class="p">],</span>
+     <span class="p">[</span><span class="mf">0.</span><span class="p">,</span> <span class="mf">1.</span><span class="p">,</span> <span class="mf">1.</span><span class="p">]]</span>
+
+<span class="c1"># List of combinatorial face definitions. Indices refer to</span>
+<span class="c1"># rows of the vertex coordinate list V.</span>
+<span class="n">F</span> <span class="o">=</span> <span class="p">[[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span>
+     <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">6</span><span class="p">,</span> <span class="mi">2</span><span class="p">],</span>
+     <span class="p">[</span><span class="mi">3</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">6</span><span class="p">,</span> <span class="mi">7</span><span class="p">],</span>
+     <span class="p">[</span><span class="mi">7</span><span class="p">,</span> <span class="mi">6</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">4</span><span class="p">],</span>
+     <span class="p">[</span><span class="mi">3</span><span class="p">,</span> <span class="mi">7</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span>
+     <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">1</span><span class="p">]]</span>
+
+<span class="n">cube</span> <span class="o">=</span> <span class="n">Mesh</span><span class="p">(</span><span class="n">V</span><span class="p">,</span> <span class="n">F</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>During mesh construction, the list <cite>V</cite> is converted to an equivalent
+<a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.4)"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ndarray</span></code></a> object. The vertex coordinate array of <cite>cube</cite> can
+be accessed via its <a class="reference internal" href="api/m3sh.hds.Mesh.points.html#m3sh.hds.Mesh.points" title="m3sh.hds.Mesh.points"><code class="xref py py-attr docutils literal notranslate"><span class="pre">points</span></code></a> attribute. The list <cite>F</cite> becomes
+redundant.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>If <cite>V</cite> is of type <a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.4)"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ndarray</span></code></a>, this array is directly used by
+the <a class="reference internal" href="api/m3sh.hds.Mesh.html#m3sh.hds.Mesh" title="m3sh.hds.Mesh"><code class="xref py py-class docutils literal notranslate"><span class="pre">Mesh</span></code></a> object and not copied or altered in any way. In this
+case any changes applied to <cite>V</cite> will be reflected in the mesh.</p>
+</div>
+</section>
+<section id="incremental-construction">
+<h2>Incremental construction<a class="headerlink" href="#incremental-construction" title="Link to this heading"></a></h2>
+<p>The auxiliary data structures <cite>V</cite> and <cite>F</cite> are not needed for mesh construction.
+A mesh can be built by adding vertices and faces incrementally:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">m3sh.hds</span> <span class="kn">import</span> <span class="n">Mesh</span>
+
+<span class="n">cube</span> <span class="o">=</span> <span class="n">Mesh</span><span class="p">()</span>
+
+<span class="c1"># Add the vertices of a cube by specifying their (x,y,z) coordinates.</span>
+<span class="c1"># We can use lists, tuples, or ndarrays of shape (3, ) for that. For</span>
+<span class="c1"># convenience, a variable number of scalar arguments is also accepted.</span>
+<span class="n">cube</span><span class="o">.</span><span class="n">add_vertex</span><span class="p">([</span><span class="mf">0.</span><span class="p">,</span> <span class="mf">0.</span><span class="p">,</span> <span class="mf">0.</span><span class="p">])</span>
+<span class="n">cube</span><span class="o">.</span><span class="n">add_vertex</span><span class="p">([</span><span class="mf">1.</span><span class="p">,</span> <span class="mf">0.</span><span class="p">,</span> <span class="mf">0.</span><span class="p">])</span>
+<span class="n">cube</span><span class="o">.</span><span class="n">add_vertex</span><span class="p">((</span><span class="mf">1.</span><span class="p">,</span> <span class="mf">0.</span><span class="p">,</span> <span class="mf">1.</span><span class="p">))</span>
+<span class="n">cube</span><span class="o">.</span><span class="n">add_vertex</span><span class="p">((</span><span class="mf">0.</span><span class="p">,</span> <span class="mf">0.</span><span class="p">,</span> <span class="mf">1.</span><span class="p">))</span>
+<span class="n">cube</span><span class="o">.</span><span class="n">add_vertex</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">0.</span><span class="p">,</span> <span class="mf">1.</span><span class="p">,</span> <span class="mf">0.</span><span class="p">]))</span>
+<span class="n">cube</span><span class="o">.</span><span class="n">add_vertex</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">1.</span><span class="p">,</span> <span class="mf">1.</span><span class="p">,</span> <span class="mf">0.</span><span class="p">]))</span>
+<span class="n">cube</span><span class="o">.</span><span class="n">add_vertex</span><span class="p">(</span><span class="mf">1.</span><span class="p">,</span> <span class="mf">1.</span><span class="p">,</span> <span class="mf">1.</span><span class="p">)</span>
+<span class="n">cube</span><span class="o">.</span><span class="n">add_vertex</span><span class="p">(</span><span class="mf">0.</span><span class="p">,</span> <span class="mf">1.</span><span class="p">,</span> <span class="mf">1.</span><span class="p">)</span>
+
+<span class="c1"># Add faces. A face is defined by an ordered sequence of vertex indices.</span>
+<span class="c1"># Indices are assigned in the order vertices where added to the mesh.</span>
+<span class="n">cube</span><span class="o">.</span><span class="n">add_face</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">])</span>
+<span class="n">cube</span><span class="o">.</span><span class="n">add_face</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">6</span><span class="p">,</span> <span class="mi">2</span><span class="p">])</span>
+<span class="n">cube</span><span class="o">.</span><span class="n">add_face</span><span class="p">((</span><span class="mi">3</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">6</span><span class="p">,</span> <span class="mi">7</span><span class="p">))</span>
+<span class="n">cube</span><span class="o">.</span><span class="n">add_face</span><span class="p">((</span><span class="mi">7</span><span class="p">,</span> <span class="mi">6</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">4</span><span class="p">))</span>
+<span class="n">cube</span><span class="o">.</span><span class="n">add_face</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">7</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+<span class="n">cube</span><span class="o">.</span><span class="n">add_face</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>No matter what way of mesh construction is used, the faces of a mesh have
+to be oriented consistently as described <a class="reference internal" href="basics.html#manifold-mesh-label"><span class="std std-ref">here</span></a>.</p>
+</div>
+</section>
+<section id="reading-and-writing-meshes">
+<h2>Reading and writing meshes<a class="headerlink" href="#reading-and-writing-meshes" title="Link to this heading"></a></h2>
+<p>The <a class="reference internal" href="api/m3sh.hds.Mesh.html#m3sh.hds.Mesh" title="m3sh.hds.Mesh"><code class="xref py py-class docutils literal notranslate"><span class="pre">Mesh</span></code></a> class provides interface functions
+<a class="reference internal" href="api/m3sh.hds.Mesh.read.html#m3sh.hds.Mesh.read" title="m3sh.hds.Mesh.read"><code class="xref py py-meth docutils literal notranslate"><span class="pre">read()</span></code></a> and <a class="reference internal" href="api/m3sh.hds.Mesh.write.html#m3sh.hds.Mesh.write" title="m3sh.hds.Mesh.write"><code class="xref py py-meth docutils literal notranslate"><span class="pre">write()</span></code></a> to read and
+write meshes in OBJ format. Assuming the above definition of the cube, it
+can be saved in OBJ format:</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">cube</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;cube.obj&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Similarly, we can read a mesh from file:</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">mesh</span> <span class="o">=</span> <span class="n">Mesh</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="s1">&#39;cube.obj&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>If vertex normals or texture coordinates are stored in an OBJ file, they
+can be recovered via</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">mesh</span><span class="p">,</span> <span class="n">vecs</span><span class="p">,</span> <span class="n">uvs</span> <span class="o">=</span> <span class="n">Mesh</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="s1">&#39;some-mesh.obj&#39;</span><span class="p">,</span> <span class="s1">&#39;vn&#39;</span><span class="p">,</span> <span class="s1">&#39;vt&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="visualization">
+<h2>Visualization<a class="headerlink" href="#visualization" title="Link to this heading"></a></h2>
+<p>The generated cube can be directly inspected using the <a class="reference internal" href="api/m3sh.vis.html#module-m3sh.vis" title="m3sh.vis"><code class="xref py py-mod docutils literal notranslate"><span class="pre">vis</span></code></a>
+module (requires VTK):</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">m3sh.vis</span> <span class="k">as</span> <span class="nn">vis</span>
+
+<span class="n">vis</span><span class="o">.</span><span class="n">mesh</span><span class="p">(</span><span class="n">cube</span><span class="p">)</span>
+<span class="n">vis</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>The <a class="reference internal" href="api/m3sh.vis.show.html#m3sh.vis.show" title="m3sh.vis.show"><code class="xref py py-func docutils literal notranslate"><span class="pre">show()</span></code></a> function is a blocking function. A script
+will not advance beyond this function as long as the graphics window
+is open.</p>
+</div>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="basics.html" class="btn btn-neutral float-left" title="Mesh basics" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="iterators.html" class="btn btn-neutral float-right" title="Neighborhood traversal" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, m3shware.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

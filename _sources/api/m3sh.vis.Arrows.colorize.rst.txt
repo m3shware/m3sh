@@ -1,0 +1,6 @@
+colorize
+========
+
+.. currentmodule:: m3sh.vis
+
+.. automethod:: Arrows.colorize

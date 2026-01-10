@@ -1,0 +1,6 @@
+prev
+====
+
+.. currentmodule:: m3sh.hds
+
+.. autoproperty:: Halfedge.prev

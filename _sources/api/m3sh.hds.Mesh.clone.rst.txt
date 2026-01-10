@@ -1,0 +1,6 @@
+clone
+=====
+
+.. currentmodule:: m3sh.hds
+
+.. automethod:: Mesh.clone

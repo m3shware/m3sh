@@ -1,0 +1,50 @@
+Halfedge
+========
+
+.. currentmodule:: m3sh.hds
+ 
+.. autoclass:: Halfedge
+   :no-inherited-members:
+    
+   
+   
+   .. rubric:: Attributes
+ 
+   .. autosummary::
+      :toctree:
+      :template: attribute.rst
+   
+      ~Halfedge.boundary
+      ~Halfedge.collapsible
+      ~Halfedge.deleted
+      ~Halfedge.face
+      ~Halfedge.flags
+      ~Halfedge.flippable
+      ~Halfedge.midpoint
+      ~Halfedge.next
+      ~Halfedge.origin
+      ~Halfedge.pair
+      ~Halfedge.prev
+      ~Halfedge.target
+      ~Halfedge.vector
+   
+   
+ 
+   
+   
+   
+   
+   
+   
+   .. rubric:: Special methods
+ 
+   .. autosummary::
+      :toctree: 
+      :template: function.rst
+   
+         ~Halfedge.__contains__
+         ~Halfedge.__getitem__
+         ~Halfedge.__iter__
+   
+   
+   

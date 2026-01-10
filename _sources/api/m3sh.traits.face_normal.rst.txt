@@ -1,0 +1,6 @@
+face\_normal
+============
+
+.. currentmodule:: m3sh.traits
+
+.. autofunction:: face_normal

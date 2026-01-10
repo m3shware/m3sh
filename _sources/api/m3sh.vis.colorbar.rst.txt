@@ -1,0 +1,6 @@
+colorbar
+========
+
+.. currentmodule:: m3sh.vis
+
+.. autofunction:: colorbar

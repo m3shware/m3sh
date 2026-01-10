@@ -1,0 +1,46 @@
+Spheres
+=======
+
+.. currentmodule:: m3sh.vis
+ 
+.. autoclass:: Spheres
+   :show-inheritance:
+   :no-inherited-members:
+    
+   
+   
+   .. rubric:: Attributes
+ 
+   .. autosummary::
+      :toctree:
+      :template: attribute.rst
+   
+      ~Spheres.actor
+      ~Spheres.bounds
+      ~Spheres.color
+      ~Spheres.name
+      ~Spheres.opacity
+      ~Spheres.pickable
+      ~Spheres.prop
+      ~Spheres.size
+      ~Spheres.style
+      ~Spheres.visible
+   
+   
+ 
+   
+   
+   .. rubric:: Methods
+ 
+   .. autosummary::
+      :toctree: 
+      :template: function.rst
+   
+      ~Spheres.colorize
+      ~Spheres.lookuptable
+      ~Spheres.modified
+      ~Spheres.scale
+   
+   
+   
+   

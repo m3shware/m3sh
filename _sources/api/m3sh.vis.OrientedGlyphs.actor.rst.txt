@@ -1,0 +1,6 @@
+actor
+=====
+
+.. currentmodule:: m3sh.vis
+
+.. autoproperty:: OrientedGlyphs.actor

@@ -1,0 +1,6 @@
+rotation
+========
+
+.. currentmodule:: m3sh.linalg
+
+.. autofunction:: rotation

@@ -1,0 +1,6 @@
+from\_grid
+==========
+
+.. currentmodule:: m3sh.hds
+
+.. automethod:: Mesh.from_grid

@@ -1,0 +1,6 @@
+write
+=====
+
+.. currentmodule:: m3sh.hds
+
+.. automethod:: Mesh.write

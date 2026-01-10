@@ -1,0 +1,49 @@
+MinHeap
+=======
+
+.. currentmodule:: m3sh.heap
+ 
+.. autoclass:: MinHeap
+   :no-inherited-members:
+    
+   
+   
+   .. rubric:: Attributes
+ 
+   .. autosummary::
+      :toctree:
+      :template: attribute.rst
+   
+      ~MinHeap.top
+   
+   
+ 
+   
+   
+   .. rubric:: Methods
+ 
+   .. autosummary::
+      :toctree: 
+      :template: function.rst
+   
+      ~MinHeap.pop
+      ~MinHeap.push
+      ~MinHeap.remove
+      ~MinHeap.update
+   
+   
+   
+   
+   
+   .. rubric:: Special methods
+ 
+   .. autosummary::
+      :toctree: 
+      :template: function.rst
+   
+         ~MinHeap.__contains__
+         ~MinHeap.__iter__
+         ~MinHeap.__len__
+   
+   
+   

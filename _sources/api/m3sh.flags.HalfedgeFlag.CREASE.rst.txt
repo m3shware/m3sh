@@ -1,0 +1,6 @@
+CREASE
+======
+
+.. currentmodule:: m3sh.flags
+
+.. autoattribute:: HalfedgeFlag.CREASE

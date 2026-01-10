@@ -1,0 +1,6 @@
+pick
+====
+
+.. currentmodule:: m3sh.vis
+
+.. autofunction:: pick

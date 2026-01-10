@@ -1,0 +1,6 @@
+flip\_halfedge
+==============
+
+.. currentmodule:: m3sh.hds
+
+.. automethod:: Mesh.flip_halfedge

@@ -1,0 +1,6 @@
+plot
+====
+
+.. currentmodule:: m3sh.vis
+
+.. autofunction:: plot

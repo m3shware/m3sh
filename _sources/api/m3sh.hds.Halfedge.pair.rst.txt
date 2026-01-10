@@ -1,0 +1,6 @@
+pair
+====
+
+.. currentmodule:: m3sh.hds
+
+.. autoproperty:: Halfedge.pair

@@ -1,0 +1,48 @@
+Circles
+=======
+
+.. currentmodule:: m3sh.vis
+ 
+.. autoclass:: Circles
+   :show-inheritance:
+   :no-inherited-members:
+    
+   
+   
+   .. rubric:: Attributes
+ 
+   .. autosummary::
+      :toctree:
+      :template: attribute.rst
+   
+      ~Circles.actor
+      ~Circles.bounds
+      ~Circles.color
+      ~Circles.name
+      ~Circles.opacity
+      ~Circles.pickable
+      ~Circles.prop
+      ~Circles.radius
+      ~Circles.size
+      ~Circles.style
+      ~Circles.visible
+      ~Circles.width
+   
+   
+ 
+   
+   
+   .. rubric:: Methods
+ 
+   .. autosummary::
+      :toctree: 
+      :template: function.rst
+   
+      ~Circles.colorize
+      ~Circles.lookuptable
+      ~Circles.modified
+      ~Circles.scale
+   
+   
+   
+   

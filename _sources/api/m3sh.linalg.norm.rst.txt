@@ -1,0 +1,6 @@
+norm
+====
+
+.. currentmodule:: m3sh.linalg
+
+.. autofunction:: norm

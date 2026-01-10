@@ -1,0 +1,6 @@
+name
+====
+
+.. currentmodule:: m3sh.hds
+
+.. autoproperty:: Mesh.name

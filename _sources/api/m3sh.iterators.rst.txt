@@ -1,0 +1,31 @@
+﻿m3sh.iterators
+==============
+
+.. automodule:: m3sh.iterators
+
+   
+   
+   
+
+   
+   
+   
+
+   
+   
+   
+   
+   
+   
+   .. rubric:: Functions
+
+   .. autosummary::
+      :toctree:
+      :template: function.rst
+   
+      edges
+      faces
+      halfs
+      verts
+   
+   

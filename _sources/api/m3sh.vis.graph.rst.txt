@@ -1,0 +1,6 @@
+graph
+=====
+
+.. currentmodule:: m3sh.vis
+
+.. autofunction:: graph
