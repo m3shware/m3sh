@@ -4,13 +4,17 @@
 
 A pure Python implementation of a generic halfedge data structure for
 orientable 2-manifold meshes - the discrete analogue of orientable surfaces
-in Euclidean 3-space.
+in Euclidean 3-space. The package
+
+- supports triangle and polygon meshes with dynamic connectivity
+- import/export of object files (.obj) and
+- includes a visualizer for rapid prototyping (optional, requires VTK).
 
 ## Quickstart
 
-Download the code as a ZIP file (defaults to `m3sh-main.zip` or similar). After
-extraction copy the `m3sh` package folder (the one containing `__init__.py`) to
-a location that is searched by Python when importing modules. This can be achieved by putting the `m3sh` folder into your project folder:
+Copy the `m3sh` package folder (the one containing `__init__.py`) to a
+location that is searched by Python when importing modules. This can be
+achieved by putting the `m3sh` folder into your project folder:
 
     my-project/
     ├── project.py
@@ -21,27 +25,23 @@ a location that is searched by Python when importing modules. This can be achiev
         ├── hds.py              ← halfedge data structure
         └── vis.py              ← visualization module
 
-The m3sh package can now be used in `project.py`. Make sure that your Python
-installation provides all dependencies! Complete API documentation and more
-quickstart examples can be found [here](https://m3shware.github.io/m3sh).
+The m3sh package can now be used in `project.py`. Complete API documentation
+and quickstart examples can be found [here](https://m3shware.github.io/m3sh).
 
 ## Dependencies
 
-Besides Python, the halfedge data structure provided by the m3sh package
-depends only on NumPy 2.0 or higher. The visualization module `m3sh.vis`,
-requires a recent VTK version (9.1 or higher is recommended).
+The halfedge data structure depends on NumPy 2.0 or higher. The visualization
+module `m3sh.vis` requires a recent VTK version. It is recommended to install
+packages in a dedicated environment. Using `conda`, an environment called
+`m3sh-env` with all dependencies can be created and activated with
 
-> You can use the halfedge data structure without installing VTK. The
-computational capabilities of the m3sh package do not suffer from the absence
-of VTK!
+    conda create -n m3sh-env python numpy vtk
+    conda activate m3sh-env
 
-It is recommended to work and install packages in a dedicated environment. Using
-`conda`, all dependencies can be installed in an environment called `m3sh-env`
-with
+> VTK is only required if you want to use the `m3sh.vis` module. You can use
+the full functionality of the halfedge data structure without installing VTK!
 
-    conda create --name m3sh-env --channel conda-forge python numpy vtk
-
-## Modifying the search path
+## Modifying the search path (optional)
 
 To keep the m3sh package in a central location and make it accessible to
 multiple projects one can add the package location to the search path. Assuming the directory structure
@@ -61,7 +61,7 @@ this can be achieved by adding the following lines to a Python script (e.g. `pro
 
     sys.path.insert(0, os.path.abspath('../.'))
 
-If the location of the m3sh package folder relative to your project
+If the location of the m3sh package folder relative to your `projects`
 folder is different, the path needs to be adapted accordingly. See the
 [sys.path](https://docs.python.org/3/library/sys_path_init.html)
 documentation for more details.
