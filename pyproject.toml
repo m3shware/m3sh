@@ -4,14 +4,30 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "m3sh"
-version = "1.0.0"
-dependencies = ["numpy>=1.21", "vtk>=9.1"]
-authors = [{name = "Martin Kilian"}]
+dynamic = ["version"]
+dependencies = [
+    "numpy",
+    "vtk",
+]
+authors = [{name = "m3shware"}]
+description = "Halfedge data structure for polygon mesh processing."
 license = "MIT"
 requires-python = ">=3.10"
+keywords = [
+    "half-edge",
+    "mesh-processing",
+    "geometry-processing",
+]
+
+[project.urls]
+Documentation = "https://m3shware.github.io/m3sh/"
+Repository = "https://github.com/m3shware/m3sh.git"
 
 [project.scripts]
-m3sh_vis = "m3sh.vis:_main"
+m3sh-vis = "m3sh.vis:_main"
 
 [tool.setuptools.packages.find]
 where = ["."]
+
+[tool.setuptools.dynamic]
+version = {attr = "m3sh.__version__"}
