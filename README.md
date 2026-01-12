@@ -26,7 +26,7 @@ achieved by putting the `m3sh` folder into your project folder:
         └── vis.py              ← visualization module
 
 The m3sh package can now be used in `project.py`. Complete API documentation
-and quickstart examples can be found [here](https://m3shware.github.io/m3sh).
+and examples can be found [here](https://m3shware.github.io/m3sh/usage.html).
 
 ## Dependencies
 
