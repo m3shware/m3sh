@@ -1,0 +1,6 @@
+visible
+=======
+
+.. currentmodule:: m3sh.vis
+
+.. autoproperty:: Spheres.visible

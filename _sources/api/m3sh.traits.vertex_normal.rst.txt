@@ -1,0 +1,6 @@
+vertex\_normal
+==============
+
+.. currentmodule:: m3sh.traits
+
+.. autofunction:: vertex_normal

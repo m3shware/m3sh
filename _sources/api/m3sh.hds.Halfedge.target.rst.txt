@@ -1,0 +1,6 @@
+target
+======
+
+.. currentmodule:: m3sh.hds
+
+.. autoproperty:: Halfedge.target

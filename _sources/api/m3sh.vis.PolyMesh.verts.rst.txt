@@ -1,0 +1,6 @@
+verts
+=====
+
+.. currentmodule:: m3sh.vis
+
+.. automethod:: PolyMesh.verts

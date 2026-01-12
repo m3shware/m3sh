@@ -1,0 +1,39 @@
+FaceFlag
+========
+
+.. currentmodule:: m3sh.flags
+ 
+.. autoclass:: FaceFlag
+   :no-inherited-members:
+    
+   
+   
+   .. rubric:: Attributes
+ 
+   .. autosummary::
+      :toctree:
+      :template: attribute.rst
+   
+      ~FaceFlag.RESERVED
+   
+   
+ 
+   
+   
+   
+   
+   
+   
+   .. rubric:: Special methods
+ 
+   .. autosummary::
+      :toctree: 
+      :template: function.rst
+   
+         ~FaceFlag.__contains__
+         ~FaceFlag.__iter__
+         ~FaceFlag.__len__
+         ~FaceFlag.__getitem__
+   
+   
+   

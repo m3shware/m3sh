@@ -1,0 +1,6 @@
+\_\_iter\_\_
+============
+
+.. currentmodule:: m3sh.flags
+
+.. automethod:: FaceFlag.__iter__

@@ -1,0 +1,6 @@
+merge
+=====
+
+.. currentmodule:: m3sh.obj
+
+.. autofunction:: merge

@@ -1,0 +1,6 @@
+faces
+=====
+
+.. currentmodule:: m3sh.hds
+
+.. autoproperty:: Mesh.faces

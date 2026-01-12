@@ -1,0 +1,6 @@
+clean
+=====
+
+.. currentmodule:: m3sh.hds
+
+.. automethod:: Mesh.clean

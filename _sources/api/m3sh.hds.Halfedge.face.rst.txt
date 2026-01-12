@@ -1,0 +1,6 @@
+face
+====
+
+.. currentmodule:: m3sh.hds
+
+.. autoproperty:: Halfedge.face

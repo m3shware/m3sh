@@ -1,0 +1,6 @@
+cones
+=====
+
+.. currentmodule:: m3sh.vis
+
+.. autofunction:: cones

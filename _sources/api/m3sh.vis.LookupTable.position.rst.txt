@@ -1,0 +1,6 @@
+position
+========
+
+.. currentmodule:: m3sh.vis
+
+.. autoproperty:: LookupTable.position

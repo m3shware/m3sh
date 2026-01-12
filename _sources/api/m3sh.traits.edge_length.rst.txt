@@ -1,0 +1,6 @@
+edge\_length
+============
+
+.. currentmodule:: m3sh.traits
+
+.. autofunction:: edge_length

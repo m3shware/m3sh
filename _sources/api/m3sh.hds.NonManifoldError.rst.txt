@@ -1,0 +1,15 @@
+NonManifoldError
+================
+
+.. currentmodule:: m3sh.hds
+
+.. autoclass:: NonManifoldError
+   :show-inheritance:
+
+   
+   
+   
+
+   
+   
+   

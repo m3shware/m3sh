@@ -1,0 +1,36 @@
+﻿m3sh.traits
+===========
+
+.. automodule:: m3sh.traits
+
+   
+   
+   
+
+   
+   
+   
+
+   
+   
+   
+   
+   
+   
+   .. rubric:: Functions
+
+   .. autosummary::
+      :toctree:
+      :template: function.rst
+   
+      bounds
+      edge_length
+      face_area
+      face_normal
+      face_normals
+      planarity_score
+      planarity_scores
+      vertex_normal
+      vertex_normals
+   
+   

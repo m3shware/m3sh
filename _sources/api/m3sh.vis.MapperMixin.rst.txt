@@ -1,0 +1,26 @@
+MapperMixin
+===========
+
+.. currentmodule:: m3sh.vis
+ 
+.. autoclass:: MapperMixin
+   :show-inheritance:
+   :no-inherited-members:
+    
+   
+   
+   
+ 
+   
+   
+   .. rubric:: Methods
+ 
+   .. autosummary::
+      :toctree: 
+      :template: function.rst
+   
+      ~MapperMixin.lookuptable
+   
+   
+   
+   

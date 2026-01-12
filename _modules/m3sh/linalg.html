@@ -1,0 +1,574 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>m3sh.linalg &mdash; m3sh 1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=e59714d7" />
+
+  
+    <link rel="shortcut icon" href="../../_static/ghems_red.ico"/>
+      <script src="../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../_static/documentation_options.js?v=f2a433a1"></script>
+      <script src="../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            m3sh
+              <img src="../../_static/logo-small.png" class="logo" alt="Logo"/>
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+   
+              <p class="caption" role="heading"><span class="caption-text">Basic usage and examples</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../basics.html">Mesh basics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../usage.html">Quickstart</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../iterators.html">Neighborhood traversal</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Modules - API</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../mesh.html">Halfedge data structure</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../helper.html">Auxiliary modules</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../vis.html">Visualization</a></li>
+</ul>
+
+   <p class="caption">
+     <span class="caption-text">Indices</span>
+   </p>
+   <ul>
+        <li class="toctree-l1"><a href= "../../genindex.html">Index</a></li>
+        <li class="toctree-l1"><a href= "../../py-modindex.html">Module index</a></li>
+        <li class="toctree-l1"><a href= "https://github.com/m3shware/m3sh">Package source</a></li>
+   </ul>
+    
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">m3sh</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">m3sh.linalg</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for m3sh.linalg</h1><div class="highlight"><pre>
+<span></span><span class="c1"># Copyright 2024-25, m3shware</span>
+<span class="c1">#</span>
+<span class="c1"># Permission is hereby granted, free of charge, to any person obtaining a</span>
+<span class="c1"># copy of this software and associated documentation files (the &quot;Software&quot;),</span>
+<span class="c1"># to deal in the Software without restriction, including without limitation</span>
+<span class="c1"># the rights to use, copy, modify, merge, publish, distribute, sublicense,</span>
+<span class="c1"># and/or sell copies of the Software, and to permit persons to whom the</span>
+<span class="c1"># Software is furnished to do so, subject to the following conditions:</span>
+<span class="c1">#</span>
+<span class="c1"># The above copyright notice and this permission notice shall be included in</span>
+<span class="c1"># all copies or substantial portions of the Software.</span>
+<span class="c1">#</span>
+<span class="c1"># THE SOFTWARE IS PROVIDED &quot;AS IS&quot;, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR</span>
+<span class="c1"># IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,</span>
+<span class="c1"># FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE</span>
+<span class="c1"># AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER</span>
+<span class="c1"># LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING</span>
+<span class="c1"># FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS</span>
+<span class="c1"># IN THE SOFTWARE.</span>
+
+<span class="sd">&quot;&quot;&quot; Basic vector math.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">math</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+
+
+<div class="viewcode-block" id="angle">
+<a class="viewcode-back" href="../../api/m3sh.linalg.angle.html#m3sh.linalg.angle">[docs]</a>
+<span class="k">def</span> <span class="nf">angle</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">w</span><span class="p">,</span> <span class="n">up</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">degrees</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot; Angle between vectors.</span>
+
+<span class="sd">    Angle between vectors :math:`\mathbf{v}` and :math:`\mathbf{w}` in</span>
+<span class="sd">    radians. To obtain an oriented angle an axis vector `up` has to be</span>
+<span class="sd">    specified. Typically `up` is a vector parallel to the cross product</span>
+<span class="sd">    vector :math:`\mathbf{v} \times \mathbf{w}`.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    v, w : ~numpy.ndarray, shape (3, )</span>
+<span class="sd">        Vector in 3-space.</span>
+<span class="sd">    up : ~numpy.ndarray, shape (3, ), optional</span>
+<span class="sd">        Axis vector in 3-space.</span>
+<span class="sd">    degrees : bool, optional</span>
+<span class="sd">        Convert result from radians to degrees.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    float</span>
+<span class="sd">        Angle in degrees or radians.</span>
+
+<span class="sd">    Note</span>
+<span class="sd">    ----</span>
+<span class="sd">    If an axis vector is defined the sign is determined via the right-hand</span>
+<span class="sd">    rule. None of the vectors may be the zero vector. The axis vector may</span>
+<span class="sd">    not be contained in the span of :math:`\mathbf{v}` and :math:`\mathbf{w}`.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Yields a value between 0 and pi. We can define a sign by specifying</span>
+    <span class="c1"># an axis vector, see below.</span>
+    <span class="n">angle</span> <span class="o">=</span> <span class="n">math</span><span class="o">.</span><span class="n">acos</span><span class="p">(</span><span class="n">clamp</span><span class="p">(</span><span class="n">v</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">w</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">norm</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="o">*</span> <span class="n">norm</span><span class="p">(</span><span class="n">w</span><span class="p">)),</span> <span class="o">-</span><span class="mf">1.</span><span class="p">,</span> <span class="mf">1.</span><span class="p">))</span>
+
+    <span class="k">if</span> <span class="n">degrees</span><span class="p">:</span>
+        <span class="n">angle</span> <span class="o">=</span> <span class="n">math</span><span class="o">.</span><span class="n">degrees</span><span class="p">(</span><span class="n">angle</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">up</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">up</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">cross</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">w</span><span class="p">))</span> <span class="o">&lt;</span> <span class="mf">0.0</span><span class="p">:</span>
+        <span class="n">angle</span> <span class="o">*=</span> <span class="o">-</span><span class="mf">1.0</span>
+
+    <span class="k">return</span> <span class="n">angle</span></div>
+
+
+
+<div class="viewcode-block" id="clamp">
+<a class="viewcode-back" href="../../api/m3sh.linalg.clamp.html#m3sh.linalg.clamp">[docs]</a>
+<span class="k">def</span> <span class="nf">clamp</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">lo</span><span class="p">,</span> <span class="n">hi</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot; Clamp value to range.</span>
+
+<span class="sd">    Clamp `x` to the closed interval [`lo`, `hi`].</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    x : float</span>
+<span class="sd">        Value to clamp.</span>
+<span class="sd">    lo : float</span>
+<span class="sd">        Lower bound.</span>
+<span class="sd">    hi : float</span>
+<span class="sd">        Upper bound.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    float</span>
+<span class="sd">        Clamped value.</span>
+
+<span class="sd">    Note</span>
+<span class="sd">    ----</span>
+<span class="sd">    To prevent data type changes arguments should not mix :class:`int` and</span>
+<span class="sd">    :class:`float` values.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># assert type(x) is type(lo) and type(x) is type(hi)</span>
+    <span class="k">assert</span> <span class="n">lo</span> <span class="o">&lt;=</span> <span class="n">hi</span>
+
+    <span class="c1"># When clamping happens, the data type changes if not all three</span>
+    <span class="c1"># arguments are of the same type - might induce hard to track bugs.</span>
+    <span class="c1"># x = lo if x &lt; lo else x</span>
+    <span class="c1"># x = hi if x &gt; hi else x</span>
+
+    <span class="c1"># return x</span>
+
+    <span class="c1"># Alternative implementation. Data types may still change unless</span>
+    <span class="c1"># equal to begin with. The order of arguments should guarantee that</span>
+    <span class="c1"># the data type does not change if x is within bounds.</span>
+    <span class="k">return</span> <span class="nb">max</span><span class="p">(</span><span class="nb">min</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">hi</span><span class="p">),</span> <span class="n">lo</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="cross">
+<a class="viewcode-back" href="../../api/m3sh.linalg.cross.html#m3sh.linalg.cross">[docs]</a>
+<span class="k">def</span> <span class="nf">cross</span><span class="p">(</span><span class="n">u</span><span class="p">,</span> <span class="n">v</span><span class="p">):</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot; Cross product.</span>
+
+<span class="sd">    Alternative to NumPy&#39;s vectorized :func:`~numpy.cross` function.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    u, v : array_like, shape (3, )</span>
+<span class="sd">        Vector in :math:`\mathbb{R}^3`.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    ~numpy.ndarray, shape (3, )</span>
+<span class="sd">        Cross product of vectors :math:`\mathbf{u}` and :math:`\mathbf{v}`.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Unpack the arrays. This will also catch any problem with array shape.</span>
+    <span class="n">u0</span><span class="p">,</span> <span class="n">u1</span><span class="p">,</span> <span class="n">u2</span> <span class="o">=</span> <span class="n">u</span>
+    <span class="n">v0</span><span class="p">,</span> <span class="n">v1</span><span class="p">,</span> <span class="n">v2</span> <span class="o">=</span> <span class="n">v</span>
+
+    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">u1</span><span class="o">*</span><span class="n">v2</span> <span class="o">-</span> <span class="n">u2</span><span class="o">*</span><span class="n">v1</span><span class="p">,</span>
+                     <span class="n">u2</span><span class="o">*</span><span class="n">v0</span> <span class="o">-</span> <span class="n">u0</span><span class="o">*</span><span class="n">v2</span><span class="p">,</span>
+                     <span class="n">u0</span><span class="o">*</span><span class="n">v1</span> <span class="o">-</span> <span class="n">u1</span><span class="o">*</span><span class="n">v0</span><span class="p">])</span></div>
+
+
+    <span class="c1"># return np.array([u[1]*v[2] - u[2]*v[1],</span>
+    <span class="c1">#                  u[2]*v[0] - u[0]*v[2],</span>
+    <span class="c1">#                  u[0]*v[1] - u[1]*v[0]])</span>
+
+
+<div class="viewcode-block" id="cross_mat">
+<a class="viewcode-back" href="../../api/m3sh.linalg.cross_mat.html#m3sh.linalg.cross_mat">[docs]</a>
+<span class="k">def</span> <span class="nf">cross_mat</span><span class="p">(</span><span class="n">u</span><span class="p">):</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot; Cross product matrix.</span>
+
+<span class="sd">    Let :math:`A` be the matrix returned by this method, then</span>
+<span class="sd">    :math:`A \mathbf{x} = \mathbf{u} \times \mathbf{x}`.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    u : array_like, shape (3, )</span>
+<span class="sd">        Vector in :math:`\mathbb{R}^3`.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    ~numpy.ndarray, shape (3, 3)</span>
+<span class="sd">        Cross product matrix.</span>
+
+<span class="sd">    Note</span>
+<span class="sd">    ----</span>
+<span class="sd">    The matrix :math:`A` is skew symmetric.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Unpack the array. This will also catch any problem with array shape.</span>
+    <span class="n">u0</span><span class="p">,</span> <span class="n">u1</span><span class="p">,</span> <span class="n">u2</span> <span class="o">=</span> <span class="n">u</span>
+
+    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([[</span><span class="mf">0.0</span><span class="p">,</span> <span class="o">-</span><span class="n">u2</span><span class="p">,</span> <span class="n">u1</span><span class="p">],</span>
+                     <span class="p">[</span><span class="n">u2</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="o">-</span><span class="n">u0</span><span class="p">],</span>
+                     <span class="p">[</span><span class="o">-</span><span class="n">u1</span><span class="p">,</span> <span class="n">u0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">]])</span></div>
+
+
+
+<span class="k">def</span> <span class="nf">_dot</span><span class="p">(</span><span class="n">u</span><span class="p">,</span> <span class="n">v</span><span class="p">):</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot; Dot product.</span>
+
+<span class="sd">    Inner product of vectors. Alternative to :func:`numpy.dot` for</span>
+<span class="sd">    3-dimensional vectors.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    u : array_like, shape (3, )</span>
+<span class="sd">        Vector in :math:`\mathbb{R}^3`.</span>
+<span class="sd">    v : array_like, shape (3, )</span>
+<span class="sd">        Vector in :math:`\mathbb{R}^3`.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    float</span>
+<span class="sd">        Inner product of vectors `u` and `v`.</span>
+
+<span class="sd">    Note</span>
+<span class="sd">    ----</span>
+<span class="sd">    The fastest way to do dot products seems to be using</span>
+<span class="sd">    :meth:`numpy.ndarray.dot` instead of the function :func:`numpy.dot`.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># There seems to be no real advantage of using this over ndarray.dot().</span>
+    <span class="c1"># The vedcot and linalg.vecdot functions are slower than ndarray.dot().</span>
+    <span class="c1"># All those considerations are only valid when doing non-vectorized</span>
+    <span class="c1"># operations!</span>
+    <span class="k">return</span> <span class="n">u</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">*</span><span class="n">v</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="n">u</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">*</span><span class="n">v</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">u</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">*</span><span class="n">v</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+
+
+<div class="viewcode-block" id="norm">
+<a class="viewcode-back" href="../../api/m3sh.linalg.norm.html#m3sh.linalg.norm">[docs]</a>
+<span class="k">def</span> <span class="nf">norm</span><span class="p">(</span><span class="n">u</span><span class="p">):</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot; Length of vector.</span>
+
+<span class="sd">    Alternative to NumPy&#39;s vectorized :func:`~numpy.linalg.norm` function.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    u : array_like, shape (n, )</span>
+<span class="sd">        Vector in :math:`\mathbb{R}^n`.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    float</span>
+<span class="sd">        Euclidean length of the vector :math:`\mathbf{u}`.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># return math.sqrt(u[0]*u[0] + u[1]*u[1] + u[2]*u[2])</span>
+    <span class="k">return</span> <span class="n">math</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">u</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">u</span><span class="p">))</span></div>
+
+
+
+<div class="viewcode-block" id="sqrd">
+<a class="viewcode-back" href="../../api/m3sh.linalg.sqrd.html#m3sh.linalg.sqrd">[docs]</a>
+<span class="k">def</span> <span class="nf">sqrd</span><span class="p">(</span><span class="n">u</span><span class="p">):</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot; Squared length of vector.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    u : array_like, shape (n, )</span>
+<span class="sd">        Vector in :math:`\mathbb{R}^n`.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    float</span>
+<span class="sd">        Squared Euclidean length of the vector :math:`\mathbf{u}`.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">u</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">u</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="unit_inplace">
+<a class="viewcode-back" href="../../api/m3sh.linalg.unit_inplace.html#m3sh.linalg.unit_inplace">[docs]</a>
+<span class="k">def</span> <span class="nf">unit_inplace</span><span class="p">(</span><span class="n">u</span><span class="p">):</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot; In-place vector normalization.</span>
+
+<span class="sd">    Convenience function to normalize a vector. Modifies the input</span>
+<span class="sd">    argument!</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    u : ~numpy.ndarray, shape (3, )</span>
+<span class="sd">        Vector in :math:`\mathbb{R}^3`.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    ~numpy.ndarray, shape (3, )</span>
+<span class="sd">        The normalized input vector (not a normalized copy).</span>
+
+<span class="sd">    Note</span>
+<span class="sd">    ----</span>
+<span class="sd">    No error checking (division by zero, input vector shape) is performed.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">u</span> <span class="o">/=</span> <span class="n">norm</span><span class="p">(</span><span class="n">u</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">u</span></div>
+
+
+
+<div class="viewcode-block" id="unit">
+<a class="viewcode-back" href="../../api/m3sh.linalg.unit.html#m3sh.linalg.unit">[docs]</a>
+<span class="k">def</span> <span class="nf">unit</span><span class="p">(</span><span class="n">u</span><span class="p">):</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot; Vector normalization.</span>
+
+<span class="sd">    Convenience function to normalize a vector.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    u : ~numpy.ndarray, shape (3, )</span>
+<span class="sd">        Vector in :math:`\mathbb{R}^3`.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    ~numpy.ndarray, shape (3, )</span>
+<span class="sd">        Normalized copy of input vector.</span>
+
+<span class="sd">    Note</span>
+<span class="sd">    ----</span>
+<span class="sd">    No error checking (division by zero, input vector shape) is performed.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">u</span> <span class="o">/</span> <span class="n">norm</span><span class="p">(</span><span class="n">u</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="rank">
+<a class="viewcode-back" href="../../api/m3sh.linalg.rank.html#m3sh.linalg.rank">[docs]</a>
+<span class="k">def</span> <span class="nf">rank</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
+    <span class="n">s</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">svd</span><span class="p">(</span><span class="n">x</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span>
+    <span class="n">m</span><span class="p">,</span> <span class="n">n</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">shape</span>
+    <span class="n">tol</span> <span class="o">=</span> <span class="n">s</span><span class="o">.</span><span class="n">max</span><span class="p">()</span> <span class="o">*</span> <span class="nb">max</span><span class="p">(</span><span class="n">m</span><span class="p">,</span> <span class="n">n</span><span class="p">)</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">finfo</span><span class="p">(</span><span class="n">s</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span><span class="o">.</span><span class="n">eps</span>
+
+    <span class="c1"># print(f&#39;{s=}, {tol=}&#39;)</span>
+
+    <span class="k">return</span> <span class="nb">sum</span><span class="p">(</span><span class="n">s</span> <span class="o">&gt;</span> <span class="n">tol</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="rotate">
+<a class="viewcode-back" href="../../api/m3sh.linalg.rotate.html#m3sh.linalg.rotate">[docs]</a>
+<span class="k">def</span> <span class="nf">rotate</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">a</span><span class="p">,</span> <span class="n">phi</span><span class="p">,</span> <span class="n">sinphi</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot; Rotate vector about axis.</span>
+
+<span class="sd">    Rotation is performed via Rodrigues&#39; rotation formula,</span>
+
+<span class="sd">    .. math::</span>
+
+<span class="sd">       \mathbf{x}_{\text{rot}} = \mathbf{x} \cos(\varphi) +</span>
+<span class="sd">            (1-\cos(\varphi)) \mathbf{a} \mathbf{a}^T \mathbf{x} +</span>
+<span class="sd">            (\mathbf{a} \times \mathbf{x}) \sin(\varphi)</span>
+
+<span class="sd">    which results in a positive (counter-clockwise) rotation for</span>
+<span class="sd">    :math:`\varphi &gt; 0` when looking on the normal plane of the axis</span>
+<span class="sd">    vector pointing towards the viewer (right-hand rule).</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    x : ~numpy.ndarray, shape (3, )</span>
+<span class="sd">        Vector to be rotated.</span>
+<span class="sd">    a : ~numpy.ndarray, shape (3, )</span>
+<span class="sd">        Normalized axis vector.</span>
+<span class="sd">    phi : float</span>
+<span class="sd">        Rotation angle in radians or :math:`\cos(\varphi)`.</span>
+<span class="sd">    sinphi : float, optional</span>
+<span class="sd">        :math:`\sin(\varphi)`.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    ~numpy.ndarray</span>
+<span class="sd">        The rotated vector.</span>
+
+<span class="sd">    Note</span>
+<span class="sd">    ----</span>
+<span class="sd">    Computation of :math:`\sin(\varphi)` can be avoid by providing this</span>
+<span class="sd">    value as the optional argument `sinphi`. In this case `phi` is taken</span>
+<span class="sd">    to be :math:`\cos(\varphi)` and no trigonometric functions are evaluated.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">sinphi</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">cphi</span> <span class="o">=</span> <span class="n">phi</span>
+        <span class="n">sphi</span> <span class="o">=</span> <span class="n">sinphi</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">cphi</span> <span class="o">=</span> <span class="n">math</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">phi</span><span class="p">)</span>
+        <span class="n">sphi</span> <span class="o">=</span> <span class="n">math</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">phi</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">x</span> <span class="o">*</span> <span class="n">cphi</span> <span class="o">+</span> <span class="n">a</span> <span class="o">*</span> <span class="n">a</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">-</span> <span class="n">cphi</span><span class="p">)</span> <span class="o">+</span> <span class="n">cross</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">x</span><span class="p">)</span> <span class="o">*</span> <span class="n">sphi</span></div>
+
+
+
+<div class="viewcode-block" id="rotation">
+<a class="viewcode-back" href="../../api/m3sh.linalg.rotation.html#m3sh.linalg.rotation">[docs]</a>
+<span class="k">def</span> <span class="nf">rotation</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">w</span><span class="p">,</span> <span class="n">a</span><span class="p">):</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot; Rotation parameters.</span>
+
+<span class="sd">    Computes the values :math:`\cos(\varphi)` and :math:`\sin(\varphi)`</span>
+<span class="sd">    of the rotation about the axis :math:`\mathbf{a}` that aligns two</span>
+<span class="sd">    vectors :math:`\mathbf{v}` and :math:`\mathbf{w}` of equal norm, i.e.,</span>
+<span class="sd">    using  Rodrigues&#39; rotation formula we get</span>
+
+<span class="sd">    .. math::</span>
+
+<span class="sd">       \mathbf{w} = \mathbf{v} \cos(\varphi) +</span>
+<span class="sd">            (1-\cos(\varphi)) \mathbf{a} \mathbf{a}^T \mathbf{v} +</span>
+<span class="sd">            (\mathbf{a} \times \mathbf{v}) \sin(\varphi).</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    v, w : ~numpy.ndarray, shape (3, )</span>
+<span class="sd">        Vector in 3-space.</span>
+<span class="sd">    a : ~numpy.ndarray, shape (3, )</span>
+<span class="sd">        Unit vector in 3-space.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    cosphi : float</span>
+<span class="sd">        Cosine of rotation angle.</span>
+<span class="sd">    sinphi : float</span>
+<span class="sd">        Sine of rotation angle.</span>
+
+<span class="sd">    Note</span>
+<span class="sd">    ----</span>
+<span class="sd">    The length preconditions on :math:`\mathbf{v}` and :math:`\mathbf{w}` are</span>
+<span class="sd">    not checked. If :math:`\| \mathbf{v} \| \neq \| \mathbf{w} \|` the formula</span>
+
+<span class="sd">    .. math::</span>
+
+<span class="sd">       \lambda \mathbf{w} = \mathbf{v} \cos(\varphi) +</span>
+<span class="sd">            (1-\cos(\varphi)) \mathbf{a} \mathbf{a}^T \mathbf{v} +</span>
+<span class="sd">            (\mathbf{a} \times \mathbf{v}) \sin(\varphi)</span>
+
+<span class="sd">    holds with :math:`\lambda = \| \mathbf{v} \| / \| \mathbf{w} \|`.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Projection of v and w into the plane orthogonal to the axis a. The</span>
+    <span class="c1"># axis vector may not be in the span of v and w.</span>
+    <span class="n">v</span> <span class="o">=</span> <span class="n">v</span> <span class="o">-</span> <span class="n">a</span> <span class="o">*</span> <span class="n">a</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">v</span><span class="p">)</span>
+    <span class="n">w</span> <span class="o">=</span> <span class="n">w</span> <span class="o">-</span> <span class="n">a</span> <span class="o">*</span> <span class="n">a</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">w</span><span class="p">)</span>
+
+    <span class="c1"># Normalization necessary before computing inner products.</span>
+    <span class="n">v</span> <span class="o">/=</span> <span class="n">norm</span><span class="p">(</span><span class="n">v</span><span class="p">)</span>
+    <span class="n">w</span> <span class="o">/=</span> <span class="n">norm</span><span class="p">(</span><span class="n">w</span><span class="p">)</span>
+
+    <span class="c1"># A vector parallel to the axis. Inner product with the axis determines</span>
+    <span class="c1"># the sign of the angle.</span>
+    <span class="n">n</span> <span class="o">=</span> <span class="n">cross</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">w</span><span class="p">)</span>
+
+    <span class="n">cos_alpha</span> <span class="o">=</span> <span class="n">clamp</span><span class="p">(</span><span class="n">v</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">w</span><span class="p">),</span> <span class="o">-</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span>
+    <span class="n">sin_alpha</span> <span class="o">=</span> <span class="n">norm</span><span class="p">(</span><span class="n">n</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">n</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">a</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mf">0.0</span><span class="p">:</span>
+        <span class="n">sin_alpha</span> <span class="o">*=</span> <span class="o">-</span><span class="mf">1.0</span>
+
+    <span class="k">return</span> <span class="n">cos_alpha</span><span class="p">,</span> <span class="n">sin_alpha</span></div>
+
+
+
+<span class="k">def</span> <span class="nf">_rotation_from_quaternion</span><span class="p">(</span><span class="n">a</span><span class="p">):</span>
+    <span class="n">a</span> <span class="o">=</span> <span class="n">unit</span><span class="p">(</span><span class="n">a</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">a</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="mf">1.0</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">()</span>
+
+    <span class="n">a00</span> <span class="o">=</span> <span class="n">a</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="n">a</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">a01</span> <span class="o">=</span> <span class="n">a</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="n">a</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+    <span class="n">a02</span> <span class="o">=</span> <span class="n">a</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="n">a</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+    <span class="n">a03</span> <span class="o">=</span> <span class="n">a</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="n">a</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span>
+
+    <span class="n">a11</span> <span class="o">=</span> <span class="n">a</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">*</span> <span class="n">a</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+    <span class="n">a12</span> <span class="o">=</span> <span class="n">a</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">*</span> <span class="n">a</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+    <span class="n">a13</span> <span class="o">=</span> <span class="n">a</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">*</span> <span class="n">a</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span>
+
+    <span class="n">a22</span> <span class="o">=</span> <span class="n">a</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">*</span> <span class="n">a</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+    <span class="n">a23</span> <span class="o">=</span> <span class="n">a</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">*</span> <span class="n">a</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span>
+
+    <span class="n">a33</span> <span class="o">=</span> <span class="n">a</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span> <span class="o">*</span> <span class="n">a</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span>
+
+    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span>
+        <span class="p">[[</span><span class="n">a00</span> <span class="o">+</span> <span class="n">a11</span> <span class="o">-</span> <span class="n">a22</span> <span class="o">-</span> <span class="n">a33</span><span class="p">,</span> <span class="mi">2</span> <span class="o">*</span> <span class="p">(</span><span class="n">a12</span> <span class="o">-</span> <span class="n">a03</span><span class="p">),</span> <span class="mi">2</span> <span class="o">*</span> <span class="p">(</span><span class="n">a13</span> <span class="o">+</span> <span class="n">a02</span><span class="p">)],</span>
+         <span class="p">[</span><span class="mi">2</span> <span class="o">*</span> <span class="p">(</span><span class="n">a12</span> <span class="o">+</span> <span class="n">a03</span><span class="p">),</span> <span class="n">a00</span> <span class="o">-</span> <span class="n">a11</span> <span class="o">+</span> <span class="n">a22</span> <span class="o">-</span> <span class="n">a33</span><span class="p">,</span> <span class="mi">2</span> <span class="o">*</span> <span class="p">(</span><span class="n">a23</span> <span class="o">-</span> <span class="n">a01</span><span class="p">)],</span>
+         <span class="p">[</span><span class="mi">2</span> <span class="o">*</span> <span class="p">(</span><span class="n">a13</span> <span class="o">-</span> <span class="n">a02</span><span class="p">),</span> <span class="mi">2</span> <span class="o">*</span> <span class="p">(</span><span class="n">a23</span> <span class="o">+</span> <span class="n">a01</span><span class="p">),</span> <span class="n">a00</span> <span class="o">-</span> <span class="n">a11</span> <span class="o">-</span> <span class="n">a22</span> <span class="o">+</span> <span class="n">a33</span><span class="p">]])</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, m3shware.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

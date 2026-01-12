@@ -1,0 +1,6 @@
+flags
+=====
+
+.. currentmodule:: m3sh.hds
+
+.. autoproperty:: Vertex.flags

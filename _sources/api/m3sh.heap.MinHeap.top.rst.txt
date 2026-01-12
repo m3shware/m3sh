@@ -1,0 +1,6 @@
+top
+===
+
+.. currentmodule:: m3sh.heap
+
+.. autoproperty:: MinHeap.top

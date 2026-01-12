@@ -1,0 +1,6 @@
+\_\_index\_\_
+=============
+
+.. currentmodule:: m3sh.hds
+
+.. automethod:: Vertex.__index__

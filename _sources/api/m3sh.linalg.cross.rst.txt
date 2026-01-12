@@ -1,0 +1,6 @@
+cross
+=====
+
+.. currentmodule:: m3sh.linalg
+
+.. autofunction:: cross

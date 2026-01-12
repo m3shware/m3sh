@@ -1,0 +1,49 @@
+MaxHeap
+=======
+
+.. currentmodule:: m3sh.heap
+ 
+.. autoclass:: MaxHeap
+   :no-inherited-members:
+    
+   
+   
+   .. rubric:: Attributes
+ 
+   .. autosummary::
+      :toctree:
+      :template: attribute.rst
+   
+      ~MaxHeap.top
+   
+   
+ 
+   
+   
+   .. rubric:: Methods
+ 
+   .. autosummary::
+      :toctree: 
+      :template: function.rst
+   
+      ~MaxHeap.pop
+      ~MaxHeap.push
+      ~MaxHeap.remove
+      ~MaxHeap.update
+   
+   
+   
+   
+   
+   .. rubric:: Special methods
+ 
+   .. autosummary::
+      :toctree: 
+      :template: function.rst
+   
+         ~MaxHeap.__contains__
+         ~MaxHeap.__iter__
+         ~MaxHeap.__len__
+   
+   
+   

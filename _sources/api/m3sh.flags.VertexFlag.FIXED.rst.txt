@@ -1,0 +1,6 @@
+FIXED
+=====
+
+.. currentmodule:: m3sh.flags
+
+.. autoattribute:: VertexFlag.FIXED

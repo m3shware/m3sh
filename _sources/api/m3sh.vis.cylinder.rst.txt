@@ -1,0 +1,6 @@
+cylinder
+========
+
+.. currentmodule:: m3sh.vis
+
+.. autofunction:: cylinder

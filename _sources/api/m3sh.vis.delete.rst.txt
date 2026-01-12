@@ -1,0 +1,6 @@
+delete
+======
+
+.. currentmodule:: m3sh.vis
+
+.. autofunction:: delete

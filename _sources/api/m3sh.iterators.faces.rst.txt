@@ -1,0 +1,6 @@
+faces
+=====
+
+.. currentmodule:: m3sh.iterators
+
+.. autofunction:: faces

@@ -1,0 +1,6 @@
+planarity\_scores
+=================
+
+.. currentmodule:: m3sh.traits
+
+.. autofunction:: planarity_scores

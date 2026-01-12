@@ -1,0 +1,188 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>m3sh.linalg &mdash; m3sh 1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+
+  
+    <link rel="shortcut icon" href="../_static/ghems_red.ico"/>
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=f2a433a1"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="angle" href="m3sh.linalg.angle.html" />
+    <link rel="prev" title="write" href="m3sh.obj.write.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            m3sh
+              <img src="../_static/logo-small.png" class="logo" alt="Logo"/>
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+   
+              <p class="caption" role="heading"><span class="caption-text">Basic usage and examples</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../basics.html">Mesh basics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../usage.html">Quickstart</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../iterators.html">Neighborhood traversal</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Modules - API</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../mesh.html">Halfedge data structure</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../helper.html">Auxiliary modules</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="m3sh.heap.html">m3sh.heap</a></li>
+<li class="toctree-l2"><a class="reference internal" href="m3sh.obj.html">m3sh.obj</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">m3sh.linalg</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="m3sh.linalg.angle.html">angle</a></li>
+<li class="toctree-l3"><a class="reference internal" href="m3sh.linalg.clamp.html">clamp</a></li>
+<li class="toctree-l3"><a class="reference internal" href="m3sh.linalg.cross.html">cross</a></li>
+<li class="toctree-l3"><a class="reference internal" href="m3sh.linalg.cross_mat.html">cross_mat</a></li>
+<li class="toctree-l3"><a class="reference internal" href="m3sh.linalg.norm.html">norm</a></li>
+<li class="toctree-l3"><a class="reference internal" href="m3sh.linalg.rank.html">rank</a></li>
+<li class="toctree-l3"><a class="reference internal" href="m3sh.linalg.rotate.html">rotate</a></li>
+<li class="toctree-l3"><a class="reference internal" href="m3sh.linalg.rotation.html">rotation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="m3sh.linalg.sqrd.html">sqrd</a></li>
+<li class="toctree-l3"><a class="reference internal" href="m3sh.linalg.unit.html">unit</a></li>
+<li class="toctree-l3"><a class="reference internal" href="m3sh.linalg.unit_inplace.html">unit_inplace</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../vis.html">Visualization</a></li>
+</ul>
+
+   <p class="caption">
+     <span class="caption-text">Indices</span>
+   </p>
+   <ul>
+        <li class="toctree-l1"><a href= "../genindex.html">Index</a></li>
+        <li class="toctree-l1"><a href= "../py-modindex.html">Module index</a></li>
+        <li class="toctree-l1"><a href= "https://github.com/m3shware/m3sh">Package source</a></li>
+   </ul>
+    
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">m3sh</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../helper.html">Auxiliary modules</a></li>
+      <li class="breadcrumb-item active">m3sh.linalg</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/api/m3sh.linalg.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="module-m3sh.linalg">
+<span id="m3sh-linalg"></span><h1>m3sh.linalg<a class="headerlink" href="#module-m3sh.linalg" title="Link to this heading"></a></h1>
+<p>Basic vector math.</p>
+<p class="rubric">Functions</p>
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="m3sh.linalg.angle.html#m3sh.linalg.angle" title="m3sh.linalg.angle"><code class="xref py py-obj docutils literal notranslate"><span class="pre">angle</span></code></a>(v, w[, up, degrees])</p></td>
+<td><p>Angle between vectors.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="m3sh.linalg.clamp.html#m3sh.linalg.clamp" title="m3sh.linalg.clamp"><code class="xref py py-obj docutils literal notranslate"><span class="pre">clamp</span></code></a>(x, lo, hi)</p></td>
+<td><p>Clamp value to range.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="m3sh.linalg.cross.html#m3sh.linalg.cross" title="m3sh.linalg.cross"><code class="xref py py-obj docutils literal notranslate"><span class="pre">cross</span></code></a>(u, v)</p></td>
+<td><p>Cross product.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="m3sh.linalg.cross_mat.html#m3sh.linalg.cross_mat" title="m3sh.linalg.cross_mat"><code class="xref py py-obj docutils literal notranslate"><span class="pre">cross_mat</span></code></a>(u)</p></td>
+<td><p>Cross product matrix.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="m3sh.linalg.norm.html#m3sh.linalg.norm" title="m3sh.linalg.norm"><code class="xref py py-obj docutils literal notranslate"><span class="pre">norm</span></code></a>(u)</p></td>
+<td><p>Length of vector.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="m3sh.linalg.rank.html#m3sh.linalg.rank" title="m3sh.linalg.rank"><code class="xref py py-obj docutils literal notranslate"><span class="pre">rank</span></code></a>(x)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="m3sh.linalg.rotate.html#m3sh.linalg.rotate" title="m3sh.linalg.rotate"><code class="xref py py-obj docutils literal notranslate"><span class="pre">rotate</span></code></a>(x, a, phi[, sinphi])</p></td>
+<td><p>Rotate vector about axis.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="m3sh.linalg.rotation.html#m3sh.linalg.rotation" title="m3sh.linalg.rotation"><code class="xref py py-obj docutils literal notranslate"><span class="pre">rotation</span></code></a>(v, w, a)</p></td>
+<td><p>Rotation parameters.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="m3sh.linalg.sqrd.html#m3sh.linalg.sqrd" title="m3sh.linalg.sqrd"><code class="xref py py-obj docutils literal notranslate"><span class="pre">sqrd</span></code></a>(u)</p></td>
+<td><p>Squared length of vector.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="m3sh.linalg.unit.html#m3sh.linalg.unit" title="m3sh.linalg.unit"><code class="xref py py-obj docutils literal notranslate"><span class="pre">unit</span></code></a>(u)</p></td>
+<td><p>Vector normalization.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="m3sh.linalg.unit_inplace.html#m3sh.linalg.unit_inplace" title="m3sh.linalg.unit_inplace"><code class="xref py py-obj docutils literal notranslate"><span class="pre">unit_inplace</span></code></a>(u)</p></td>
+<td><p>In-place vector normalization.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="m3sh.obj.write.html" class="btn btn-neutral float-left" title="write" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="m3sh.linalg.angle.html" class="btn btn-neutral float-right" title="angle" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, m3shware.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

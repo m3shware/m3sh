@@ -1,0 +1,6 @@
+color
+=====
+
+.. currentmodule:: m3sh.vis
+
+.. autoproperty:: Arrows.color

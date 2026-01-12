@@ -1,0 +1,29 @@
+﻿m3sh.heap
+=========
+
+.. automodule:: m3sh.heap
+
+   
+   
+   
+
+   
+   
+   .. rubric:: Classes
+
+   .. autosummary::
+      :toctree:
+      :template: class-toc.rst
+   
+      MaxHeap
+      MinHeap
+   
+   
+
+   
+   
+   
+   
+   
+   
+   

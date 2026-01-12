@@ -1,0 +1,6 @@
+splat
+=====
+
+.. currentmodule:: m3sh.vis
+
+.. autofunction:: splat

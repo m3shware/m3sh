@@ -1,0 +1,6 @@
+\_\_len\_\_
+===========
+
+.. currentmodule:: m3sh.heap
+
+.. automethod:: MinHeap.__len__

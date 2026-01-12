@@ -1,0 +1,6 @@
+collapsible
+===========
+
+.. currentmodule:: m3sh.hds
+
+.. autoproperty:: Halfedge.collapsible

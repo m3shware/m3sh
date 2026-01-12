@@ -1,0 +1,45 @@
+Disks
+=====
+
+.. currentmodule:: m3sh.vis
+ 
+.. autoclass:: Disks
+   :show-inheritance:
+   :no-inherited-members:
+    
+   
+   
+   .. rubric:: Attributes
+ 
+   .. autosummary::
+      :toctree:
+      :template: attribute.rst
+   
+      ~Disks.actor
+      ~Disks.bounds
+      ~Disks.color
+      ~Disks.name
+      ~Disks.opacity
+      ~Disks.pickable
+      ~Disks.prop
+      ~Disks.size
+      ~Disks.visible
+   
+   
+ 
+   
+   
+   .. rubric:: Methods
+ 
+   .. autosummary::
+      :toctree: 
+      :template: function.rst
+   
+      ~Disks.colorize
+      ~Disks.lookuptable
+      ~Disks.modified
+      ~Disks.scale
+   
+   
+   
+   

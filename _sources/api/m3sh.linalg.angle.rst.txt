@@ -1,0 +1,6 @@
+angle
+=====
+
+.. currentmodule:: m3sh.linalg
+
+.. autofunction:: angle

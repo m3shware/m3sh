@@ -1,0 +1,40 @@
+VertexFlag
+==========
+
+.. currentmodule:: m3sh.flags
+ 
+.. autoclass:: VertexFlag
+   :no-inherited-members:
+    
+   
+   
+   .. rubric:: Attributes
+ 
+   .. autosummary::
+      :toctree:
+      :template: attribute.rst
+   
+      ~VertexFlag.FIXED
+      ~VertexFlag.CORNER
+   
+   
+ 
+   
+   
+   
+   
+   
+   
+   .. rubric:: Special methods
+ 
+   .. autosummary::
+      :toctree: 
+      :template: function.rst
+   
+         ~VertexFlag.__contains__
+         ~VertexFlag.__iter__
+         ~VertexFlag.__len__
+         ~VertexFlag.__getitem__
+   
+   
+   

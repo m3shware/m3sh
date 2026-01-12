@@ -1,0 +1,6 @@
+read
+====
+
+.. currentmodule:: m3sh.hds
+
+.. automethod:: Mesh.read

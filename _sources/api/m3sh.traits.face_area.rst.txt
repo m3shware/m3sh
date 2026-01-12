@@ -1,0 +1,6 @@
+face\_area
+==========
+
+.. currentmodule:: m3sh.traits
+
+.. autofunction:: face_area

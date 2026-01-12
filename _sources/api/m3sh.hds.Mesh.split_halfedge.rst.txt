@@ -1,0 +1,6 @@
+split\_halfedge
+===============
+
+.. currentmodule:: m3sh.hds
+
+.. automethod:: Mesh.split_halfedge

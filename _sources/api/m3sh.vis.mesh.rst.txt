@@ -1,0 +1,6 @@
+mesh
+====
+
+.. currentmodule:: m3sh.vis
+
+.. autofunction:: mesh
