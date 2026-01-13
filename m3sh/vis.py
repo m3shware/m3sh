@@ -3983,6 +3983,12 @@ class PolyData(Prop, PropertyMixin, MapperMixin):
         self._vtk_prop.GetMapper().SetScalarVisibility(False)
         self._vtk_prop.GetProperty().SetColor(value)
 
+        property = vtk.vtkProperty()
+        # property.SetColor(colors.sky_blue_light)
+        property.SetColor(colors.violet_red_pale)
+
+        self._vtk_prop.SetBackfaceProperty(property)
+
     def colorize(self, scalars, items, interpolate_scalars=False):
         r""" Colorize polygonal data.
 
