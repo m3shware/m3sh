@@ -3770,3 +3770,72 @@ class NonManifoldError(Exception):
     """
 
     pass
+
+
+def _array_append(array, item):
+    """ Resize and append to array.
+
+    Passing :obj:`None` as `item` will **not** initialize the newly
+    added array entries. The `array` argument cannot be :obj:`None`
+    in this case.
+
+    Parameters
+    ----------
+    array : ~numpy.ndarray or None
+        Array object to be augmented. A new array of shape
+        ``(1, *item.shape)`` will be created if :obj:`None`.
+    item : array_like or None
+        Item to be added as new element of the first axis. The
+        shapes ``array.shape[1:]`` and ``item.shape`` have to agree.
+
+    Raises
+    ------
+    ValueError
+        In case of dimension mismatch.
+
+    Returns
+    -------
+    ~numpy.ndarray
+        Reference to the enlarged array. This is a new array if the
+        input array argument was :obj:`None`.
+    """
+    if isinstance(array, np.ndarray):
+        if item is not None:
+            if array[-1].shape != np.shape(item):
+                msg = f'cannot add item with shape {np.shape(item)}'
+                raise ValueError(msg)
+
+        arr_shape = list(array.shape)
+        arr_shape[0] += 1
+
+        array.resize(arr_shape, refcheck=False)
+    else:
+        array = np.empty((1, *np.shape(item)))
+
+    # Assign to the 'free' space at the end of the extended array.
+    # The assignment itself should not trigger any exceptions.
+    if item is not None:
+        array[-1, ...] = item
+
+    return array
+
+
+def _array_clear(array):
+    """ Collapse first axis of array.
+
+    Parameters
+    ----------
+    array : ~numpy.ndarray
+        Array with at least two axes.
+
+    Returns
+    -------
+    ~numpy.ndarray
+        The resized array.
+    """
+    arr_shape = list(array.shape)
+    arr_shape[0] = 0
+
+    array.resize(arr_shape, refcheck=False)
+
+    return array
