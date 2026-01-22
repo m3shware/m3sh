@@ -64,7 +64,7 @@ _interactors = []
 
 
 def canvas(*args, color=None, color2=None, camera=None, transparent=None,
-           interactive=None, layer=None, shadows=None):
+           interactive=None, layer=None, shadows=None, FXAA=False):
     r""" Create or modify viewport.
 
     Change properties of an existing viewport or create a new one inside
@@ -146,8 +146,8 @@ def canvas(*args, color=None, color2=None, camera=None, transparent=None,
         _renderer = vtk.vtkRenderer()
         _renderer.SetUseDepthPeeling(1)
         _renderer.SetOcclusionRatio(0.1)
-        _renderer.SetMaximumNumberOfPeels(10)
-        _renderer.SetUseFXAA(1)
+        _renderer.SetMaximumNumberOfPeels(50)
+        # _renderer.SetUseFXAA(1)
 
         lightkit = vtk.vtkLightKit()
         lightkit.AddLightsToRenderer(_renderer)
@@ -197,6 +197,9 @@ def canvas(*args, color=None, color2=None, camera=None, transparent=None,
         # Note that shadows are wrong when rendering to non-square
         # windows (known bug).
         _renderer.SetUseShadows(shadows)
+
+    if FXAA:
+        _renderer.SetUseFXAA(1)
 
     # Viewports can be layered, i.e., occupy the same region in a render
     # window or overlap partially. In this case it can be useful to set
@@ -1441,7 +1444,7 @@ def plot(P, width=2.0, size=6.0, style='-', color=(0.25, 0.25, 0.25)):
     return actor
 
 
-def box(a, b, opacity=1.0, edges=True, color=colors.snow):
+def box(a, b, opacity=1.0, edges=True, wireframe=False, color=colors.snow):
     r""" Box shape.
 
     Display the cuboid
@@ -1450,13 +1453,15 @@ def box(a, b, opacity=1.0, edges=True, color=colors.snow):
     Parameters
     ----------
     a : array_like, shape (3, )
-        Min corner of the box.
+        Lower bounds of the box.
     b : array_like, shape (3, )
-        Max corner of the box.
+        Upper bounds of the box.
     opacity : float, optional
-        Opacity of box.
+        Box opacity.
     edges : bool, optional
         Toggle edges of the box.
+    wireframe : bool, optional
+        Toggle wireframe display.
     color : array_like, shape (3, ), optional
         RGB color triplet.
 
@@ -1480,8 +1485,11 @@ def box(a, b, opacity=1.0, edges=True, color=colors.snow):
     box.color = color
     box.opacity = opacity
 
-    if edges:
-        box.edges('lines')
+    if wireframe:
+        box.actor.GetProperty().SetRepresentationToWireframe()
+    else:
+        if edges:
+            box.edges('lines')
 
     add(box)
     return box
@@ -2531,6 +2539,8 @@ class Prop:
     """
 
     def __init__(self, prop):
+        # Typically prop is an instance object derived from vtkProp like
+        # vtkActor or vtkActor2D.
         self._vtk_prop = prop
         self._vtk_prop.SetPickable(False)
 
@@ -2549,8 +2559,8 @@ class Prop:
     def actor(self):
         """ Actor instance.
 
-        Access the associated actor. Generically this is equal to
-        the :attr:`prop` attribute.
+        Access the associated actor. Generically this is equal to the
+        :attr:`prop` attribute.
 
         :type: vtkActor
 
@@ -2583,6 +2593,9 @@ class Prop:
 
         :type: tuple[ndarray, ndarray]
         """
+        # Results in a list of intervals for each space dimension. Get
+        # the lower bounds as every second entry starting from 0 and the
+        # upper bounds as every second entry starting from 1..
         bounds = self._vtk_prop.GetBounds()
         return np.array(bounds[0::2]), np.array(bounds[1::2])
 
@@ -2618,7 +2631,8 @@ class Prop:
 
 class PropertyMixin:
     # Assumes that self._vtk_prop is derived from a class that provides
-    # the GetProperty() method.
+    # the GetProperty() method. Apparently this requires self._vtk_prop
+    # to a subclass of vtkActor.
 
     @property
     def opacity(self):
@@ -2633,6 +2647,27 @@ class PropertyMixin:
     @opacity.setter
     def opacity(self, value):
         self._vtk_prop.GetProperty().SetOpacity(value)
+
+    @property
+    def backface_opacity(self):
+        """ Backface opacity property.
+
+        :type: float
+        """
+        if (property := self.actor.GetBackfaceProperty()) is not None:
+            return property.GetOpacity()
+
+        return self.opacity
+
+    @backface_opacity.setter
+    def backface_opacity(self, value):
+        actor = self.actor
+
+        if (property := actor.GetBackfaceProperty()) is None:
+            actor.SetBackfaceProperty(property := vtk.vtkProperty())
+            property.SetColor(self.color)
+
+        property.SetOpacity(value)
 
     # Render and interpolation styles... needs more work!
     # @property
@@ -3983,11 +4018,26 @@ class PolyData(Prop, PropertyMixin, MapperMixin):
         self._vtk_prop.GetMapper().SetScalarVisibility(False)
         self._vtk_prop.GetProperty().SetColor(value)
 
-        property = vtk.vtkProperty()
-        # property.SetColor(colors.sky_blue_light)
-        property.SetColor(colors.violet_red_pale)
+    @property
+    def backface_color(self):
+        """ Backface color property.
 
-        self._vtk_prop.SetBackfaceProperty(property)
+        :type: array_like, shape (3, )
+        """
+        if (property := self.actor.GetBackfaceProperty()) is not None:
+            return property.GetColor()
+
+        return self.color
+
+    @backface_color.setter
+    def backface_color(self, value):
+        actor = self.actor
+
+        if (property := actor.GetBackfaceProperty()) is None:
+            actor.SetBackfaceProperty(property := vtk.vtkProperty())
+            property.SetOpacity(self.opacity)
+
+        property.SetColor(value)
 
     def colorize(self, scalars, items, interpolate_scalars=False):
         r""" Colorize polygonal data.
