@@ -1960,7 +1960,7 @@ class Mesh:
             case 'F':
                 n, m = arr[0].shape
             case _:
-                raise ValueError(f"invalid order argument {order}")
+                raise ValueError(f"invalid order argument {order!r}")
 
         def face(m, n):
             for major_idx in range(m - 1):

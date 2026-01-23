@@ -5003,28 +5003,28 @@ class PolyMesh(PolyData):
         if color is not None:
             self._vtk_prop.GetProperty().SetEdgeColor(color)
 
-    # def texture(self, img, uv):
-    #     """ Texture mapping.
+    def texture(self, img, uv):
+        """ Texture mapping.
 
-    #     Parameters
-    #     ----------
-    #     img : str
-    #         Name of image file.
-    #     uv : ~numpy.ndarray
-    #         Texture coordinates.
-    #     """
-    #     self.polydata.GetPointData().SetTCoords(numpy_to_vtk(uv))
+        Parameters
+        ----------
+        img : str
+            Name of image file.
+        uv : ~numpy.ndarray
+            Texture coordinates.
+        """
+        self._vtk_polydata.GetPointData().SetTCoords(numpy_to_vtk(uv))
 
-    #     factory = vtk.vtkImageReader2Factory()
-    #     reader = factory.CreateImageReader2(img)
-    #     reader.SetFileName(img)
-    #     reader.Update()
+        # factory = vtk.vtkImageReader2Factory()
+        reader = vtk.vtkImageReader2Factory().CreateImageReader2(img)
+        reader.SetFileName(img)
+        reader.Update()
 
-    #     texture = vtk.vtkTexture()
-    #     texture.InterpolateOn()
-    #     texture.SetInputConnection(reader.GetOutputPort())
+        texture = vtk.vtkTexture()
+        texture.InterpolateOn()
+        texture.SetInputConnection(reader.GetOutputPort())
 
-    #     self.prop.SetTexture(texture)
+        self._vtk_prop.SetTexture(texture)
 
     # def contour(self, scalars=None, *, levels=None, range=(None, None),
     #             width=None, style=None, color=None):
