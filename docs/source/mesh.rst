@@ -14,7 +14,6 @@ access to both combinatorial and geometric characteristics of a mesh.
    :template: module-toc.rst
 
    hds
-   iterators
    traits
    flags
 

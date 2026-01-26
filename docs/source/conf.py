@@ -20,7 +20,7 @@ sys.path.insert(0, os.path.abspath('../../.'))
 # -- Project information -----------------------------------------------------
 
 project = 'm3sh'
-copyright = '2024-2026, m3shware'
+copyright = '2024-2026, m3shware developers'
 author = 'm3shware'
 
 # The full version, including alpha/beta/rc tags
@@ -113,8 +113,8 @@ html_favicon = 'icon/ghems_red.ico'
 # documentation.
 #
 html_theme_options = {
-#	'navigation_depth': 3
-	'show_nav_level': 0
+	'navigation_depth': 3
+#	'show_nav_level': 0
 }
 
 html_sidebars = {

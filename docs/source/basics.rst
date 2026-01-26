@@ -6,10 +6,9 @@ Mesh basics
 .. image:: figures/dragon_full.png
 
 We define a **polygonal mesh** by specifying two sequences:
-
-   * a sequence :math:`V = (v_i)_{i=0}^{n-1}` of vertices such that
-     :math:`v_i \in \mathbb{R}^3` and
-   * a sequence :math:`F = (f_j)_{j=0}^{m-1}` of faces.
+a sequence :math:`V = (v_i)_{i=0}^{n-1}` of vertices such that
+:math:`v_i \in \mathbb{R}^3` and
+a sequence :math:`F = (f_j)_{j=0}^{m-1}` of faces.
 
 Faces :math:`f \in F` are sequences themselves: a :math:`k`-tuple
 :math:`f = (i_0, \dots, i_{k-1})` of integers defines a face of valence
