@@ -37,12 +37,17 @@ extensions = [
     'sphinx.ext.intersphinx',
     'sphinx.ext.mathjax',
     'sphinx.ext.githubpages',
-    'sphinx.ext.napoleon',
+#    'sphinx.ext.napoleon',
     'sphinx.ext.autosummary',
 #    'sphinx.ext.viewcode',
 #    'sphinx.ext.todo'
-#	'numpydoc'
+	'numpydoc'
 ]
+
+numpydoc_attributes_as_param_list = False
+numpydoc_class_members_toctree = False
+numpydoc_show_class_members = False
+numpydoc_show_inherited_class_members = False
 
 # Set up intersphinx mapping to link to the python, numpy and scipy
 # documentation
