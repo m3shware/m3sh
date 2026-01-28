@@ -467,6 +467,10 @@ def aabb(points, opacity=0.15, edges=True, labels='dim', color=colors.snow):
     return box
 
 
+def frame(origin, basis):
+    pass
+
+
 def delete(*actors, renderer=None):
     """ Remove actor(s).
 
