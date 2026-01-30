@@ -37,11 +37,11 @@ extensions = [
     'sphinx.ext.intersphinx',
     'sphinx.ext.mathjax',
     'sphinx.ext.githubpages',
-#    'sphinx.ext.napoleon',
+    'sphinx.ext.napoleon',
     'sphinx.ext.autosummary',
 #    'sphinx.ext.viewcode',
 #    'sphinx.ext.todo'
-	'numpydoc'
+#    'numpydoc'
 ]
 
 numpydoc_attributes_as_param_list = False
