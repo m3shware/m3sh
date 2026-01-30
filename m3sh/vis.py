@@ -467,8 +467,53 @@ def aabb(points, opacity=0.15, edges=True, labels='dim', color=colors.snow):
     return box
 
 
-def frame(origin, basis):
-    pass
+def frame(origin, x, y, z=None, size=1.0, radius=0.025, resolution=6,
+          red=colors.red, green=colors.green, blue=colors.blue):
+    """ Display coordinate system(s).
+
+    All coordinate arrays may have a common number of batch axis prepended
+    to their core shape.
+
+    Parameters
+    ----------
+    origin : array_like, shape (3, )
+        Origin location.
+    x, y, z : array_like, shape (3, )
+        Coordinate system axis vectors.
+
+    Returns
+    -------
+    Arrows
+        Vector field prop.
+    """
+    points = np.reshape(np.atleast_2d(origin), (-1, 3))
+
+    if z is None:
+        points = np.concatenate((points, points))
+
+        vectors = np.concatenate((np.reshape(np.atleast_2d(x), (-1, 3)),
+                                  np.reshape(np.atleast_2d(y), (-1, 3))))
+
+        colors = np.concatenate((np.tile(red, (len(vectors)//2, 1)),
+                                 np.tile(green, (len(vectors)//2, 1))))
+
+    else:
+        points = np.concatenate((points, points, points))
+
+        vectors = np.concatenate((np.reshape(np.atleast_2d(x), (-1, 3)),
+                                  np.reshape(np.atleast_2d(y), (-1, 3)),
+                                  np.reshape(np.atleast_2d(z), (-1, 3))))
+
+        colors = np.concatenate((np.tile(red, (len(vectors)//3, 1)),
+                                 np.tile(green, (len(vectors)//3, 1)),
+                                 np.tile(blue, (len(vectors)//3, 1))))
+
+    vf = Arrows(points, vectors, radius, 2.0 * radius, resolution=resolution)
+    vf.size = size
+    vf.colorize(colors)
+
+    add(vf)
+    return vf
 
 
 def delete(*actors, renderer=None):
