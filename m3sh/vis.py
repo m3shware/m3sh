@@ -711,8 +711,9 @@ def scatter(points, style='spheres', size=1.0, color=colors.dim_grey):
     shared with VTK's data objects (use a copy of `points` to decouple
     storage).
     """
-    pc = Spheres(points)
+    points = np.atleast_2d(points).reshape(-1, 3)
 
+    pc = Spheres(points)
     pc.style = style
     pc.size = size
     pc.color = color
@@ -786,9 +787,10 @@ def quiver(points, vectors, size=1.0, radius=0.025, resolution=6,
     data buffer is shared with VTK's data objects (use copies to decouple
     storage).
     """
-    vf = Arrows(np.atleast_2d(points), np.atleast_2d(vectors), radius,
-                2.0 * radius, resolution=resolution)
+    points = np.atleast_2d(points).reshape(-1, 3)
+    vectors = np.atleast_2d(vectors).reshape(-1, 3)
 
+    vf = Arrows(points, vectors, radius, 2.0 * radius, resolution=resolution)
     vf.size = size
     vf.color = color
 
