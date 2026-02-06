@@ -14,18 +14,21 @@ orientable surfaces in Euclidean 3-space.
    basics
    usage
    
-.. iterators
-   
 .. toctree::
    :maxdepth: 1
-   :caption: Modules - API
+   :caption: Main modules 
 
    mesh
    iterators
-   helper
    vis
-    
-      
+   
+.. toctree::
+   :maxdepth: 1
+   :caption: API reference
+   
+   modules
+   
+
 Disclaimer
 ==========
 

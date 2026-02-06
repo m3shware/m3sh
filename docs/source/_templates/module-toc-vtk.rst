@@ -23,6 +23,19 @@
       {% set _ = concrete.append(item) %}
    {% endif %}
    {% endfor %}
+   
+   {% block functions %}
+   {% if functions %}
+   .. rubric:: Functions
+
+   .. autosummary::
+      :toctree:
+      :template: function.rst
+   {% for item in functions %}
+      {{ item }}
+   {%- endfor %}
+   {% endif %}
+   {% endblock %}
 
    {% block concrete %}
    {% if concrete %}
@@ -63,15 +76,3 @@
    {% endif %}
    {% endblock %}
    
-   {% block functions %}
-   {% if functions %}
-   .. rubric:: Functions
-
-   .. autosummary::
-      :toctree:
-      :template: function.rst
-   {% for item in functions %}
-      {{ item }}
-   {%- endfor %}
-   {% endif %}
-   {% endblock %}

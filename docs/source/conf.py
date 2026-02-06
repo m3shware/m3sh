@@ -33,6 +33,7 @@ release = '1.0.0'
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
+#    'sphinx.ext.apidoc',
     'sphinx.ext.autodoc',
     'sphinx.ext.intersphinx',
     'sphinx.ext.mathjax',
@@ -43,6 +44,10 @@ extensions = [
 #    'sphinx.ext.todo'
 #    'numpydoc'
 ]
+
+#apidoc_modules = [
+#    {'path': '../../m3sh', 'destination': '../source/apidoc'}
+#]
 
 numpydoc_attributes_as_param_list = False
 numpydoc_class_members_toctree = False
