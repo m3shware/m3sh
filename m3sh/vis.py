@@ -1,4 +1,4 @@
-# Copyright 2024, m3shware
+# Copyright 2024-2026, m3shware developers
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -24,12 +24,12 @@ Wrapper functions for `VTK <https://vtk.org/doc/nightly/html>`_ functionality.
 This is not meant as a full featured set of visualization routines but should
 serve as a quick and convenient way to achieve basic visualization tasks.
 
-This module can also be used as a stand-alone OBJ viewer:
+This module can be used as a stand-alone .obj viewer:
 
 >>> python vis.py file.obj --edges
 
-opens a graphics window and displays the contents of `file.obj`. Omitting
-the '--edges' argument will not render mesh edges.
+opens a graphics window and displays the contents of `file.obj`. Omitting the
+`--edges` argument will not render mesh edges.
 """
 
 import numpy as np
@@ -411,8 +411,8 @@ def aabb(points, opacity=0.15, edges=True, labels='dim', color=colors.snow):
 
     Parameters
     ----------
-    points : Prop or array_like, shape (3, k)
-        An array of :math:`k` points in 3-space.
+    points : Prop or array_like, shape (..., 3)
+        An array of points in 3-space.
     opacity : float, optional
         Opacity of bounding box.
     edges : bool, optional
@@ -427,14 +427,16 @@ def aabb(points, opacity=0.15, edges=True, labels='dim', color=colors.snow):
     PolyMesh
         Bounding box shape.
 
-    Note
-    ----
-    Visual properties of the bounding box edges can be further customized
-    via the returned :class:`PolyMesh` instance.
+    Notes
+    -----
+    Visual properties of the bounding box can be further customized via the
+    returned :class:`PolyMesh` instance.
     """
     if isinstance(points, Prop):
         a, b = points.bounds
     else:
+        points = np.atleast_2d(points).reshape(-1, 3, copy=False)
+
         a = np.min(points, axis=0)
         b = np.max(points, axis=0)
 
@@ -687,16 +689,20 @@ def colorbar(object, x=0.8, y=0.1):
 def scatter(points, style='spheres', size=1.0, color=colors.dim_grey):
     """ Scatter plot.
 
-    Visual representation of `points`. Display spheres of given radius.
+    Point cloud visualization. Each point is represented as a sphere or cube
+    of a given size. For 2-d point clouds a third coordinate has to added
+    before calling this function, e.g.:
+
+    >>> points = np.insert(points, 2, 0.0, axis=-1)
 
     Parameters
     ----------
-    points : array_like, shape (n, 3), n > 1
-        Point coordinates.
+    points : array_like, shape (..., 3)
+        Point coordinates in 3-space.
     style : str, optional
         Either 'spheres' or 'cubes'.
     size : float, optional
-        Sphere radius.
+        Glyph size in object space.
     color : array_like, shape (3, ), optional
         Color intensity triplet.
 
@@ -705,13 +711,15 @@ def scatter(points, style='spheres', size=1.0, color=colors.dim_grey):
     Spheres
         Sphere congruence prop.
 
-    Note
-    ----
-    If `points` is of type :class:`~numpy.ndarray` its data buffer is
-    shared with VTK's data objects (use a copy of `points` to decouple
-    storage).
+    Notes
+    -----
+    Non-array inputs are converted to arrays. If `points` is already of type
+    :class:`~numpy.ndarray` its data buffer is shared with VTK. Use a copy of
+    `points` to decouple storage.
     """
-    points = np.atleast_2d(points).reshape(-1, 3)
+    # This should be a view object, enforced by setting copy to False. If not
+    # possible ValueError is raised.
+    points = np.atleast_2d(points).reshape(-1, 3, copy=False)
 
     pc = Spheres(points)
     pc.style = style
@@ -751,19 +759,19 @@ def quiver(points, vectors, size=1.0, radius=0.025, resolution=6,
            color=colors.green_pale):
     """ Quiver plot.
 
-    Display arrows at given locations pointing in given directions. For
-    each point exactly one direction vector has to be given.
+    Display arrows at given locations pointing in given directions. For each
+    point exactly one direction vector has to be given.
 
     Parameters
     ----------
-    points : array_like, shape (k, 3)
-        Point coordinates.
-    vectors : array_like, shape (k, 3)
-        Vector coordinates.
+    points : array_like, shape (..., 3)
+        Point coordinates in 3-space.
+    vectors : array_like, shape (..., 3)
+        Vector coordinates in 3-space.
     size : float, optional
-        Global scale factor.
+        Glyph size in object coordinates (global scale factor).
     radius : float, optional
-        Unscaled radius of arrow shaft.
+        Radius of arrow shaft, scaled by `size`.
     resolution : int, optional
         Discretization detail level.
     color : array_like, optional
@@ -774,21 +782,19 @@ def quiver(points, vectors, size=1.0, radius=0.025, resolution=6,
     Arrows
         Vector field prop.
 
-
-    The glyph used to model arrows has unit length. The `radius` argument
-    is an absolute value applied to this glyph. The `size` argument is a
-    global scale factor applied to the glyph. It scales its length and
-    radius. The detail level of the glyph (how many vertices are used to
-    discretize a circle) can be set via the `resolution` argument.
-
-    Note
-    ----
+    Notes
+    -----
     If `array_like` parameters are of type :class:`~numpy.ndarray` their
-    data buffer is shared with VTK's data objects (use copies to decouple
-    storage).
+    data buffer is shared with VTK. Use copies to decouple storage.
+
+    The glyph used to model arrows has unit length. The `radius` argument is
+    an absolute value applied to this glyph. The `size` argument is a global
+    scale factor applied to the glyph, scaling its its length and radius. The
+    detail level of the glyph (how many vertices are used to discretize a
+    circle) can be set via the `resolution` argument.
     """
-    points = np.atleast_2d(points).reshape(-1, 3)
-    vectors = np.atleast_2d(vectors).reshape(-1, 3)
+    points = np.atleast_2d(points).reshape(-1, 3, copy=False)
+    vectors = np.atleast_2d(vectors).reshape(-1, 3, copy=False)
 
     vf = Arrows(points, vectors, radius, 2.0 * radius, resolution=resolution)
     vf.size = size
