@@ -123,7 +123,8 @@ html_favicon = 'icon/ghems_red.ico'
 # documentation.
 #
 html_theme_options = {
-	'navigation_depth': 3
+	'navigation_depth': 4,
+#	'show_toc_level': 2,
 #	'show_nav_level': 0
 }
 

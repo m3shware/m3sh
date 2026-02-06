@@ -37,7 +37,8 @@ to a vertex either form a closed or an open triangle fan.
 .. image:: figures/manifold_fan.png
    :width: 70 %
    :align: center
-
+   
+|
 
 The **orientation** of a face is defined by the cyclic ordering of its
 incident vertices as specified in the definition of :math:`f`. The orientation
@@ -66,6 +67,7 @@ adjacent faces give rise to oppositely oriented halfedges:
    :width: 90 %
    :align: center
 
+|
 
 The :class:`~m3sh.hds.Mesh` class provides a generic halfedge data structure
 for orientable 2-manifold meshes. The combinatorics of a mesh is defined via
