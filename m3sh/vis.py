@@ -690,15 +690,15 @@ def scatter(points, style='spheres', size=1.0, color=colors.dim_grey):
     """ Scatter plot.
 
     Point cloud visualization. Each point is represented as a sphere or cube
-    of a given size. For 2-d point clouds a third coordinate has to added
-    before calling this function, e.g.:
+    of a given size. For 2-d point clouds a third coordinate has to be added
+    before calling this function:
 
     >>> points = np.insert(points, 2, 0.0, axis=-1)
 
     Parameters
     ----------
     points : array_like, shape (..., 3)
-        Point coordinates in 3-space.
+        Stack of point coordinates in 3-space.
     style : str, optional
         Either 'spheres' or 'cubes'.
     size : float, optional
@@ -765,9 +765,9 @@ def quiver(points, vectors, size=1.0, radius=0.025, resolution=6,
     Parameters
     ----------
     points : array_like, shape (..., 3)
-        Point coordinates in 3-space.
+        Stack of point coordinates in 3-space.
     vectors : array_like, shape (..., 3)
-        Vector coordinates in 3-space.
+        Stack of vector coordinates in 3-space.
     size : float, optional
         Glyph size in object coordinates (global scale factor).
     radius : float, optional
