@@ -478,10 +478,12 @@ def frame(origin, x, y, z=None, size=1.0, radius=0.025, resolution=6,
 
     Parameters
     ----------
-    origin : array_like, shape (3, )
-        Origin location.
-    x, y, z : array_like, shape (3, )
-        Coordinate system axis vectors.
+    origin : array_like, shape (..., 3)
+        Stack of origin locations.
+    x, y : array_like, shape (..., 3)
+        Stack of coordinate system axis vectors.
+    z : array_like, shape (..., 3), optional
+        Stack of z-axis vectors.
 
     Returns
     -------
