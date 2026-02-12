@@ -1931,16 +1931,21 @@ class Mesh:
         return v
 
     @classmethod
-    def from_grid(cls, *arr, triangulate=False, order='C', name=None):
+    def from_grid(cls, grid, *coo, triangulate=False, order='F', name=None):
         """ Alternative constructor.
 
         Construct mesh from grid data. A quadrilateral mesh with `mn`
-        faces is generated from coordinate arrays of shape `(m, n)`.
+        faces is generated from coordinate arrays of shape (m, n) or
+        stacked coordinates or shape (m, n, k).
 
         Parameters
         ----------
-        *arr : ~numpy.ndarray, shape (m, n)
-            Arbitrary number of coordinate arrays.
+        grid : ~numpy.ndarray, shape (m, n, k)
+            Stacked coordinate arrays. Points in k-d space are defined by
+            the last axis.
+        *coo : ~numpy.ndarray
+            Coordinate arrays of shape (m, n). When not empty, `grid` is
+            assumed to have the same shape.
         triangulate : bool, optional
             Triangulate quadrilateral faces.
         order : str, optional
@@ -1953,14 +1958,14 @@ class Mesh:
         -------
         Mesh
             Mesh instance.
+
+        Notes
+        -----
+        Use C order when meshgrid was used with 'xy' option. Use F order
+        when meshgrid was used with 'ij' option.
         """
-        match order:
-            case 'C':
-                m, n = arr[0].shape
-            case 'F':
-                n, m = arr[0].shape
-            case _:
-                raise ValueError(f"invalid order argument {order!r}")
+        if order != 'C' and order != 'F':
+            raise ValueError(f"invalid order argument {order!r}")
 
         def face(m, n):
             for major_idx in range(m - 1):
@@ -1974,12 +1979,23 @@ class Mesh:
                         yield [ofs + j, ofs + j + 1,
                                ofs + j + n + 1, ofs + j + n]
 
-        # Passing only a single coordinate array results in a vertex
-        # coordinate array of shape (mn, 1). The empty dimension can be
-        # removed using np.squeeze().
-        arrays = tuple(a.reshape(-1, order=order) for a in arr)
-        points = np.stack(arrays, axis=-1)
-        faces = [f for f in face(m, n)]
+        if coo:
+            if order == 'C':
+                m, n = grid.shape
+            elif order == 'F':
+                n, m = grid.shape
+
+            arrays = tuple(c.reshape(-1, order=order) for c in coo)
+            points = np.stack((grid.reshape(-1, order=order), *arrays), axis=-1)
+            faces = [f for f in face(m, n)]
+        else:
+            if order == 'C':
+                m, n, k = grid.shape
+            elif order == 'F':
+                n, m, k = grid.shape
+
+            points = grid.reshape(-1, k, order=order)
+            faces = [f for f in face(m, n)]
 
         return cls(points, faces, name=name)
 
