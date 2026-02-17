@@ -43,6 +43,7 @@ from time import time   #use perf_counter instead
 from copy import copy, deepcopy
 
 import numpy as np
+import scipy as sp
 
 import m3sh.obj as obj
 import m3sh.flags as flags
@@ -479,7 +480,7 @@ class Mesh:
         # Convert list of data blocks to a dictionary. Since insertion
         # order traversal is guaranteed, *data before conversion is equal
         # to *data.values() after conversion.
-        data = {arg: block for arg, block in zip(args, data)}
+        data = {arg: block for arg, block in zip(args, data, strict=True)}
 
         if not quiet:
             print(f' done ({time()-start:.3f} sec, {merge=})')
@@ -493,7 +494,7 @@ class Mesh:
 
         if merge:
             start = time()
-            faces = obj.merge(verts, faces)
+            faces = _merge(verts, faces)
 
             if not quiet:
                 print(f'merged vertices of {CBOLD}{Path(filename).name}' +
@@ -3855,3 +3856,92 @@ def _array_clear(array):
     array.resize(arr_shape, refcheck=False)
 
     return array
+
+
+def _merge(points, faces, radius=1e-3):
+    """ Distance based vertex merging.
+
+    Merging may yield a non-manifold complex.
+
+    Parameters
+    ----------
+    points : array_like
+        Vertex coordinates.
+    faces : list
+        Face definitions.
+    radius : float
+        Distance threshold.
+
+    Returns
+    -------
+    faces : list
+        Updated faces definitions.
+    """
+    # For each point p, find the indices of all points that are in a
+    # radius r ball with center p.
+    kdtree = sp.KDTree(points)
+    idx = kdtree.query_ball_tree(kdtree, radius)
+
+    # Assumes that each vertex of a face is defined as a v/vt/vn tuple
+    # as read directly from an object file.
+    return [[(min(idx[v]), vt, vn) for v, vt, vn in f] for f in faces]
+
+
+def _orientation(up, forward):
+    """ Coordinate transformation.
+
+    Compute rotation that maps the given up direction to the z-axis of
+    the world coordinate system and the forward direction to the y-axis.
+
+    Parameters
+    ----------
+    up : str
+        Mapped to world z-direction.
+    forward : str
+        Mapped to world y-direction.
+
+    Raises
+    ------
+    ValueError
+        If `up` and `forward` values are invalid.
+
+    Returns
+    -------
+    ndarray
+        Matrix of shape (3, 3) that maps model coordinates to world
+        coordinates given the `up` and `foward` vectors.
+    """
+    up_sign = -1 if '-' in up else 1
+    fw_sign = -1 if '-' in forward else 1
+
+    if 'x' in up:
+        z = np.array([up_sign, 0, 0])
+    elif 'y' in up:
+        z = np.array([0, up_sign, 0])
+    elif 'z' in up:
+        z = np.array([0, 0, up_sign])
+    else:
+        raise ValueError(f"up vector {up!r} is invalid.")
+
+    if 'x' in forward:
+        y = np.array([fw_sign, 0, 0])
+    elif 'y' in forward:
+        y = np.array([0, fw_sign, 0])
+    elif 'z' in forward:
+        y = np.array([0, 0, fw_sign])
+    else:
+        raise ValueError(f"forward vector {forward!r} is invalid.")
+
+    x = np.linalg.cross(y, z)
+
+    # Data type should be integer...
+    print(x.dtype)
+
+    if x.dot(x) < 0.5:
+        raise ValueError(f"{up!r} and {forward!r} cannot be used " +
+                        "together as up and forward vectors.")
+
+    # Stacking the computed vectors as rows of matrix will create a
+    # permutation matrix (rotation) that preserves the handedness of
+    # the coordinate system.
+    return np.stack((x, y, z))
