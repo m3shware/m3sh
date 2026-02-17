@@ -645,7 +645,7 @@ def read(filename, *tags, quiet=True):
 
     >>> v, vn = read('input-file.obj', 'v', 'vn')
 
-    Data blocks are returend as objects of type :class:`list`.
+    Data blocks are returned as objects of type :class:`list`.
     """
 
     def parse_vertex(string):
