@@ -27,7 +27,7 @@ found `here <https://paulbourke.net/dataformats/obj/>`_.
 
 from io import StringIO
 
-# import numpy as np
+import numpy as np
 # import scipy as sp
 
 
