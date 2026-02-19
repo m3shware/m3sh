@@ -469,6 +469,46 @@ def aabb(points, opacity=0.15, edges=True, labels='dim', color=colors.snow):
     return box
 
 
+def cross(origin, x, y, size=1.0, radius=0.025, resolution=6,
+          red=colors.red, green=colors.green):
+    """ Display coordinate system(s).
+
+    All coordinate arrays may have a common number of batch axis prepended
+    to their core shape.
+
+    Parameters
+    ----------
+    origin : array_like, shape (..., 3)
+        Stack of origin locations.
+    x, y : array_like, shape (..., 3)
+        Stack of coordinate system axis vectors.
+    z : array_like, shape (..., 3), optional
+        Stack of z-axis vectors.
+
+    Returns
+    -------
+    Arrows
+        Vector field prop.
+    """
+    points = np.reshape(origin, (-1, 3))
+    points = np.concatenate((points, points, points, points))
+
+    x = np.reshape(x, (-1, 3))
+    y = np.reshape(y, (-1, 3))
+
+    vectors = np.concatenate((x, -x, y, -y))
+    colors = np.concatenate((np.tile(red, (2*len(x), 1)),
+                             np.tile(green, (2*len(y), 1))))
+
+    vf = Arrows(points, vectors, radius, tip_radius=radius, tip_length=0.0,
+                resolution=resolution)
+    vf.size = size
+    vf.colorize(colors)
+
+    add(vf)
+    return vf
+
+
 def frame(origin, x, y, z=None, size=1.0, radius=0.025, resolution=6,
           red=colors.red, green=colors.green, blue=colors.blue):
     """ Display coordinate system(s).
@@ -4170,6 +4210,8 @@ class PolyData(Prop, PropertyMixin, MapperMixin):
            vis.colorbar(box)
            vis.show()
         """
+        scalars = scalars.reshape(-1)
+
         if items == 'verts':
             self._set_point_scalars(scalars)
         elif items == 'cells':

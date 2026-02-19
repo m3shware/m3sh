@@ -111,7 +111,7 @@ class CSType:
                     if n != degree[0] * m:
                         raise ValueError('invalid')
                 elif len(degree) == 2:
-                    m = (len(parm[0] - 1), len(parm[1] - 1))
+                    m = (len(parm[0]) - 1, len(parm[1]) - 1)
                     n = (m[0] * degree[0], m[1] * degree[1])
 
                     if (n[0] + 1) * (n[1] + 1) != len(inds):
