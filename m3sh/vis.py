@@ -4138,7 +4138,7 @@ class PolyData(Prop, PropertyMixin, MapperMixin):
 
         property.SetColor(value)
 
-    def colorize(self, scalars, items, interpolate_scalars=False):
+    def colorize(self, scalars, items, interpolate_scalars=False, order='C'):
         r""" Colorize polygonal data.
 
         Colorize by assinging vertex colors or face colors. Vertex colors
@@ -4152,7 +4152,13 @@ class PolyData(Prop, PropertyMixin, MapperMixin):
             Scalar values.
         items : str
             Either 'verts' or 'cells'.
-
+        interpolate_scalars : bool, optional
+            By default, values obtained from the lookup table are blended
+            across a triangle. Set to :obj:`True` to interpolate scalars
+            before lookup table access. Only applies when scalars are
+            assigned to vertices.
+        order : str, optional
+            Flattening order when `scalars` is multi-dimensional.
 
         Note
         ----
@@ -4210,7 +4216,7 @@ class PolyData(Prop, PropertyMixin, MapperMixin):
            vis.colorbar(box)
            vis.show()
         """
-        scalars = scalars.reshape(-1)
+        scalars = scalars.reshape(-1, order=order)
 
         if items == 'verts':
             self._set_point_scalars(scalars)

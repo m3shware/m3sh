@@ -1932,7 +1932,7 @@ class Mesh:
         return v
 
     @classmethod
-    def from_grid(cls, grid, *coo, triangulate=False, order='F', name=None):
+    def from_grid(cls, grid, *coo, triangulate=False, order='C', name=None):
         """ Alternative constructor.
 
         Construct mesh from grid data. A quadrilateral mesh with `mn`

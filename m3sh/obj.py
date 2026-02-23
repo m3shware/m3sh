@@ -609,7 +609,7 @@ class OBJError(Exception):
     pass
 
 
-def read(filename, *tags, quiet=True):
+def read(filename, *tags, dtype=np.ndarray, quiet=True):
     """ Read from .obj file.
 
     Assumes an .obj-like file structure, i.e., a text file where each
