@@ -1112,6 +1112,20 @@ def mesh(mesh, color=colors.snow):
     return renmesh
 
 
+def vectors(mesh, vectors, size=1.0, resolution=6, color=colors.black):
+    """
+    """
+    points = np.array([f.barycenter for f in mesh])
+    radius = 0.025 * size
+
+    vf = Arrows(points, vectors, radius, 2.0 * radius, resolution=resolution)
+    vf.size = size
+    vf.color = color
+
+    add(vf)
+    return vf
+
+
 def graph(points, graph, color=colors.black):
     """ Graph visualization.
 
