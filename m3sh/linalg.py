@@ -28,34 +28,34 @@ import numpy as np
 def angle(v, w, up=None, degrees=False):
     r""" Angle between vectors.
 
-    Angle between vectors :math:`\mathbf{v}` and :math:`\mathbf{w}` in
-    radians. To obtain an oriented angle an axis vector `up` has to be
-    specified. Typically `up` is a vector parallel to the cross product
-    vector :math:`\mathbf{v} \times \mathbf{w}`.
+    Angle between vectors `v` and `w` in radians. To obtain an oriented
+    angle the `up` vector has to be specified. If specified, `up` must not
+    be contained in the span of `v` and `w`.
 
     Parameters
     ----------
-    v, w : ~numpy.ndarray, shape (3, )
+    v, w : ndarray, shape (3, )
         Vector in 3-space.
-    up : ~numpy.ndarray, shape (3, ), optional
-        Axis vector in 3-space.
+    up : ndarray, shape (3, ), optional
+        Vector in 3-space.
     degrees : bool, optional
         Convert result from radians to degrees.
 
     Returns
     -------
-    float
+    angle : float
         Angle in degrees or radians.
 
-    Note
-    ----
-    If an axis vector is defined the sign is determined via the right-hand
-    rule. None of the vectors may be the zero vector. The axis vector may
-    not be contained in the span of :math:`\mathbf{v}` and :math:`\mathbf{w}`.
+    Notes
+    -----
+    If the `up` vector is defined the sign is determined via the right-hand
+    rule, i.e., it is positive if the cross product of `v` and `w` (in this
+    order) points in the same direction as `up`. None of the vectors may be
+    the zero vector.
     """
     # Yields a value between 0 and pi. We can define a sign by specifying
-    # an axis vector, see below.
-    angle = math.acos(clamp(v.dot(w) / (norm(v) * norm(w)), -1., 1.))
+    # a third vector.
+    angle = math.acos(clamp(v.dot(w) / (norm(v) * norm(w)), -1.0, 1.0))
 
     if degrees:
         angle = math.degrees(angle)
@@ -85,10 +85,10 @@ def clamp(x, lo, hi):
     float
         Clamped value.
 
-    Note
-    ----
-    To prevent data type changes arguments should not mix :class:`int` and
-    :class:`float` values.
+    Notes
+    -----
+    To prevent data type changes arguments should not mix int and float
+    values.
     """
     # assert type(x) is type(lo) and type(x) is type(hi)
     assert lo <= hi
@@ -346,9 +346,9 @@ def rotation(v, w, a):
 
     Parameters
     ----------
-    v, w : ~numpy.ndarray, shape (3, )
+    v, w : ndarray, shape (3, )
         Vector in 3-space.
-    a : ~numpy.ndarray, shape (3, )
+    a : ndarray, shape (3, )
         Unit vector in 3-space.
 
     Returns
@@ -358,8 +358,8 @@ def rotation(v, w, a):
     sinphi : float
         Sine of rotation angle.
 
-    Note
-    ----
+    Notes
+    -----
     The length preconditions on :math:`\mathbf{v}` and :math:`\mathbf{w}` are
     not checked. If :math:`\| \mathbf{v} \| \neq \| \mathbf{w} \|` the formula
 

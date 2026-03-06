@@ -37,12 +37,13 @@ def _axis_angles(mesh, normals=None):
     ----------
     mesh : Mesh
         Triangle mesh instance.
-    normals : ~numpy.ndarray
+    normals : ndarray
         Face normal vectors.
 
     Returns
     -------
-    dict
+    angles : dict
+        Dictionary that maps halfedges to the corresponding oriented angle.
     """
     if normals is None:
         normals = face_normals(mesh)
@@ -55,6 +56,8 @@ def _axis_angles(mesh, normals=None):
         if h.boundary or h.pair.boundary:
             cos_phi, sin_phi = 1.0, 0.0
         else:
+            # This rotation aligns the face plane of h.face with the face
+            # plane of the neighboring face h.pair.face.
             cos_phi, sin_phi = linalg.rotation(normals[h.face],
                                                normals[h.pair.face], axis)
 
