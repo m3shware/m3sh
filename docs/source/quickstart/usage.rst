@@ -22,7 +22,7 @@ the search path in your Python scripts before importing any m3sh modules:
 Building a cube
 ---------------
 
-.. image:: figures/cube_alpha.png
+.. image:: ../_static/cube_alpha.png
    :width: 45 %
    :align: center
 

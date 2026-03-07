@@ -1,29 +1,42 @@
+:html_theme.sidebar_secondary.remove:
+
 m3sh -- a mutable halfedge mesh data structure 
 ==============================================
 
-.. image:: figures/dragon_full.png
+.. image:: _static/dragon_full.png
 
 The m3sh package provides a pure Python implementation of a generic halfedge
 data structure for orientable 2-manifold meshes -- the discrete analogue of 
 orientable surfaces in Euclidean 3-space. 
 
-.. toctree::
-   :maxdepth: 1
-   :caption: Getting started
 
-   basics
-   usage
+How to use this package
+-----------------------
+
+Polygon meshes, module structure, and a first example.
+
+.. toctree::
+   :maxdepth: 2
+
+   quickstart/index
+   
+   
+User guide
+----------
+
+A guide to the halfedge data structure and visualization.
+   
+.. toctree::
+   :maxdepth: 2
+
+   guide/index
+   
+   
+Documentation
+-------------
    
 .. toctree::
    :maxdepth: 1
-   :caption: User guide
-
-   mesh
-   vis
-   
-.. toctree::
-   :maxdepth: 1
-   :caption: Documentation
    
    modules
    

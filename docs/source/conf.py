@@ -4,19 +4,6 @@
 # list see the documentation:
 # https://www.sphinx-doc.org/en/master/usage/configuration.html
 
-
-# -- Path setup --------------------------------------------------------------
-
-# If extensions (or modules to document with autodoc) are in another directory,
-# add these directories to sys.path here. If the directory is relative to the
-# documentation root, use os.path.abspath to make it absolute, like shown here.
-
-import os
-import sys
-
-sys.path.insert(0, os.path.abspath('../../.'))
-
-
 # -- Project information -----------------------------------------------------
 
 project = 'm3sh'
@@ -26,6 +13,16 @@ author = 'm3shware'
 # The full version, including alpha/beta/rc tags
 release = '1.0.0'
 
+# -- Path setup --------------------------------------------------------------
+#
+# If extensions (or modules to document with autodoc) are in another directory,
+# add these directories to sys.path here. If the directory is relative to the
+# documentation root, use os.path.abspath to make it absolute, like shown here.
+
+import os
+import sys
+
+sys.path.insert(0, os.path.abspath('../../.'))
 
 # -- General configuration ---------------------------------------------------
 
@@ -33,43 +30,32 @@ release = '1.0.0'
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
-#    'sphinx.ext.apidoc',
     'sphinx.ext.autodoc',
     'sphinx.ext.intersphinx',
     'sphinx.ext.mathjax',
     'sphinx.ext.githubpages',
-    'sphinx.ext.napoleon',
+#    'sphinx.ext.napoleon',
     'sphinx.ext.autosummary',
 #    'sphinx.ext.viewcode',
 #    'sphinx.ext.todo'
-#    'numpydoc'
+    'numpydoc'
 ]
 
-#apidoc_modules = [
-#    {'path': '../../m3sh', 'destination': '../source/apidoc'}
-#]
-
-numpydoc_attributes_as_param_list = False
-numpydoc_class_members_toctree = False
-numpydoc_show_class_members = False
-numpydoc_show_inherited_class_members = False
-
-# Set up intersphinx mapping to link to the python, numpy and scipy
-# documentation
 intersphinx_mapping = {
     'python': ('https://docs.python.org/3', None),
     'numpy': ('https://numpy.org/doc/stable', None),
     'scipy': ('https://scipy.github.io/devdocs', None)
 }
 
-# Turn on .rst file generation when using autosummary
 autosummary_generate = True
 autosummary_generate_overwrite = True
 
-# Display todos by setting to True
-todo_include_todos = False
+numpydoc_attributes_as_param_list = False
+numpydoc_class_members_toctree = False
+numpydoc_show_class_members = False
+numpydoc_show_inherited_class_members = False
 
-# Add any paths that contain templates here, relative to this directory.
+todo_include_todos = False
 templates_path = ['_templates']
 
 # List of patterns, relative to source directory, that match files and
@@ -82,6 +68,7 @@ exclude_patterns = []
 # entries.
 toc_object_entries = 'numpydoc' in extensions
 
+add_module_names = False
 
 # -- Options for AutoDoc output -------------------------------------------
 
@@ -115,23 +102,8 @@ if 'sphinx.ext.napoleon' in extensions:
 elif 'numpydoc' in extensions:
 	html_theme = 'pydata_sphinx_theme'
 
-html_logo = 'logo/logo-small.png'
-html_favicon = 'icon/ghems_red.ico'
-
-# Theme options are theme-specific and customize the look and feel of a theme
-# further.  For a list of options available for each theme, see the
-# documentation.
-#
-html_theme_options = {
-	'navigation_depth': 4,
-#	'show_toc_level': 2,
-#	'show_nav_level': 0
-}
-
-html_sidebars = {
-  'basics': [],
-  'usage': []
-}
+html_logo = '_static/m3.png'
+html_favicon = '_static/m3-red.ico'
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
@@ -140,3 +112,28 @@ html_static_path = ['_static']
 
 # Do not offer to show html source files.
 html_show_sourcelink = False
+
+# Theme options are theme-specific and customize the look and feel of a theme
+# further.  For a list of options available for each theme, see the
+# documentation.
+#
+html_theme_options = {
+    "icon_links": [
+        {
+            "name": "GitHub",
+            "url": "https://github.com/m3shware",
+            "icon": "fa-brands fa-github",
+        },
+    ],
+    "logo": {
+        "text": "m3sh",
+    },
+    "navigation_depth": 2
+#	'show_toc_level': 2,
+#	'show_nav_level': 0
+}
+
+#html_sidebars = {
+#  'basics': [],
+#  'usage': []
+#}

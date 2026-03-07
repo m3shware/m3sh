@@ -3,7 +3,7 @@
 Mesh basics
 ===========
 
-.. image:: figures/dragon_full.png
+.. image:: ../_static/dragon_full.png
 
 We define a **polygonal mesh** by specifying two sequences:
 a sequence :math:`V = (v_i)_{i=0}^{n-1}` of vertices such that
@@ -34,7 +34,7 @@ polygonal faces. For simplicity we only consider triangular faces in the
 following definitions. A triangle mesh is **2-manifold** if the faces incident
 to a vertex either form a closed or an open triangle fan.
 
-.. image:: figures/manifold_fan.png
+.. image:: ../_static//manifold_fan.png
    :width: 70 %
    :align: center
    
@@ -63,7 +63,7 @@ one splits each edge of a mesh into two so called halfedges. Each halfedge is
 oriented according to the orientation of its incident face. In this way
 adjacent faces give rise to oppositely oriented halfedges:
 
-.. image:: figures/halfedge_all.png
+.. image:: ../_static//halfedge_all.png
    :width: 90 %
    :align: center
 
