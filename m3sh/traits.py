@@ -30,20 +30,31 @@ import numpy as np
 import m3sh.linalg as linalg
 
 
-def _axis_angles(mesh, normals=None):
-    """
+def axis_angles(mesh, normals=None):
+    r""" Rotation parameters.
+
+    Edge based rotation parameters that align neighboring face planes.
 
     Parameters
     ----------
     mesh : Mesh
-        Triangle mesh instance.
-    normals : ndarray
-        Face normal vectors.
+        Triangle mesh instance with n faces.
+    normals : ndarray, shape (n, 3)
+        Unit length face normal vectors. If not specified, face normals
+        are computed via the :func:`face_normals` function.
 
     Returns
     -------
     angles : dict
-        Dictionary that maps halfedges to the corresponding oriented angle.
+        Dictionary that maps halfedges to rotation parameters that
+        rotate the normal of ``halfedge.face`` about the common edge to the
+        normal of ``halfedge.pair.face``.
+
+    Notes
+    -----
+    Rotation parameters are a unit length axis vector :math:`\mathbf{a}`
+    together with the values :math:`\cos(\varphi)` and :math:`\sin(\varphi)`.
+    In the setting of this function ``a = unit(halfedge.vector)``.
     """
     if normals is None:
         normals = face_normals(mesh)
@@ -66,8 +77,9 @@ def _axis_angles(mesh, normals=None):
 
     return axis_angles
 
-
-def bounds(points):
+# This function should not be here! It is not mesh related at all. There
+# is an alternative aabb() function in the bounds module -> t3ch package.
+def _bounds(points):
     r""" Bounding box vertices.
 
     Corner vertices of the axis-aligned bounding box.
@@ -75,14 +87,13 @@ def bounds(points):
     Parameters
     ----------
     points : array_like, shape (n, k)
-        Coordinates of :math:`n` points in :math:`\mathbb{R}^k`,
-        one point per row.
+        Coordinates of n points in k dimensions, one point per row.
 
     Returns
     -------
-    a : ~numpy.ndarray
+    a : ndarray
         Holds the minimum value for each dimension.
-    b : ~numpy.ndarray
+    b : ndarray
         Holds the maximum value for each dimension.
     """
     return np.min(points, axis=0), np.max(points, axis=0)
