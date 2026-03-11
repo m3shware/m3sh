@@ -121,10 +121,7 @@ def _bounds(points):
 def vertex_normal(vertex):
     """ Vertex normal.
 
-    Compute vertex normal as average of triangle normals. For
-    non-triangular meshes, incident triangles are defined by the
-    planes spanned by consecutive edges in a counter-clockwise
-    traversal of all incident edges.
+    Compute vertex normal as average of triangle normals.
 
     Parameters
     ----------
@@ -133,11 +130,19 @@ def vertex_normal(vertex):
 
     Returns
     -------
-    ~numpy.ndarray, shape (3, )
-        Unit normal vector.
+    ndarray, shape (3, )
+        Unit length normal vector.
 
-    Note
-    ----
+    See Also
+    --------
+    vertex_normals
+
+    Notes
+    -----
+    For non-triangular meshes, incident triangles are defined by the
+    planes spanned by consecutive edges in a counter-clockwise traversal
+    of incident edges.
+
     Vertex normals are not well defined for isolated vertices.
     """
     # Triggers an assertion for deleted vertices. Alternative: quitely
@@ -150,11 +155,11 @@ def vertex_normal(vertex):
     # We checked for vanishing degree, hence this iterator cannot be
     # empty.
     for h in vertex._hiter():
-        if h._face is not None:
-            normal += linalg.unit(linalg.cross(h.prev.vector,
-                                               h.vector))
+        if h.face is not None:
+            normal += linalg.unit_inplace(linalg.cross(h.prev.vector,
+                                                       h.vector))
 
-    return linalg.unit(normal)
+    return linalg.unit_inplace(normal)
 
 
 def vertex_normals(mesh, broadcast=False):
@@ -165,19 +170,23 @@ def vertex_normals(mesh, broadcast=False):
     Parameters
     ----------
     mesh : Mesh
-        A mesh.
+        A mesh instance.
     broadcast : bool, optional
         Broadcast or gather face normals.
 
     Returns
     -------
-    ~numpy.ndarray, shape (n, 3)
-        Unit normal vectors for a mesh with n vertices.
+    ndarray, shape (n, 3)
+        Unit length normal vectors for a mesh with n vertices.
 
-    Note
-    ----
+    See Also
+    --------
+    vertex_normal
+
+    Notes
+    -----
     Vertex normals are not well defined for isolated vertices. The
-    result includes :obj:`np.nan` values in this case.
+    result includes :obj:`~numpy.nan` values in this case.
     """
     if broadcast:
         # Outer loop runs over faces. Each face broadcasts is normal
@@ -185,7 +194,10 @@ def vertex_normals(mesh, broadcast=False):
         normals = np.zeros_like(mesh.points)
 
         for f in mesh.faces:
-            normals[f] += face_normal(f)
+            normal = face_normal(f)
+
+            for v in f:
+                normals[v] += normal
 
         # Division by 0 results in nan entries for normal vectors of
         # deleted and isolated vertices.
@@ -197,46 +209,28 @@ def vertex_normals(mesh, broadcast=False):
         return np.array([vertex_normal(v) for v in mesh.vertices])
 
 
-def _vertex_normals(mesh):
-    """ Vertex normals.
+def vertex_angle(vertex):
+    r""" Total angle around a vertex.
+
+    For a vertex with k incident angles, the value
+    :math:`2\pi - \sum_{i=1}^k \alpha_i` is called angle defect or
+    discrete Gaussian curvature.
 
     Parameters
     ----------
-    mesh : Mesh
-        A mesh.
+    vertex : Vertex
+        Vertex of a triangle mesh.
 
     Returns
     -------
-    ~numpy.ndarray, shape (n, 3)
-        Unit normal vectors for a mesh with n vertices.
-
-    Note
-    ----
-    Vertex normals are not well defined for isolated vertices.
+    float
+        Sum of incident angles in radians.
     """
-    normals = np.zeros_like(mesh.points)
-
-    for f in mesh.faces:
-        n = linalg.unit(linalg.cross(f.halfedge.vector,
-                                     f.halfedge.next.vector))
-
-        for v in f._viter():
-            normals[v, ...] += n
-
-    normals /= np.linalg.norm(normals, axis=-1)[:, None]
-    return normals
-
-
-def _vertex_angle(vertex):
-    clamp = lambda x, l, h: l if x < l else h if x > h else x
-    angle = 2.0 * math.pi
+    angle = 0.0
 
     for h in vertex._hiter():
-        if h._face is not None:
-            u = linalg.unit(h._prev._pair.vector)
-            v = linalg.unit(h.vector)
-
-            angle += math.acos(clamp(u.dot(v), -1.0, 1.0))
+        if h.face is not None:
+            angle += linalg.angle(h.vector, h.prev.pair.vector)
 
     return angle
 
@@ -278,7 +272,7 @@ def _vertex_area_mixed(vertex):
     return weight
 
 
-def edge_length(item):
+def edge_stats(item):
     """ Edge length statistics.
 
     Minimal, maximal, and average edge length for a mesh or an
@@ -287,16 +281,12 @@ def edge_length(item):
     Parameters
     ----------
     item : Face or Mesh
-        Mesh or face of a mesh.
+        Mesh instance or face of a mesh.
 
     Returns
     -------
-    min : float
-        Minimal edge length.
-    max : float
-        Maximal edge length.
-    avg : float
-        Average edge length.
+    min, max, avg : float
+        Minimal, maximal, and average edge length.
     """
     min, max = np.inf, -np.inf
     avg, cnt = 0.0, 0
@@ -311,31 +301,6 @@ def edge_length(item):
         max = length if length > max else max
 
     return min, max, avg / cnt
-
-
-def _angle_defect(vertex):
-    r""" Angle defect.
-
-    For a vertex with :math:`k` incident angles :math:`\alpha_i`,
-    the value :math:`2\pi - \sum_{i=1}^k \alpha_i` is called angular
-    defect or discrete Gaussian curvature.
-
-    Note
-    ----
-    Values obtained for boundary vertices (when interpreted as discrete
-    Gaussian curvature) are questionable.
-    """
-    clamp = lambda x, l, h: l if x < l else h if x > h else x
-    defect = 2.0 * math.pi
-
-    for h in vertex._hiter():
-        if h._face is not None:
-            u = linalg.unit(h._prev._pair.vector)
-            v = linalg.unit(h.vector)
-
-            defect -= math.acos(clamp(u.dot(v), -1.0, 1.0))
-
-    return defect
 
 
 def _halfedge_normal(halfedge):
@@ -457,17 +422,23 @@ def face_normal(face):
 
     Returns
     -------
-    ~numpy.ndarray, shape (3, )
-        Unit normal vector.
+    ndarray, shape (3, )
+        Unit length normal vector.
 
-    Note
-    ----
+    See Also
+    --------
+    face_normals
+
+    Notes
+    -----
     For a non-triangular face the normal is computed by averaging
     vectors obtained as cross products of consecutive edges around
-    the faces.
+    the face. This approach can be problematic for non-convex faces
+    as some of those vectors point to the wrong side.
     """
-    # Should deleted faces be quitely assigned a normal with nan
-    # entries? Currenlty this case triggers an assertion error.
+    # Should deleted faces be quitely assigned a normal with nan entries?
+    # Currenlty this case triggers an assertion error (property access of
+    # a deleted face).
     if len(face) == 3:
         vector = linalg.cross(face.halfedge.vector,
                               face.halfedge.next.vector)
@@ -484,10 +455,9 @@ def face_normal(face):
 
 
 def face_normals(mesh):
-    """ Face normals estimate.
+    """ Face normals.
 
-    Estimate face normals by averaging the cross product of consecutive
-    edge vectors around each face.
+    Compute face normals as cross products of edge vectors.
 
     Parameters
     ----------
@@ -496,11 +466,15 @@ def face_normals(mesh):
 
     Returns
     -------
-    ~numpy.ndarray
-        Array of face normal vectors.
+    ndarray, shape (m, 3)
+        Array of unit length face normal vectors for a mesh with
+        m faces.
+
+    See Also
+    --------
+    face_normal
     """
-    # Should deleted faces be quitely assigned a normal with nan
-    # entries?
+    # Should deleted faces be quitely assigned a normal with nan entries?
     return np.array([face_normal(f) for f in mesh.faces])
 
 

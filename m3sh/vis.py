@@ -163,7 +163,7 @@ def canvas(*args, color=None, color2=None, camera=None, transparent=None,
         # Default camera orientation. Overwritten later if the camera
         # argument is given.
         cam = _renderer.GetActiveCamera()
-        cam.SetPosition(1.0, 1.0, 0.3)
+        cam.SetPosition(1.0, 1.0, 1.0)
         cam.SetViewUp(0.0, 0.0, 1.0)
 
         # Assign default color for new renderers if no color is given.
@@ -1739,6 +1739,73 @@ def sphere(center, radius, opacity=1.0, resolution=24, color=colors.snow):
     return ball
 
 
+def _plane():
+    # Background xy construction plane. A textured plane with less
+    # resolution would be better...
+    plane = vtk.vtkPlaneSource()
+    plane.SetOrigin(-1000, -1000, 0)        # Bottom-left corner
+    plane.SetPoint1( 1000, -1000, 0)        # Bottom-right corner
+    plane.SetPoint2(-1000,  1000, 0)        # Top-left corner
+    plane.SetResolution(100, 100)           # Resolution of the grid
+
+    planeMapper = vtk.vtkPolyDataMapper()
+    planeMapper.SetInputConnection(plane.GetOutputPort())
+
+    planeActor = vtk.vtkActor()
+    planeActor.SetMapper(planeMapper)
+    planeActor.GetProperty().SetColor(0.75, 0.75, 0.75) # Gray color
+    planeActor.GetProperty().SetRepresentationToWireframe()
+    planeActor.GetProperty().SetLineWidth(1)
+    planeActor.GetProperty().SetOpacity(0.5)
+
+    add(planeActor)
+
+    plane = vtk.vtkPlaneSource()
+    plane.SetOrigin(-1000, -1000, 0)        # Bottom-left corner
+    plane.SetPoint1( 1000, -1000, 0)        # Bottom-right corner
+    plane.SetPoint2(-1000,  1000, 0)        # Top-left corner
+    plane.SetResolution(1000, 1000)         # Resolution of the grid
+
+    planeMapper = vtk.vtkPolyDataMapper()
+    planeMapper.SetInputConnection(plane.GetOutputPort())
+
+    planeActor = vtk.vtkActor()
+    planeActor.SetMapper(planeMapper)
+    planeActor.GetProperty().SetColor(0.5, 0.5, 0.5) # Gray color
+    planeActor.GetProperty().SetRepresentationToWireframe()
+    planeActor.GetProperty().SetOpacity(0.1)
+
+    add(planeActor)
+
+    line = vtk.vtkLineSource()
+    line.SetPoint1(-1000, 0, 0)
+    line.SetPoint2( 1000, 0, 0)
+
+    lineMapper = vtk.vtkPolyDataMapper()
+    lineMapper.SetInputConnection(line.GetOutputPort())
+
+    lineActor = vtk.vtkActor()
+    lineActor.SetMapper(lineMapper)
+    lineActor.GetProperty().SetColor(0.9, 0.1, 0.1)
+    lineActor.GetProperty().SetLineWidth(2)
+
+    add(lineActor)
+
+    line = vtk.vtkLineSource()
+    line.SetPoint1(0, -1000, 0)
+    line.SetPoint2(0,  1000, 0)
+
+    lineMapper = vtk.vtkPolyDataMapper()
+    lineMapper.SetInputConnection(line.GetOutputPort())
+
+    lineActor = vtk.vtkActor()
+    lineActor.SetMapper(lineMapper)
+    lineActor.GetProperty().SetColor(colors.gold)
+    lineActor.GetProperty().SetLineWidth(2)
+
+    add(lineActor)
+
+
 def _spheres(C, r):
     """
     Visualize points at given (x,y,z) locations as spheres of a given radius
@@ -2206,7 +2273,7 @@ def show(width=1200, height=600, title=None, info=False, shadows=False, *,
         if not _renwin.HasRenderer(renderer):
             _renwin.AddRenderer(renderer)
 
-        renderer.ResetCamera()
+        renderer.ResetCamera() #-10.0, 10.0, -10.0, 10.0, -10.0, 10.0)
         renderer.ResetCameraClippingRange()
 
         # Changing the render pipeline to include shadows (see above)
@@ -2395,7 +2462,7 @@ def _show(width=1200, height=600, title=None, position=(0, 0), *, info=False,
         # Only reset the camera if this is the first time the render
         # window is displayed.
         for renderer in _renderers:
-            renderer.ResetCamera()
+            renderer.ResetCamera() #-10.0, 10.0, -10.0, 10.0, -10.0, 10.0)
 
     # Create a window, set its size and title. Multisampling is turned
     # off because of transparent objects.
