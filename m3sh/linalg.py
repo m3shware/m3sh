@@ -18,7 +18,11 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
 # IN THE SOFTWARE.
 
-""" Basic vector math.
+""" Linear algebra.
+
+Basic vector math, linear algebra, and analytic geometry (in particular
+different representations of rotations). Many function are convenience
+functions that wrap NumPy functionality.
 """
 
 import math
@@ -381,11 +385,28 @@ def rotation(v, w, a):
     return cos_alpha, sin_alpha
 
 
-def _rotation_from_quaternion(a):
-    a = unit(a)
+def rotation_from_quaternion(a):
+    """ Rotation matrix.
 
-    if a[0] == 1.0:
-        raise ValueError()
+    Convert unit quaternion to corresponding rotation matrix, see e.g. [1]_.
+
+    Parameters
+    ----------
+    a : ndarray, shape (4, )
+        Unit quaternion, i.e., ``norm(a) = 1``.
+
+    Returns
+    -------
+    A : ndarray, shape (3, 3)
+        Rotation matrix.
+
+    References
+    ----------
+    .. [1] B. Horn: "Closed-form solution of absolute orientation using
+           unit quaternions", J. Opt. Soc. Am. A 4, 629-642, 1987.
+    """
+    # If a[0] = 1.0 or a[0] = -1.0 we get the (3, 3) identity matrix. We
+    # could catch this case and explicitly return np.eye(3).
 
     a00 = a[0] * a[0]
     a01 = a[0] * a[1]
@@ -402,6 +423,6 @@ def _rotation_from_quaternion(a):
     a33 = a[3] * a[3]
 
     return np.array(
-        [[a00 + a11 - a22 - a33, 2 * (a12 - a03), 2 * (a13 + a02)],
-         [2 * (a12 + a03), a00 - a11 + a22 - a33, 2 * (a23 - a01)],
-         [2 * (a13 - a02), 2 * (a23 + a01), a00 - a11 - a22 + a33]])
+        [[a00 + a11 - a22 - a33, 2.0 * (a12 - a03), 2.0 * (a13 + a02)],
+         [2.0 * (a12 + a03), a00 - a11 + a22 - a33, 2.0 * (a23 - a01)],
+         [2.0 * (a13 - a02), 2.0 * (a23 + a01), a00 - a11 - a22 + a33]])

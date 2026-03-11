@@ -21,7 +21,26 @@
 """ Geometric mesh traits.
 
 Convenience functions to compute common and often used geometric mesh
-traits like vertex and face normals, etc.
+traits like vertex and face normals.
+
+Example
+-------
+
+Face normals of a mesh can be computed as
+
+>>> normals = traits.face_normals(mesh)
+
+The normal of a face can be accessed as ``normals[f]``. Instead of passing
+around the pair ``(mesh, normals)``, we can add the normals array to the
+mesh as an attribute:
+
+>>> mesh.add_face_data('face_normals', 'normal', normals)
+
+The normal of a face can now be accessed as ``f.normal``. The normals array
+can still be accessed directly as ``mesh.face_normals``. In particular
+
+>>> mesh.face_normals is normals
+True
 """
 
 import math
