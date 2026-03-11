@@ -1,4 +1,10 @@
-{{ fullname | escape | underline }}
+.. raw:: html
+
+   <div class="prename">{{ module }}.</div>
+   <div class="empty"></div>
+
+{{ name }}
+{{ underline }}
 
 .. currentmodule:: {{ module }}
  
@@ -25,7 +31,7 @@
  
    .. autosummary::
       :toctree: 
-      :template: function.rst
+      :template: method.rst
    {% for item in methods %}
       ~{{ name }}.{{ item }}
    {%- endfor %}

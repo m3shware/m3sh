@@ -1,5 +1,11 @@
-{{ fullname | escape | underline }}
+.. raw:: html
+
+   <div class="prename">{{ module }}.</div>
+   <div class="empty"></div>
+
+{{ name }}
+{{ underline }}
 
 .. currentmodule:: {{ module }}
 
-.. auto{{ objtype }}:: {{ objname }}
+.. autofunction:: {{ objname }}
