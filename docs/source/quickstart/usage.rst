@@ -26,6 +26,7 @@ Building a cube
    :width: 45 %
    :align: center
 
+|
 
 We build a :class:`Mesh` instance that holds the geometry of the unit cube
 :math:`[0, 1]^3` by specifying its vertex coordinates and how those vertices
@@ -47,8 +48,8 @@ are connected to form the faces of the cube:
          [1., 1., 1.],
          [0., 1., 1.]]
 
-    # List of combinatorial face definitions. Indices refer to
-    # rows of the vertex coordinate list V.
+    # List of combinatorial face definitions. Indices refer to rows
+    # of the vertex coordinate list V.
     F = [[0, 1, 2, 3],
          [1, 5, 6, 2],
          [3, 2, 6, 7],
