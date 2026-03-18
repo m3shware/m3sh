@@ -2555,6 +2555,10 @@ class Vertex:
         """
         return self._idx
 
+    def __lt__(self, other):
+        return id(self) < id(other)
+        # return int(self) < int(other)
+
     def __bool__(self):
         return True
 
@@ -3445,6 +3449,10 @@ class Face:
             Face index.
         """
         return self._idx
+
+    def __lt__(self, other):
+        return id(self) < id(other)
+        # return int(self) < int(other)
 
     def __len__(self):
         """ Face valence.
