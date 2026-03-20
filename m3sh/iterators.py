@@ -1,4 +1,4 @@
-# Copyright 2024, m3shware
+# Copyright 2024-26, m3shware developers
 #
 # Permission is hereby granted, free of charge, to any person obtaining a
 # copy of this software and associated documentation files (the "Software"),
@@ -37,7 +37,7 @@ from collections import deque
 import numpy as np
 
 from m3sh.hds import Face
-from m3sh.heap import MinHeap
+from m3sh.heap import Heap
 
 
 def verts(obj):
@@ -168,7 +168,7 @@ def _verts_dij(item, stop=None, start=0.0):
 
     # Seed the priority queue with all source vertices. Priorities are
     # distance values. Smaller distance means higher priority.
-    queue = MinHeap((seed, 0.0) for seed in seeds)
+    queue = Heap((seed, 0.0) for seed in seeds)
     dist = dict.fromkeys(seeds, 0.0)
 
     # Initialize predecessor values for all seed vertices. This replaces
