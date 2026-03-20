@@ -469,7 +469,7 @@ def aabb(points, opacity=0.15, edges=True, labels='dim', color=colors.snow):
     return box
 
 
-def cross(origin, x, y, size=1.0, radius=0.025, resolution=6,
+def cross(origin, vector, normal, size=1.0, radius=0.025, resolution=6,
           red=colors.red, green=colors.green):
     """ Display coordinate system(s).
 
@@ -490,23 +490,49 @@ def cross(origin, x, y, size=1.0, radius=0.025, resolution=6,
     Arrows
         Vector field prop.
     """
-    points = np.reshape(origin, (-1, 3))
+    try:
+        points = [f.barycenter for f in origin]
+    except AttributeError:
+        points = origin
+
+    points = np.reshape(points, (-1, 3))
     points = np.concatenate((points, points, points, points))
 
-    x = np.reshape(x, (-1, 3))
-    y = np.reshape(y, (-1, 3))
+    vector = np.reshape(vector, (-1, 3))
+    normal = np.reshape(normal, (-1, 3))
+    rotvec = np.linalg.cross(normal, vector)
 
-    vectors = np.concatenate((x, -x, y, -y))
-    colors = np.concatenate((np.tile(red, (2*len(x), 1)),
-                             np.tile(green, (2*len(y), 1))))
+    grey = colors.dim_grey
+
+    vectors = np.concatenate((vector, rotvec, -vector, -rotvec))
+    veccols = np.concatenate((np.tile(red,   (len(vector), 1)),
+                              np.tile(green, (len(vector), 1)),
+                              np.tile(grey,  (len(vector), 1)),
+                              np.tile(grey,  (len(vector), 1))))
 
     vf = Arrows(points, vectors, radius, tip_radius=radius, tip_length=0.0,
                 resolution=resolution)
+
     vf.size = size
-    vf.colorize(colors)
+    vf.colorize(veccols)
 
     add(vf)
     return vf
+
+    # x = np.reshape(x, (-1, 3))
+    # y = np.reshape(y, (-1, 3))
+
+    # vectors = np.concatenate((x, -x, y, -y))
+    # colors = np.concatenate((np.tile(red, (2*len(x), 1)),
+    #                          np.tile(green, (2*len(y), 1))))
+
+    # vf = Arrows(points, vectors, radius, tip_radius=radius, tip_length=0.0,
+    #             resolution=resolution)
+    # vf.size = size
+    # vf.colorize(colors)
+
+    # add(vf)
+    # return vf
 
 
 def frame(origin, x, y, z=None, size=1.0, radius=0.025, resolution=6,
@@ -919,7 +945,10 @@ def _generic_lut(range=(0.0, 1.0), gradient='default', logscale=False,
         series.SetColorScheme(map[gradient])
         lut = series.CreateLookupTable(series.ORDINAL)
     else:
-        raise ValueError(f"unknown color scheme '{gradient}'")
+        series = vtk.vtkColorSeries()
+        series.SetColorSchemeByName(gradient)
+
+        # raise ValueError(f"unknown color scheme '{gradient}'")
 
     lut.SetTableRange(range[0], range[1])
 
@@ -1023,7 +1052,13 @@ def _tweak_lut(lut, range=None, gradient=None, logscale=None, size=None,
         # Nothing to do, no gradient argument defined.
         pass
     else:
-        raise ValueError(f"unknown color scheme '{gradient}'")
+        series = vtk.vtkColorSeries()
+        series.SetColorSchemeByName(gradient)
+        series.BuildLookupTable(lut, series.ORDINAL)
+        # series.BuildLookupTable(lut, series.CATEGORICAL)
+        # lut.SetIndexedLookup(True)
+        lut.SetTableRange(0, series.GetNumberOfColors() - 1)
+        # raise ValueError(f"unknown color scheme '{gradient}'")
 
     if range is not None:
         lut.SetTableRange(range[0], range[1])
@@ -1112,10 +1147,15 @@ def mesh(mesh, color=colors.snow):
     return renmesh
 
 
-def vectors(mesh, vectors, size=1.0, resolution=6, color=colors.black):
+def vectors(points, vectors, size=1.0, resolution=6, color=colors.black):
     """
     """
-    points = np.array([f.barycenter for f in mesh])
+    try:
+        points = [f.barycenter for f in points]
+    except AttributeError:
+        pass
+
+    points = np.asarray(points)
     radius = 0.025 * size
 
     vf = Arrows(points, vectors, radius, 2.0 * radius, resolution=resolution)

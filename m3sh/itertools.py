@@ -18,7 +18,7 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
 # IN THE SOFTWARE.
 
-""" Combinatorial mesh item neighborhood iterators.
+""" Combinatorial mesh iterators.
 
 Adjacent/incident mesh items are visited in counter-clockwise order as
 determined by the mesh orientation (whenever it makes sense to consider
@@ -27,9 +27,9 @@ oriented item traversal).
 Note
 ----
 When applied to a :class:`~m3sh.hds.Mesh` instance, the iterators
-:func:`verts` and :func:`faces` will **skip** deleted mesh items.
-This is an alternative to iteration over the mesh item
-containers :attr:`~m3sh.hds.Mesh.vertices` and :attr:`~m3sh.hds.Mesh.faces`.
+:func:`verts` and :func:`faces` will skip deleted mesh items. This is
+an alternative to iteration over the mesh item containers
+:attr:`~m3sh.hds.Mesh.vertices` and :attr:`~m3sh.hds.Mesh.faces`.
 """
 
 from collections import deque
@@ -75,7 +75,7 @@ def verts(obj):
     return obj._viter()
 
 
-def _verts_bfs(item, stop=None, start=0):
+def verts_bfs(item, stop=None, start=0):
     """ Breadth-first vertex neighborhood iterator.
 
     Breadth-first traversal of vertex neighborhood of a mesh item.
@@ -129,7 +129,7 @@ def _verts_bfs(item, stop=None, start=0):
                 assert level[w] <= d + 1
 
 
-def _verts_dij(item, stop=None, start=0.0):
+def verts_dij(item, stop=None, start=0.0):
     """ Dijkstra based vertex neighborhood iterator.
 
     Visit the vertex neighborhood of a mesh item in a Dijkstra like
@@ -306,7 +306,7 @@ def faces(obj):
     return obj._fiter()
 
 
-def _faces_bfs(item, stop=None, start=0):
+def faces_bfs(item, stop=None, start=0):
     """ Breadth-first face neighborhood iterator.
 
     Breadth-first traversal of the face neighborhood of a mesh
