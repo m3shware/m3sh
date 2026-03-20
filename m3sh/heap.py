@@ -20,8 +20,21 @@
 
 """ Priority queues and heaps.
 
-This is an alternative to Pythons :mod:`heapq` module. See [1]_ Chapter 9.3
-for the array (list) based heap implementation used in this module.
+This is an alternative to Pythons :mod:`heapq` module. See [1]_ Chapter
+9.3 for the array (list) based heap implementation used in this module.
+
+Data model
+----------
+
+A tree is **heap-ordered** if the key assigned to each node is smaller
+than or equal to the keys assigned to its children. A **heap** is a list
+of objects with keys arranged in a complete heap-ordered binary tree,
+i.e., ``key[k] <= key[2k+1]`` and ``key[k] <= key[2k+2]``.
+
+Notes
+-----
+Since Python 3.14 the :mod:`heapq` module provides dedicated methods to
+create max heaps.
 
 References
 ----------
@@ -29,30 +42,36 @@ References
        Professional, 1990.
 """
 
-# A tree is **heap-ordered** if the key assigned to each node is smaller
-# than or equal to the keys assigned to its children. A **heap** is a list
-# of objects with keys arranged in a complete heap-ordered binary tree,
-# i.e., ``heap[k] <= heap[2k+1]`` and ``heap[k] <= heap[2k+2]``.
-
-# This definition is slightly different from the one given in most textbooks
-# in two important aspects: we use 0-based indexing and sort using the <
-# relation.
-
 class Heap:
-    """ Heap base class.
+    """ Heap data structure.
 
-    A heap stores `(key, object)` tuples, called heap items. When no keys
-    are provided heap items reduce to one element `(object, )` tuples. In
-    this case data objects act as keys.
+    A heap stores `(obj, key)` tuples, called heap items. When no keys are
+    provided heap items reduce to one element `(object, )` tuples. In this
+    case data objects act as keys.
+
+    Heaps use the < operator for key comparison. This results in so called
+    min heaps. Custom classes used as keys have to implement :meth:`__lt__`.
 
     Parameters
     ----------
-    items : iterable
-        Heap items.
+    items : iterable, optional
+        Heap items. A sequence of `(obj, key)` tuples. To save storage
+        consider using :meth:`~Heap.from_list` if `items` is a list.
+
+    Warnings
+    --------
+    The :mod:`heapq` modules uses heap items of the form `(key, obj)`.
 
     See Also
     --------
-    :meth:`~Heap.push`
+    :meth:`~Heap.from_list`, :meth:`~Heap.push`
+
+    Notes
+    -----
+    Given two iterables `objs` and `keys`, one holding objects the other
+    holding keys, a heap can be initialized using :func:`zip`:
+
+    >>> heap = Heap(zip(objs, keys))
     """
 
     def __init__(self, items=None):
@@ -68,14 +87,20 @@ class Heap:
         for item in items or []:
             self._push(item)
 
-    # def __init__(self, *, less=(lambda x, y: x < y)):
+    # def __init__(self, items=None, *, less=(lambda x, y: x < y)):
     #     def lt(i, j):
-    #         return less(self._heap[i], self._heap[j])
+    #         return less(self._heap[i][-1], self._heap[j][-1])
 
-    #     # Assign lt as instance attribute does not make it an instance
-    #     # method. It does not implicitly received a self argument, lt
-    #     # knowns less and self because of closure.
+    #     # Assigning lt as instance attribute does not make it an instance
+    #     # method. It does not implicitly receive a self argument, lt knowns
+    #     # less and self because of closure.
     #     self._less = lt
+
+    #     self._heap = list()
+    #     self._hpos = dict()
+
+    #     for item in items or []:
+    #         self._push(item)
 
     def __bool__(self):
         """ Empty heap check.
@@ -83,14 +108,14 @@ class Heap:
         Returns
         -------
         bool
-            :obj:`True` if the heap is not empty, :obj:`False` otherwise.
+            ``True`` if the heap is not empty, ``False`` otherwise.
         """
         return len(self._heap) > 0
 
     def __contains__(self, obj):
         """ Containment check.
 
-        Check if there is a heap item with ``item[-1] == obj``.
+        Check if there is a heap item with ``item[0] == obj``.
 
         Parameters
         ----------
@@ -100,15 +125,14 @@ class Heap:
         Returns
         -------
         bool
-            :obj:`True` if an item with data `obj` exists, :obj:`False`
-            otherwise.
+            ``True`` if an item with data `obj` exists, ``False`` otherwise.
         """
         return obj in self._hpos
 
     def __delitem__(self, obj):
         """ Delete item.
 
-        Delete the heap item with ``item[-1] == obj``, maintains the
+        Delete the heap item with ``item[0] == obj``, maintains the
         heap property.
 
         Parameters
@@ -134,82 +158,49 @@ class Heap:
         return len(self._heap)
 
     def __iter__(self):
-        """ Item iterator.
+        """ Heap-ordered item iterator.
 
-        Iterates over all heap items in the order items are stored in the
-        underlying list.
+        Does not modify the heap. Heap modification during traversal has
+        no effect on the traversal order.
 
         Returns
         -------
         iterator
             Heap item iterator.
-
-        Warnings
-        --------
-        This is **not** heap-order traversal!
         """
-        return iter(self._heap)
+        heap = self._heap.copy()
 
-    # @classmethod
-    # # def from_iterable(cls, objs, keys=None, *, less=lambda x, y: x < y):
-    # def from_iterable(cls, objs, keys=None):
-    #     """ Construct heap from iterable.
-
-    #     Parameters
-    #     ----------
-    #     objs : iterable
-    #         Data objects. All data objects have to be :term:`hashable`.
-    #     keys : iterable, optional
-    #         Corresponding key objects.
-
-    #     Raises
-    #     ------
-    #     ValueError
-    #         If the number of keys does not match the number of objects.
-    #     """
-    #     # heap = cls(less=less)
-    #     heap = cls()
-
-    #     if keys is None:
-    #         for obj in objs:
-    #             heap.push(obj)
-    #     else:
-    #         for obj, key in zip(objs, keys, strict=True):
-    #             heap.push(obj, key)
-
-    #     return heap
+        while heap:
+            yield pop(heap)
 
     @classmethod
-    def from_iterable(cls, items):
-        """ Construct heap from iterable.
+    def from_list(cls, items):
+        """ Initialize heap from list.
+
+        Turns `items` into a heap-ordered binary tree and uses it directly
+        as internal storage of a heap.
 
         Parameters
         ----------
-        items : iterable
-            An iterable of `(object, key)` or `(object, )` tuples. The
-            order of tuple elements matches the argument order of
-            :meth:`~Heap.push`.
+        items : list
+            A list of `(obj, key)` tuples.
 
         Returns
         -------
         heap : Heap
-            Heap instance.
+            Heap that uses `items` directly as storage. Subsequent external
+            modification of `items` will most likely destroy the heap.
 
         Notes
         -----
-        Given two iterables `objs` and `keys`, one holding object and one
-        holding keys, feasible input for this method can be produced with
-        :func:`zip`:
-
-        >>> heap = Heap.from_iterable(zip(objs, keys))
+        The heap generated via ``Heap.from_list(items)`` does not duplicate
+        data storage. It may be preferable to ``Heap(items)`` in some use
+        cases.
         """
         heap = cls()
 
-        # Item tuples are not directly stored in the heap defining list.
-        # Their element order is inverted to match the argument order of
-        # the push method.
-        for item in items:
-            heap.push(*item)
+        heap._heap = heapify(items)
+        heap._hpos = {item[0]: idx for idx, item in enumerate(heap._heap)}
 
         return heap
 
@@ -217,8 +208,9 @@ class Heap:
     def top(self):
         """ Access top item.
 
-        The top item of a heap is defined to be the smallest item with
-        respect to the < operator.
+        The top item of a heap is defined to be the item with smallest key
+        with respect to the < operator. Inspection of the top item does not
+        change the heap. To remove the top item use :meth:`~Heap.pop`.
 
         Raises
         ------
@@ -231,29 +223,35 @@ class Heap:
 
         Notes
         -----
-        The data object of a heap item is accessible as ``item[-1]``.
+        The data object of a heap item is accessible as ``item[0]`` or
+        via tuple unpacking:
+
+        >>> obj, key = heap.top
         """
         return self._heap[0]
 
     def pop(self):
         """ Remove top item.
 
-        Romve top item and maintain the heap property.
+        Remove top item and maintain the heap property.
 
         Returns
         -------
         item : tuple
-            Either `(key, object)` or `(object, )` tuple. The data object
-            of a heap item is always accessible as ``item[-1]``.
+            An `(obj, key)` tuple.
 
         Raises
         ------
         IndexError
             When trying to remove items from an empty heap.
+
+        See Also
+        --------
+        top
         """
         return self._remove(0)
 
-    def push(self, obj, key=None):
+    def push(self, obj, key):
         """ Add item.
 
         Add data object with associated key. Re-adding an object replaces
@@ -264,8 +262,8 @@ class Heap:
         ----------
         obj : object
             Data object. Has to be :term:`hashable`.
-        key : object, optional
-            Key object.
+        key : object
+            Key object. Has to implement :meth:`__lt__`.
 
         Raises
         ------
@@ -274,44 +272,29 @@ class Heap:
 
         Notes
         -----
-        The `(key, obj)` 2-tuple (or the 1-tuple `(obj, )` if no key is
-        provided) is called a heap item. Heap items are compared using the
-        < operator. Consequently, data objects act as tie breakers when
-        keys compare equal, and objects act as keys if no keys are provided.
+        The `(obj, key)` 2-tuple is called a heap item. Keys are compared
+        using the < operator. See the comment on sort stability in the
+        :mod:`heapq` documentation (add a counter as tie-breaker):
+
+        >>> heap.push(obj, (key, cnt))
         """
-        self._push((obj, ) if key is None else (key, obj))
-
-        # try:
-        #     k = self._hpos[obj]
-        # except KeyError:
-        #     # The following three lines of code could be put in a dedicated
-        #     # method called _append().
-        #     self._hpos[obj] = len(self._heap)
-        #     self._heap.append(item)
-        #     self._fixup(len(self._heap) - 1)
-        # else:
-        #     # The following three lines of code could be put in a dedicated
-        #     # method called _update_replace().
-        #     self._heap[k] = item
-
-        #     # Depending on the key value only one of the following methods
-        #     # will do some actual computation.
-        #     self._fixup(k)
-        #     self._fixdown(k)
+        self._push((obj, key))
 
     def _push(self, item):
-        """ Add item.
-
-        A low-level version of :meth:`~Heap.push`.
+        """ Low-level push.
 
         Parameters
         ----------
         item : tuple
-            A heap item.
+            A heap item, i.e., (obj, key) tuple.
         """
-        obj = item[-1]
+        # The key part may be omitted, i.e., (obj, ) tuples are fine. In this
+        # case obj is used as key. This implies that obj defines __lt__ to
+        # enable comparisons using the < operator.
+        obj = item[0]
 
         try:
+            # Key update is implied if obj is already stored in the heap.
             k = self._hpos[obj]
         except KeyError:
             # The following three lines of code could be put in a dedicated
@@ -340,13 +323,13 @@ class Heap:
         k : int
             Index of heap element that violates the heap property.
         """
-        # The largest valid index of any heap item.
-        n = len(self._heap) - 1
+        heap = self._heap
+        n = len(heap) - 1                   # the largest valid item index
 
         # Swap the item at position k with its predecessor as long as it's
         # of lower priority.
         # while 0 < k <= n and self._less(k, j := (k+1)//2 - 1):
-        while 0 < k <= n and self._heap[k] < self._heap[j := (k+1)//2 - 1]:
+        while 0 < k <= n and heap[k][-1] < heap[j := (k+1)//2 - 1][-1]:
             self._swap(k, k := j)
 
     def _fixdown(self, k):
@@ -360,8 +343,8 @@ class Heap:
         k : int
             Index of heap element that violates the heap property.
         """
-        # The largest valid index of any heap item.
-        n = len(self._heap) - 1
+        heap = self._heap
+        n = len(heap) - 1                   # the largest valid item index
 
         # Swap the item at position k with its successor of lower priority
         # as long as its own priority is higher. Successors of item with
@@ -370,13 +353,13 @@ class Heap:
             # There are two successors if j < n. Get index j of child with
             # lower priority
             # if j < n and self._less(j+1, j):
-            if j < n and self._heap[j+1] < self._heap[j]:
+            if j < n and heap[j+1][-1] < heap[j][-1]:
                 j += 1
 
             # Swap with child of lower priority. If no swap is indicated
             # the heap property is restored.
             # if self._less(j, k):
-            if self._heap[j] < self._heap[k]:
+            if heap[j][-1] < heap[k][-1]:
                 self._swap(k, k := j)
             else:
                 break
@@ -409,7 +392,7 @@ class Heap:
         # Remove the item (now at the last position) from the internal
         # list and delete it item from the position dictionary.
         item = self._heap.pop()
-        del self._hpos[item[-1]]
+        del self._hpos[item[0]]
 
         # Fix the heap property after shortening heap. Nothing happens
         # if k refers to an invalid item (when removing the last item).
@@ -424,7 +407,7 @@ class Heap:
         Parameters
         ----------
         i, j : int
-            Index of heap elements.
+            Indices of heap items.
 
         Raises
         ------
@@ -440,11 +423,84 @@ class Heap:
         # bounds. Negative indices are invalid!
         self._heap[i], self._heap[j] = self._heap[j], self._heap[i]
 
-        self._hpos[self._heap[i][-1]] = i
-        self._hpos[self._heap[j][-1]] = j
+        self._hpos[self._heap[i][0]] = i
+        self._hpos[self._heap[j][0]] = j
 
 
-def check(items):
+def heapify(items):
+    """ Make heap-ordered binary tree.
+
+    Shuffle elements of a list to obtain a heap-ordered binary tree.
+
+    Parameters
+    ----------
+    items : list
+        Heap items. A list of `(obj, key)` tuples.
+
+    Returns
+    -------
+    heap : list
+        The input list in heap-order.
+
+    Warnings
+    --------
+    The :mod:`heapq` module function of the same name expects items of
+    the form `(key, obj)`.
+    """
+    for i in range(1, len(items)):
+        _fixup(items, i, i)
+
+    return items
+
+
+def push(heap, item):
+    """ Add item.
+
+    Add `item` to the heap-ordered list `heap`.
+
+    Parameters
+    ----------
+    heap : list
+        Heap-ordered list.
+    item : tuple
+        Heap item. An `(obj, key)` tuple
+
+    Returns
+    -------
+    heap : list
+        The augmented list `heap`, not a copy.
+
+    Warnings
+    --------
+    Does not support key updates! Use the :class:`Heap` class to support
+    key updates.
+    """
+    heap.append(item)
+    _fixup(heap, len(heap) - 1, len(heap) - 1)
+
+    return heap
+
+
+def pop(heap):
+    """ Remove top item.
+
+    Parameters
+    ----------
+    heap : list
+        Heap-ordered list of `(obj, key)` tuples.
+
+    Returns
+    -------
+    item : tuple
+        Top heap item.
+    """
+    _swap(heap, 0, n := len(heap) - 1)
+    _fixdown(heap, 0, n - 1)
+
+    return heap.pop()
+
+
+def _check(items):
     """ Check heap property.
 
     Parameters
@@ -455,78 +511,19 @@ def check(items):
     Returns
     -------
     bool
-        :obj:`True` if `items` satisfies the heap property, :obj:`False`
-        otherwise.
+        ``True`` if `items` satisfies the heap property, ``False`` otherwise.
     """
     for i in range(len(items)):
-        if 2*i + 1 < len(items) and items[i] > items[2*i + 1]:
+        if 2*i + 1 < len(items) and items[i][-1] > items[2*i + 1][-1]:
             return False
 
-        if 2*i + 2 < len(items) and items[i] > items[2*i + 2]:
+        if 2*i + 2 < len(items) and items[i][-1] > items[2*i + 2][-1]:
             return False
 
     return True
 
 
-def heapify(items):
-    """ Make heap-ordered binary tree.
-
-    Move elements of a list to obtain a heap-ordered binary tree.
-
-    Parameters
-    ----------
-    items : list
-        Heap items (data objects).
-
-    Returns
-    -------
-    list
-        The input list in heap-order.
-
-    Note
-    ----
-    List elements are directly compared using the :math:`<` operator.
-    """
-    for i in range(1, len(items)):
-        fixup(items, i, i)
-
-    return items
-
-
-def push(heap, item):
-    """ Add item.
-
-    Parameters
-    ----------
-    heap : list
-        Heap-ordered list.
-    item : object
-        Heap item.
-    """
-    heap.append(item)
-    fixup(heap, len(heap) - 1, len(heap) - 1)
-
-
-def pop(heap):
-    """ Remove top item.
-
-    Parameters
-    ----------
-    heap : list
-        Heap-ordered list.
-
-    Returns
-    -------
-    object
-        Top heap item.
-    """
-    swap(heap, 0, n := len(heap) - 1)
-    fixdown(heap, 0, n - 1)
-
-    return heap.pop()
-
-
-def fixup(heap, k, n):
+def _fixup(heap, k, n):
     """ Restore heap property upwards.
 
     Fix the heap property upwards starting at the item with index `k`.
@@ -540,18 +537,18 @@ def fixup(heap, k, n):
     n : int
         Index of last heap element.
 
-    Note
-    ----
-    The argument `n` is not the size of `heap` but the index
+    Notes
+    -----
+    The argument `n` is not the size of `heap`. It is the index
     ``len(heap) - 1`` of its last element (or a smaller value).
     """
     # Swap the item at position k with its predecessor at position j as
     # long as heap[j] > heap[k].
-    while 0 < k <= n and heap[k] < heap[j := (k+1)//2 - 1]:
-        swap(heap, k, k := j)
+    while 0 < k <= n and heap[k][-1] < heap[j := (k+1)//2 - 1][-1]:
+        _swap(heap, k, k := j)
 
 
-def fixdown(heap, k, n):
+def _fixdown(heap, k, n):
     """ Restore heap property downwards.
 
     Fix the heap property downwards starting at the item with index `k`.
@@ -565,9 +562,9 @@ def fixdown(heap, k, n):
     n : int
         Index of last heap element.
 
-    Note
-    ----
-    The argument `n` is not the size of `heap` but the index
+    Notes
+    -----
+    The argument `n` is not the size of `heap`. It is the index
     ``len(heap) - 1`` of its last element (or a smaller value).
     """
     # Successors of item with index k have index 2*k+1 and 2*k+2. Let j
@@ -576,18 +573,18 @@ def fixdown(heap, k, n):
     while 0 <= (j := 2*k + 1) <= n:
         # There are two successors if j < n. Get index j of child with
         # smaller key.
-        if j < n and heap[j+1] < heap[j]:
+        if j < n and heap[j+1][-1] < heap[j][-1]:
             j += 1
 
         # Swap with child with smaller key. If no swap is indicated the
         # heap property is restored.
-        if heap[j] < heap[k]:
-            swap(heap, k, k := j)
+        if heap[j][-1] < heap[k][-1]:
+            _swap(heap, k, k := j)
         else:
             break
 
 
-def swap(heap, i, j):
+def _swap(heap, i, j):
     """ Swap position of heap items.
 
     Parameters
@@ -595,7 +592,7 @@ def swap(heap, i, j):
     heap : list
         Heap items.
     i, j : int
-        Index of heap item.
+        Indices of heap items.
 
     Note
     ----
