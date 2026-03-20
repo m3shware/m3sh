@@ -13,7 +13,7 @@ Core modules
 
    hds
    traits
-   iterators
+   itertools
    flags
    
    
