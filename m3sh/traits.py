@@ -1,4 +1,4 @@
-# Copyright 2024, m3shware
+# Copyright 2022-2026, m3shware
 #
 # Permission is hereby granted, free of charge, to any person obtaining a
 # copy of this software and associated documentation files (the "Software"),
@@ -7,37 +7,47 @@
 # and/or sell copies of the Software, and to permit persons to whom the
 # Software is furnished to do so, subject to the following conditions:
 #
-# The above copyright notice and this permission notice shall be included in
-# all copies or substantial portions of the Software.
+# The above copyright notice and this permission notice shall be included
+# in all copies or substantial portions of the Software.
 #
-# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+# OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
+# THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-# FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
-# IN THE SOFTWARE.
+# FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+# DEALINGS IN THE SOFTWARE.
 
 """ Geometric mesh traits.
 
 Convenience functions to compute common and often used geometric mesh
-traits like vertex and face normals.
+traits like vertex normals and face normals.
+
+References
+----------
+.. [1] S. Jin, R. Lewis, and D. West: *A comparison of algorithms for
+       vertex normal computation*, The Visual Computer 21, 2005.
+.. [2] M. Meyer et al.: *Discrete differential-geometry operators for
+       triangulated 2-manifolds*. In: HC. Hege, K. Polthier (eds)
+       *Visualization and Mathematics III*, 2003.
 
 Example
 -------
-
 Face normals of a mesh can be computed as
 
 >>> normals = traits.face_normals(mesh)
 
-The normal of a face can be accessed as ``normals[f]``. Instead of passing
-around the pair ``(mesh, normals)``, we can add the normals array to the
-mesh as an attribute:
+Since faces can be used as an index, the normal of a face can be accessed
+as ``normals[f]`` or more verbosely as ``normals[f.index]``. Instead of
+passing around the pair ``(mesh, normals)``, we can add the normals array
+to the mesh as an attribute:
 
 >>> mesh.add_face_data('face_normals', 'normal', normals)
 
-The normal of a face can now be accessed as ``f.normal``. The normals array
-can still be accessed directly as ``mesh.face_normals``. In particular
+In addition to just adding the array as an attribute this also add a
+property to each face of the mesh that makes the corresponding face normal
+accessible as ``f.normal``. The normals array can still be accessed
+directly as ``mesh.face_normals``. In particular
 
 >>> mesh.face_normals is normals
 True
@@ -121,7 +131,8 @@ def _bounds(points):
 def vertex_normal(vertex):
     """ Vertex normal.
 
-    Compute vertex normal as average of triangle normals.
+    Compute vertex normal as average of triangle normals. Assumes that
+    vertex coordinates live in Euclidean 3-space.
 
     Parameters
     ----------
@@ -130,7 +141,7 @@ def vertex_normal(vertex):
 
     Returns
     -------
-    ndarray, shape (3, )
+    normal : ndarray, shape (3, )
         Unit length normal vector.
 
     See Also
@@ -143,7 +154,8 @@ def vertex_normal(vertex):
     planes spanned by consecutive edges in a counter-clockwise traversal
     of incident edges.
 
-    Vertex normals are not well defined for isolated vertices.
+    Vertex normals are not well defined for isolated vertices. Such
+    vertices are assigned a vector of :obj:`~numpy.nan` values.
     """
     # Triggers an assertion for deleted vertices. Alternative: quitely
     # assign nan normal vector to deleted vertices.
@@ -176,7 +188,7 @@ def vertex_normals(mesh, broadcast=False):
 
     Returns
     -------
-    ndarray, shape (n, 3)
+    normals, ndarray, shape (n, 3)
         Unit length normal vectors for a mesh with n vertices.
 
     See Also
@@ -185,15 +197,18 @@ def vertex_normals(mesh, broadcast=False):
 
     Notes
     -----
-    Vertex normals are not well defined for isolated vertices. The
-    result includes :obj:`~numpy.nan` values in this case.
+    Vertex normals are not well defined for isolated vertices. The result
+    includes :obj:`~numpy.nan` values in this case.
     """
     if broadcast:
-        # Outer loop runs over faces. Each face broadcasts is normal
-        # vector to each incident vertex. This is typically faster.
+        # Outer loop runs over faces. Each face broadcasts is normal vector
+        # to each incident vertex. This is typically faster since face
+        # normals are only computed once.
         normals = np.zeros_like(mesh.points)
 
         for f in mesh.faces:
+            # Triggers an assertion error when passing a deleted face to
+            # the face_normal() function.
             normal = face_normal(f)
 
             for v in f:
@@ -201,20 +216,20 @@ def vertex_normals(mesh, broadcast=False):
 
         # Division by 0 results in nan entries for normal vectors of
         # deleted and isolated vertices.
-        normals /= np.linalg.norm(normals, axis=-1)[:, None]
+        normals /= np.linalg.norm(normals, axis=-1, keepdims=True)
         return normals
     else:
-        # Outer loop runs over vertices. Gather normals of incident
-        # faces to compute the vertex normal.
+        # Outer loop runs over vertices. Gather normals of incident faces
+        # to compute the vertex normal. An assertion error is triggered when
+        # passing a deleted vertex to the vertex_normal() function.
         return np.array([vertex_normal(v) for v in mesh.vertices])
 
 
 def vertex_angle(vertex):
     r""" Total angle around a vertex.
 
-    For a vertex with k incident angles, the value
-    :math:`2\pi - \sum_{i=1}^k \alpha_i` is called angle defect or
-    discrete Gaussian curvature.
+    Compute :math:`\sum_{i=1}^k \alpha_i` where :math:`\alpha_i` denote
+    the angles incident to `vertex`.
 
     Parameters
     ----------
@@ -225,6 +240,14 @@ def vertex_angle(vertex):
     -------
     float
         Sum of incident angles in radians.
+
+    Notes
+    -----
+    The value :math:`2\pi - \sum_{i=1}^k \alpha_i` is called angle defect
+    or discrete Gaussian curvature. A point-wise estimate of Gaussian
+    curvature is often defined as the quotient
+
+    >>> K = (2.0 * pi - vertex_angle(v)) / vertex_area_mixed(v)
     """
     angle = 0.0
 
@@ -235,18 +258,55 @@ def vertex_angle(vertex):
     return angle
 
 
-def _vertex_area_simple(vertex):
-    """
+def vertex_area(vertex):
+    """ Vertex area.
+
+    One third of the area of all faces incident to `vertex`. The most simple
+    choice of vertex area when doing spatial averages.
+
+    Parameters
+    ----------
+    vertex : Vertex
+        Vertex of a triangle mesh.
+
+    Returns
+    -------
+    area : float
+        Area assigned to `vertex`.
+
+    See Also
+    --------
+    vertex_area_voronoi, vertex_area_mixed
     """
     return sum(face_area(f) for f in vertex._fiter()) / 3.0
 
 
-def _vertex_area_mixed(vertex):
+def vertex_area_mixed(vertex):
+    """ Mixed vertex area.
+
+    Mixed area assigned to `vertex` as defined in [1]_.
+
+    Parameters
+    ----------
+    vertex : Vertex
+        Vertex of a triangle mesh.
+
+    Returns
+    -------
+    area : float
+        Area assigned to `vertex`.
+
+    References
+    ----------
+    .. [1] M. Meyer et al.: *Discrete differential-geometry operators for
+           triangulated 2-manifolds*. In: HC. Hege, K. Polthier (eds)
+           *Visualization and Mathematics III*, 2003.
     """
-    """
+    cotan = lambda x: 1.0 / math.tan(x)
+
     a = vertex.point
-    weight = 0.0
-    val = 0.5 * math.pi
+    area = 0.0
+    max = 0.5 * math.pi
 
     for h in vertex._hiter():
         if h.boundary:
@@ -255,21 +315,71 @@ def _vertex_area_mixed(vertex):
         b = h.target.point
         c = h.next.target.point
 
-        area = 0.5 * linalg.norm(linalg.cross(b-a, c-b))
+        face_area = 0.5 * linalg.norm(linalg.cross(b - a, c - b))
 
-        angle_a = linalg.angle(b-a, c-a)
-        angle_b = linalg.angle(c-b, a-b)
-        angle_c = linalg.angle(a-c, b-c)
+        angle_a = linalg.angle(b - a, c - a)
+        angle_b = linalg.angle(c - b, a - b)
+        angle_c = linalg.angle(a - c, b - c)
 
-        if angle_a < val and angle_b < val and angle_c < val:
-            weight += 0.125 * (  linalg.sqrd(b-a) * angle_c
-                               + linalg.sqrd(c-a) * angle_b)
-        elif angle_a > val:
-            weight += 0.5 * area
+        if angle_a < max and angle_b < max and angle_c < max:
+            area += 0.125 * (
+                linalg.norm_sqrd(b - a) * cotan(angle_c)
+              + linalg.norm_sqrd(c - a) * cotan(angle_b))
+        elif angle_a > max:
+            area += 0.5 * face_area
         else:
-            weight += 0.25 * area
+            area += 0.25 * face_area
 
-    return weight
+    return area
+
+
+def vertex_area_voronoi(vertex):
+    """ Voronoi vertex area.
+
+    Voronoi area assigned to `vertex`, see [1]_. Only valid if none of
+    the incident triangles is obtuse!
+
+    Parameters
+    ----------
+    vertex : Vertex
+        Vertex of a triangle mesh. The condition on non-obtuse incident
+        triangles is not checked. Expect bogus results in such cases.
+
+    Returns
+    -------
+    area : float
+        Area assigned to `vertex`.
+
+    See Also
+    --------
+    vertex_area_mixed : Handle non-obtuse triangles gracefully.
+
+    References
+    ----------
+    .. [1] M. Meyer et al.: *Discrete differential-geometry operators for
+           triangulated 2-manifolds*. In: HC. Hege, K. Polthier (eds)
+           *Visualization and Mathematics III*, 2003.
+    """
+    cotan = lambda x: 1.0 / math.tan(x)
+
+    a = vertex.point
+    area = 0.0
+
+    for h in vertex._hiter():
+        if h.boundary:
+            continue
+
+        b = h.target.point
+        c = h.next.target.point
+
+        angle_b = linalg.angle(c - b, a - b)
+        angle_c = linalg.angle(a - c, b - c)
+
+        area += 0.125 * (
+            linalg.norm_sqrd(b - a) * cotan(angle_c)
+          + linalg.norm_sqrd(c - a) * cotan(angle_b))
+
+    return area
 
 
 def edge_stats(item):
@@ -411,9 +521,10 @@ def _halfedge_rotation(self):
 
 
 def face_normal(face):
-    """ Face normal.
+    """ Face normal vector.
 
-    Compute face normal as cross product of edge vectors.
+    Compute face normal as cross product of edge vectors. This function
+    assumes that vertex coordinates live in Euclidean 3-space.
 
     Parameters
     ----------
@@ -422,7 +533,7 @@ def face_normal(face):
 
     Returns
     -------
-    ndarray, shape (3, )
+    normal : ndarray, shape (3, )
         Unit length normal vector.
 
     See Also
@@ -431,23 +542,23 @@ def face_normal(face):
 
     Notes
     -----
-    For a non-triangular face the normal is computed by averaging
-    vectors obtained as cross products of consecutive edges around
-    the face. This approach can be problematic for non-convex faces
-    as some of those vectors point to the wrong side.
+    For a non-triangular face the normal is computed by averaging vectors
+    obtained as cross products of consecutive edge vectors around the face.
+    This approach can be problematic for non-convex faces as some of those
+    vectors point to the wrong side.
     """
     # Should deleted faces be quitely assigned a normal with nan entries?
-    # Currenlty this case triggers an assertion error (property access of
+    # Currently this case triggers an assertion error (property access of
     # a deleted face).
     if len(face) == 3:
-        vector = linalg.cross(face.halfedge.vector,
-                              face.halfedge.next.vector)
+        halfedge = face.halfedge
+        vector = linalg.cross(halfedge.vector, halfedge.next.vector)
     else:
         vector = np.zeros(3, dtype=float)
 
         for h in face._hiter():
-            # For non-convex faces some normals computed in this
-            # way point to the wrong side.
+            # For non-convex faces some normals computed in this way point
+            # to the wrong side.
             vector += linalg.unit_inplace(linalg.cross(h.vector,
                                                        h.next.vector))
 
@@ -457,7 +568,8 @@ def face_normal(face):
 def face_normals(mesh):
     """ Face normals.
 
-    Compute face normals as cross products of edge vectors.
+    Compute face normals as cross products of edge vectors. This function
+    assumes that vertex coordinates live in Euclidean 3-space.
 
     Parameters
     ----------
@@ -466,22 +578,21 @@ def face_normals(mesh):
 
     Returns
     -------
-    ndarray, shape (m, 3)
-        Array of unit length face normal vectors for a mesh with
-        m faces.
+    normals : ndarray, shape (m, 3)
+        Unit length face normal vectors for a mesh with m faces.
 
     See Also
     --------
     face_normal
     """
-    # Should deleted faces be quitely assigned a normal with nan entries?
+    # Note that a mesh itself is iterable. This iterator produces all faces
+    # that are **not** marked as deleted! In the presence of deleted faces
+    # the lists [f for f in mesh] and [f for f in mesh.faces] are different!
     return np.array([face_normal(f) for f in mesh.faces])
 
 
 def face_area(face):
-    """ Face area.
-
-    Areas are only computed for triangular faces.
+    """ Area of triangular face.
 
     Parameters
     ----------
@@ -495,20 +606,25 @@ def face_area(face):
 
     Returns
     -------
-    float
+    area : float
         Face area.
+
+    Notes
+    -----
+    Using an ad-hoc fan-like triangulation of the face would still give a
+    wrong result for a non-planar and/or non-convex face.
     """
     if len(face) == 3:
-        vector = linalg.cross(face.halfedge.vector,
-                              face.halfedge.next.vector)
+        halfedge = face.halfedge
+        vector = linalg.cross(halfedge.vector, halfedge.next.vector)
     else:
         raise NotImplementedError('triangular face required')
 
     return 0.5 * linalg.norm(vector)
 
 
-def planarity_score(face, denom=0.0):
-    """ Planarity score of skew quadrilateral.
+def planarity_score(face, denom=None):
+    """ Planarity score of a skew quadrilateral.
 
     Distance of diagonals. Can be normalized to make the measure scale
     independent.
@@ -518,13 +634,16 @@ def planarity_score(face, denom=0.0):
     face : array_like, shape (4, 3)
         Vertex coordinate array.
     denom : float, optional
-        Zero divides by mean edge length.
+        Normalization factor. By default, the diagonal distance is
+        devided by the average length of the quadrilateral's edges.
 
     Returns
     -------
     float
-        Planarity score. Can result in inf and nan values in case of
-        flipped or degenerate quadrilaterals.
+        Planarity score of quadrilateral. Can result in :obj:`~numpy.inf`
+        or :obj:`~numpy.nan` values in case of flipped or degenerate
+        quadrilaterals. Always returns :obj:`~numpy.nan` for faces of
+        valence greater than four.
     """
     f = np.asarray(face)
 
@@ -534,7 +653,7 @@ def planarity_score(face, denom=0.0):
     elif len(f) > 4:
         return np.nan
 
-    # For bow tie shaped quadrilateral the vectors v and w can be linear
+    # For bow tie shaped quadrilaterals the vectors v and w can be linear
     # depedent without one of them vanishing.
     v = f[2] - f[0]
     w = f[3] - f[1]
@@ -544,7 +663,7 @@ def planarity_score(face, denom=0.0):
     n = linalg.cross(v, w)
     d = abs(n.dot(f[1] - f[0]) / linalg.norm(n))
 
-    if denom == 0.0:
+    if denom is None:
         denom = 0.25 * np.sum(np.linalg.norm([f[1]-f[0],
                                               f[2]-f[1],
                                               f[3]-f[2],
@@ -555,7 +674,7 @@ def planarity_score(face, denom=0.0):
     return d / denom
 
 
-def planarity_scores(mesh, denom=0.0, offset=0.0):
+def planarity_scores(mesh, denom=None, offset=0.0):
     """ Face planarity scores.
 
     Parameters
@@ -563,7 +682,8 @@ def planarity_scores(mesh, denom=0.0, offset=0.0):
     mesh : Mesh
         Mesh instance.
     denom :  float, optional
-        Zero divides by mean edge length.
+        Normalization factor. By default, each diagonal distance is
+        devided by the average length of the quadrilateral's edges.
     offset : float, optional
         Added to each planarity score.
 
@@ -571,5 +691,16 @@ def planarity_scores(mesh, denom=0.0, offset=0.0):
     -------
     list[float]
         Face planarity scores plus an additional offset value.
+
+    See Also
+    --------
+    planarity_score
+
+    Notes
+    -----
+    Use the mesh's bounding box diagonal or mean edge length to achieve
+    gobal normalization, e.g.
+
+    >>> planarity_scores(mesh, edge_stats(mesh)[-1])
     """
     return [offset + planarity_score(f, denom) for f in mesh]
