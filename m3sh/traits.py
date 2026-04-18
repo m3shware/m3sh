@@ -157,6 +157,9 @@ def vertex_normal(vertex):
     Vertex normals are not well defined for isolated vertices. Such
     vertices are assigned a vector of :obj:`~numpy.nan` values.
     """
+    if vertex.deleted:
+        return np.full_like(vertex.point, np.nan)
+
     # Triggers an assertion for deleted vertices. Alternative: quitely
     # assign nan normal vector to deleted vertices.
     if vertex.degree == 0:
@@ -205,8 +208,9 @@ def vertex_normals(mesh, broadcast=False):
         # to each incident vertex. This is typically faster since face
         # normals are only computed once.
         normals = np.zeros_like(mesh.points)
+        normals[[v.deleted for v in mesh.vertices]] = np.nan
 
-        for f in mesh.faces:
+        for f in mesh:
             # Triggers an assertion error when passing a deleted face to
             # the face_normal() function.
             normal = face_normal(f)
@@ -547,9 +551,11 @@ def face_normal(face):
     This approach can be problematic for non-convex faces as some of those
     vectors point to the wrong side.
     """
-    # Should deleted faces be quitely assigned a normal with nan entries?
-    # Currently this case triggers an assertion error (property access of
-    # a deleted face).
+    # Deleted faces are quitely assigned a normal vector with nan entries.
+    # Accessing properties of a deleted face would trigger an assertion.
+    if face.deleted:
+        return np.full(3, np.nan)
+
     if len(face) == 3:
         halfedge = face.halfedge
         vector = linalg.cross(halfedge.vector, halfedge.next.vector)
@@ -562,6 +568,8 @@ def face_normal(face):
             vector += linalg.unit_inplace(linalg.cross(h.vector,
                                                        h.next.vector))
 
+    # Note that division by zero produces a runtime warning. Divison of
+    # nan by nan results in nan and does not show a warning.
     return linalg.unit_inplace(vector)
 
 
