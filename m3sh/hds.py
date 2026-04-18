@@ -692,7 +692,7 @@ class Mesh:
         """
         # Append to (or create) the array of all vertex coordinates.
         point = [point, *args] if len(args) else point
-        self._points = obj._array_append(self._points, point)
+        self._points = _array_append(self._points, point)
 
         # New vertex object that goes to the end of the list of all
         # vertices.
@@ -1132,7 +1132,7 @@ class Mesh:
                 try:
                     data.clear()
                 except AttributeError:
-                    obj._array_clear(data)
+                    _array_clear(data)
 
     def clean(self):
         """ Garbage collection.
@@ -1710,6 +1710,10 @@ class Mesh:
         explicitly via :attr:`~Halfedge.flippable` when skipping the test.
         Unchecked edge flipping results in undefined behavior.
         """
+        # Improvement: geometric degeneracy check for flipped triangles.
+        # Use a vertex normal vector field to identifiy orientation flips.
+        # Such a check could be done here or in the flippable property of
+        # a halfedge.
         if halfedge._deleted or (check and not halfedge.flippable):
             return None
 
@@ -2024,7 +2028,7 @@ class Mesh:
             elif isinstance(data, dict):
                 data[key] = value
             elif isinstance(data, np.ndarray):
-                obj._array_append(data, value)
+                _array_append(data, value)
 
     def _add_halfedge(self, v, w, **kwargs):
         """ Create and add new halfedge.
