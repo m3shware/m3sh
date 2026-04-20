@@ -54,6 +54,8 @@ True
 """
 
 import math
+import statistics as stats
+
 import numpy as np
 
 import m3sh.linalg as linalg
@@ -142,7 +144,8 @@ def vertex_normal(vertex):
     Returns
     -------
     normal : ndarray, shape (3, )
-        Unit length normal vector.
+        Unit length normal vector. Deleted and isolated vertices are
+        assigned a vector of :obj:`~numpy.nan` values.
 
     See Also
     --------
@@ -153,22 +156,18 @@ def vertex_normal(vertex):
     For non-triangular meshes, incident triangles are defined by the
     planes spanned by consecutive edges in a counter-clockwise traversal
     of incident edges.
-
-    Vertex normals are not well defined for isolated vertices. Such
-    vertices are assigned a vector of :obj:`~numpy.nan` values.
     """
+    # Accessing the point property of a deleted vertex does not trigger
+    # an assertion error.
     if vertex.deleted:
         return np.full_like(vertex.point, np.nan)
 
-    # Triggers an assertion for deleted vertices. Alternative: quitely
-    # assign nan normal vector to deleted vertices.
-    if vertex.degree == 0:
+    if vertex.isolated:
         return np.full_like(vertex.point, np.nan)
 
     normal = np.zeros_like(vertex.point)
 
-    # We checked for vanishing degree, hence this iterator cannot be
-    # empty.
+    # The vertex is not isolated, hence this iterator cannot be empty.
     for h in vertex._hiter():
         if h.face is not None:
             normal += linalg.unit_inplace(linalg.cross(h.prev.vector,
@@ -200,32 +199,30 @@ def vertex_normals(mesh, broadcast=False):
 
     Notes
     -----
-    Vertex normals are not well defined for isolated vertices. The result
-    includes :obj:`~numpy.nan` values in this case.
+    Vertex normals are not well defined for deleted or isolated vertices.
+    The returned array includes rows of :obj:`~numpy.nan` values in this
+    case.
     """
     if broadcast:
         # Outer loop runs over faces. Each face broadcasts is normal vector
         # to each incident vertex. This is typically faster since face
         # normals are only computed once.
         normals = np.zeros_like(mesh.points)
-        normals[[v.deleted for v in mesh.vertices]] = np.nan
+        normals[[v.deleted or v.isolated for v in mesh.vertices]] = np.nan
 
+        # This loop only visits faces not marked as deleted. Deleted or
+        # isolated vertices are not visited by the inner loop.
         for f in mesh:
-            # Triggers an assertion error when passing a deleted face to
-            # the face_normal() function.
             normal = face_normal(f)
 
             for v in f:
                 normals[v] += normal
 
-        # Division by 0 results in nan entries for normal vectors of
-        # deleted and isolated vertices.
         normals /= np.linalg.norm(normals, axis=-1, keepdims=True)
         return normals
     else:
         # Outer loop runs over vertices. Gather normals of incident faces
-        # to compute the vertex normal. An assertion error is triggered when
-        # passing a deleted vertex to the vertex_normal() function.
+        # to compute the vertex normal.
         return np.array([vertex_normal(v) for v in mesh.vertices])
 
 
@@ -389,7 +386,7 @@ def vertex_area_voronoi(vertex):
 def edge_stats(item):
     """ Edge length statistics.
 
-    Minimal, maximal, and average edge length for a mesh or an
+    Minimal, maximal, average, and median edge length for a mesh or an
     individual face.
 
     Parameters
@@ -399,22 +396,25 @@ def edge_stats(item):
 
     Returns
     -------
-    min, max, avg : float
-        Minimal, maximal, and average edge length.
+    min, max, avg, med : float
+        Minimal, maximal, average, and median edge length.
     """
-    min, max = np.inf, -np.inf
-    avg, cnt = 0.0, 0
+    len = [linalg.norm(h.vector) for h in item._eiter()]
+    return min(len), max(len), stats.fmean(len), stats.median(len)
 
-    for h in item._eiter():
-        length = linalg.norm(h.vector)
+    # min, max = np.inf, -np.inf
+    # avg, cnt = 0.0, 0
 
-        avg += length
-        cnt += 1
+    # for h in item._eiter():
+    #     length = linalg.norm(h.vector)
 
-        min = length if length < min else min
-        max = length if length > max else max
+    #     avg += length
+    #     cnt += 1
 
-    return min, max, avg / cnt
+    #     min = length if length < min else min
+    #     max = length if length > max else max
+
+    # return min, max, avg / cnt
 
 
 def _halfedge_normal(halfedge):
@@ -538,7 +538,9 @@ def face_normal(face):
     Returns
     -------
     normal : ndarray, shape (3, )
-        Unit length normal vector.
+        Unit length normal vector. For triangular faces this vector
+        is consistent with the face orientation. Deleted faces are
+        assigned a vector of :obj:`~numpy.nan` values.
 
     See Also
     --------
@@ -551,7 +553,7 @@ def face_normal(face):
     This approach can be problematic for non-convex faces as some of those
     vectors point to the wrong side.
     """
-    # Deleted faces are quitely assigned a normal vector with nan entries.
+    # Deleted faces are quietly assigned a normal vector with nan entries.
     # Accessing properties of a deleted face would trigger an assertion.
     if face.deleted:
         return np.full(3, np.nan)
@@ -564,7 +566,8 @@ def face_normal(face):
 
         for h in face._hiter():
             # For non-convex faces some normals computed in this way point
-            # to the wrong side.
+            # to the wrong side. For a flat star neighborhood this sum may
+            # even average to the zero vector.
             vector += linalg.unit_inplace(linalg.cross(h.vector,
                                                        h.next.vector))
 
@@ -592,9 +595,14 @@ def face_normals(mesh):
     See Also
     --------
     face_normal
+
+    Notes
+    -----
+    This function returns a vector for all faces of a mesh, even for those
+    marked as deleted. In the latter case a row of all :obj:`~numpy.nan`
+    values is assigned.
     """
-    # Note that a mesh itself is iterable. This iterator produces all faces
-    # that are **not** marked as deleted! In the presence of deleted faces
+    # Note that a mesh itself is iterable. In the presence of deleted faces
     # the lists [f for f in mesh] and [f for f in mesh.faces] are different!
     return np.array([face_normal(f) for f in mesh.faces])
 
@@ -619,8 +627,8 @@ def face_area(face):
 
     Notes
     -----
-    Using an ad-hoc fan-like triangulation of the face would still give a
-    wrong result for a non-planar and/or non-convex face.
+    For faces of higher valence, an ad-hoc fan-like triangulation of the face
+    would still give a wrong result for a non-planar and/or non-convex face.
     """
     if len(face) == 3:
         halfedge = face.halfedge
