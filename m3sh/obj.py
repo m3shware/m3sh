@@ -982,22 +982,28 @@ def read(filename, *tags, dtype=np.ndarray, quiet=True):
     return tuple(data.values())
 
 
-def write(filename, **data):
+def write(filename, append=False, absolute=True, **data):
     """ Write as .obj file.
 
-    Face definitions: each entry of a face (a vertex definition) can be a
-    single integer or a 3-tuple of integers. Tuple entries are interpreted
-    as v/vt/vn triples, missing entries have to be specified with a
-    :obj:`None` value.
+    This is a low-level function used by :class:`~m3sh.hds.Mesh` instances.
+    See the notes below for usage instructions.
 
     Parameters
     ----------
     filename : str
         Name of output file.
+    append : bool, optional
+        Append to file if it exists. This makes most sense when using
+        relative indices.
+    absolute : bool, optional
+        Pass ``False`` if indices are negative, i.e., relative.
+        If ``True``, absolute indices are assumed as 0-based. An offset
+        of 1 is added in this case before writing the data.
     **data
         Keyword arguments.
 
-
+    Notes
+    -----
     Data to be stored in the file is passed via keyword arguments:
 
     >>> mesh.write('output-file.obj', tag=value, ...)
@@ -1005,28 +1011,48 @@ def write(filename, **data):
     This assumes that ``value`` can be interpreted as a 2-dimensional
     array. The contents of each row are written to a line that starts
     with the given tag (keyword).
+
+    Generically we want to store a list of points (used as vertices) and
+    as list of faces. Assuming that `points` is array_like and `faces` is
+    a nested list of integers, this can be achieved by
+
+    >>> write('file.obj', v=points, f=faces)
+
+    .. rubric:: Specifying faces
+
+    Each entry of a face (a vertex definition) can be a single integer
+    or a 3-tuple of integers. Tuple entries are interpreted as v/vt/vn
+    triples, missing entries have to be specified as :obj:`None` values.
+    Indices used in vertex definitions can be absolute (i.e., non-negative,
+    0-based) or relative (i.e., negative). Absolute and relative indices
+    may not be mixed.
     """
 
-    def format(vertex):
+    def format(vertex, offset=1):
         """ Pretty print vertex.
 
         Parameters
         ----------
         vertex : int or tuple
             Integer or 3-tuple of integers.
+        offset : int, optional
+            Offset added to all indices.
 
         Returns
         -------
         str
             String representation according to .obj standard.
         """
+        # Use an offset equal to 1 if provided indices are absolute and
+        # 0-based. Use an offset of 0 if provided indices are relative,
+        # i.e., negative integers.
         try:
-            v = vertex[0] + 1
+            v = vertex[0] + offset
         except TypeError:
-            return f' {int(vertex) + 1}'
+            return f' {int(vertex) + offset}'
         else:
-            vt = '' if vertex[1] is None else vertex[1] + 1
-            vn = '' if vertex[2] is None else vertex[2] + 1
+            vt = '' if vertex[1] is None else vertex[1] + offset
+            vn = '' if vertex[2] is None else vertex[2] + offset
 
             if vertex[2] is not None:
                 return f' {v}/{vt}/{vn}'
@@ -1036,14 +1062,17 @@ def write(filename, **data):
                 else:
                     return f' {v}'
 
-    with open(filename, 'w') as file:
+    mode = 'a' if append else 'w'
+    offset = 1 if absolute else 0
+
+    with open(filename, mode) as file:
         for key, value in data.items():
             if key == 'f':
                 for face in value:
                     file.write('f')
 
                     for vertex in face:
-                        file.write(format(vertex))
+                        file.write(format(vertex, offset))
 
                     file.write('\n')
             else:
