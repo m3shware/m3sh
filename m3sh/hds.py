@@ -429,7 +429,7 @@ class Mesh:
         """ Read mesh from file.
 
         Read mesh combinatorics (face definitions) and vertex coordinates
-        from an OBJ file. Additional data is read on request.
+        from an .obj file. Additional data is read on request, see below.
 
         Parameters
         ----------
@@ -437,6 +437,8 @@ class Mesh:
             Name of an OBJ file.
         *args
             Variable number of arguments of type :class:`str`.
+        merge : bool, optional
+            Experimental.
         quiet : bool, optional
             Suppress console output.
 
@@ -446,16 +448,15 @@ class Mesh:
             Mesh object.
         data : ndarray or tuple(ndarray, ...)
             Data blocks as requested via `args`. If a data block could
-            not be read, a :obj:`None` value is returned.
+            not be read, a :obj:`None` value is returned in its place.
 
-
+        Notes
+        -----
         Vertex normals or texture coordinates stored in a file can be
         read via
 
         >>> mesh, vecs, uvs = Mesh.read(filename, 'vn', 'vt')
 
-        Note
-        ----
         Additional return values (vertex normals, texture vertices, and
         custom data) are returned in the same order as they are presented
         in the argument list `args`.
@@ -572,21 +573,28 @@ class Mesh:
         """ Write mesh to file.
 
         Data arrays, like vertex normals and texture coordinates, can be
-        saved by passing them as keyword arguments.
+        saved by passing them as keyword arguments, see below.
 
         Parameters
         ----------
         filename : str
-            Name of an OBJ file.
+            If a file with this name already exists it will be overwritten
+            without warning.
         quiet : bool, optional
             Suppress console output.
         **data
-            Arbitrary keyword arguments.
+            Arbitrary number of keyword arguments.
 
+        Warnings
+        --------
+        The values 'v' and 'f' may not be used as keywords since they are
+        implicitly used when writing mesh data to an .obj file.
 
+        Notes
+        -----
         User defined data blocks can be written with
 
-        >>> mesh.write('output-file.obj', line_tag=data)
+        >>> mesh.write('output-file.obj', tag=data)
 
         This assumes that ``data`` can be interpreted as a 2-dimensional
         array. The contents of each row are written to a line that starts
@@ -595,11 +603,10 @@ class Mesh:
 
         >>> mesh.write('outfile-file.obj', vn=normals)
 
-        Note
-        ----
-        The standard OBJ tags 'v' and 'f' may not be used as keywords
-        since they are implicitly used when writing mesh data to an OBJ
-        file.
+        .. rubric:: Interfacing with Blender
+
+        To properly orient a mesh when importing it in Blender, use Z as
+        `up` and Y as `forward` direction.
         """
         CBOLD = '\33[1m'                    # bold text, white on black
         CEND = '\33[0m'
