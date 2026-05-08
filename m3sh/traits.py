@@ -226,6 +226,73 @@ def vertex_normals(mesh, broadcast=False):
         return np.array([vertex_normal(v) for v in mesh.vertices])
 
 
+def mean_curvature_vector(vertex):
+    """
+    """
+    mcv = np.zeros_like(vertex)
+
+    for h in vertex._hiter():
+        mcv += h.pair.vector * (
+            cotan_weight(h, 0.0) + cotan_weight(h.pair, 0.0))
+
+    return mcv
+
+
+def mean_curvature_vectors(mesh):
+    """
+    """
+    weights = cotan_weights(mesh, 0.0)
+    mcvs = np.zeros_like(mesh.points)
+
+    for v in mesh._viter():
+        for h in v._hiter():
+            mcvs[v] += h.pair.vector * (weights[h] + weights[h.pair])
+
+        mcvs[v] /= 2.0 * vertex_area(v)
+
+    return mcvs
+
+
+def vertex_mcvs(mesh):
+    """ Mean curvature vectors.
+
+    The mean curvature vector field represents the gradient of surface
+    area. In particular, moving a vertex along the negative mean curvature
+    vector will locally decrease surface area.
+
+    Parameters
+    ----------
+    mesh : Mesh
+        A triangle mesh instance.
+
+    Returns
+    -------
+    ndarray
+    """
+    weights = cotan_weights(mesh, 0.0)
+    mcvs = np.zeros_like(mesh.points)
+
+    for v in mesh._viter():
+        for h in v._hiter():
+            mcvs[v] += h.pair.vector * (weights[h] + weights[h.pair])
+
+        mcvs[v] /= 2.0 * vertex_area_mixed(v)
+
+    return mcvs
+
+
+def vertex_gauss_curvature(vertex):
+    """
+    """
+    pass
+
+
+def vertex_principal_curvatures(vertex):
+    """
+    """
+    pass
+
+
 def vertex_angle(vertex):
     r""" Total angle around a vertex.
 
@@ -248,7 +315,7 @@ def vertex_angle(vertex):
     or discrete Gaussian curvature. A point-wise estimate of Gaussian
     curvature is often defined as the quotient
 
-    >>> K = (2.0 * pi - vertex_angle(v)) / vertex_area_mixed(v)
+    >>> K = (2.0 * pi - vertex_angle(v)) / vertex_area(v)
     """
     angle = 0.0
 
@@ -258,8 +325,8 @@ def vertex_angle(vertex):
 
     return angle
 
-
-def vertex_area(vertex):
+# Remove this function -> too simple.
+def _vertex_area(vertex):
     """ Vertex area.
 
     One third of the area of all faces incident to `vertex`. The most simple
@@ -334,7 +401,58 @@ def vertex_area_mixed(vertex):
     return area
 
 
-def vertex_area_voronoi(vertex):
+def vertex_area(vertex):
+    """ Mixed vertex area.
+
+    Mixed area assigned to `vertex` as defined in [1]_.
+
+    Parameters
+    ----------
+    vertex : Vertex
+        Vertex of a triangle mesh.
+
+    Returns
+    -------
+    area : float
+        Area assigned to `vertex`.
+
+    References
+    ----------
+    .. [1] M. Meyer et al.: *Discrete differential-geometry operators for
+           triangulated 2-manifolds*. In: HC. Hege, K. Polthier (eds)
+           *Visualization and Mathematics III*, 2003.
+    """
+    area = 0.0
+
+    for h in vertex._hiter():
+        if not h.boundary:
+            cotan_c = cotan_weight(h, 0.0)
+            cotan_a = cotan_weight(h.next, 0.0)
+            cotan_b = cotan_weight(h.prev, 0.0)
+
+            if cotan_a > 0.0 and cotan_b > 0.0 and cotan_c > 0.0:
+                # All interior angles of the triangle are smaller than pi/2.
+                # Voronoi area is contained inside the triangle.
+                area += 0.125 * (
+                    linalg.norm_sqrd(h.vector) * cotan_c
+                    + linalg.norm_sqrd(h.prev.vector) * cotan_b)
+            elif cotan_a <= 0.0:
+                # The angle at vertex is obtuse (greater than pi/2).
+                area += 0.5 * face_area(h.face)
+            else:
+                area += 0.25 * face_area(h.face)
+
+    return area
+
+
+def vertex_areas(mesh, cotan_weights=None):
+    """
+    """
+    pass
+
+# Remove this function -> equvialent to vertex_area for non-obtuse
+# triangles. Useless (because wrong) for obtuse triangles.
+def _vertex_area_voronoi(vertex):
     """ Voronoi vertex area.
 
     Voronoi area assigned to `vertex`, see [1]_. Only valid if none of
@@ -402,19 +520,62 @@ def edge_stats(item):
     len = [linalg.norm(h.vector) for h in item._eiter()]
     return min(len), max(len), stats.fmean(len), stats.median(len)
 
-    # min, max = np.inf, -np.inf
-    # avg, cnt = 0.0, 0
 
-    # for h in item._eiter():
-    #     length = linalg.norm(h.vector)
+def cotan_weight(halfedge, boundary=np.nan):
+    """ Cotangent weight.
 
-    #     avg += length
-    #     cnt += 1
+    Compute the cotangent of the angle opposite of `halfedge`.
 
-    #     min = length if length < min else min
-    #     max = length if length > max else max
+    Parameters
+    ----------
+    halfedge : Halfedge
+        A halfedge instance of a triangle mesh.
+    boundary : float, optional
+        Default value for boundary edges. A :obj:`~numpy.nan` value
+        typically signals missing data. For numerical computations the
+        default value 0.0 can be useful to skip missing data without
+        raising an error.
 
-    # return min, max, avg / cnt
+    Returns
+    -------
+    float
+        Cotangent value. For degenerate triangles this value can be
+        :obj:`~numpy.inf` or :obj:`~numpy.nan` depending on the type of
+        degeneracy.
+    """
+    if halfedge.boundary:
+        return boundary
+    else:
+        # Dividing 0/0 results in nan. Happens when two vertices coincide.
+        # Otherwise division by zero results in inf, i.e., when a vertex
+        # contained in an edge but not one of the endpoints.
+        return linalg.cotan(halfedge.prev.vector,
+                            halfedge.next.pair.vector)
+
+
+def cotan_weights(mesh, boundary=np.nan):
+    """ Cotangent weights.
+
+    Compute cotangent weights for all halfedges of `mesh`.
+
+    Parameters
+    ----------
+    mesh : Mesh
+        A triangle mesh instance.
+    boundary : float, optional
+        Default value for boundary edges.
+
+    Returns
+    -------
+    weights : dict
+        A dictionary that maps halfedge instances to their cotangent
+        weight.
+
+    See Also
+    --------
+    cotan_weight
+    """
+    return {h: cotan_weight(h, boundary) for h in mesh.halfedges.values()}
 
 
 def _halfedge_normal(halfedge):
