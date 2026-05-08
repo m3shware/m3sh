@@ -20,25 +20,25 @@
 
 """ Linear algebra.
 
-Basic vector math, linear algebra, and analytic geometry (in particular
-different representations of rotations). Many function are convenience
-functions that wrap NumPy functionality.
+Basic vector math, linear algebra, and trigonometric functions. Many
+functions are convenience functions that wrap NumPy functionality or
+provide basic operations from analytic geometry.
 """
 
 import math
 import numpy as np
 
 
-def angle(u, w, up=None, degrees=False):
+def angle(u, v, up=None, degrees=False):
     r""" Angle between vectors.
 
-    Angle between vectors `u` and `w` in radians. To obtain an oriented
-    angle the `up` vector has to be specified. If specified, `up` must not
-    be contained in the span of `u` and `w`.
+    Angle between vectors `u` and `v` in radians. To obtain an oriented
+    angle the `up` vector has to be specified. If specified, `up` must
+    not be contained in the span of `u` and `v`.
 
     Parameters
     ----------
-    u, w : ndarray, shape (3,)
+    u, v : ndarray, shape (3,)
         Vectors in 3-space.
     up : ndarray, shape (3,), optional
         Vector in 3-space.
@@ -52,20 +52,20 @@ def angle(u, w, up=None, degrees=False):
 
     Notes
     -----
-    If the `up` vector is defined the sign is determined via the right-hand
-    rule, i.e., it is positive if the cross product of `u` and `w` (in this
-    order) points in the same direction as `up`.
+    If the `up` vector is defined the sign of the angle is determined
+    via the right-hand rule, i.e., it is positive if the cross product
+    of `u` and `v` (in this order) points in the same direction as `up`.
     """
     # Yields a value between 0 and pi. We can define a sign by specifying
     # a third vector.
-    angle = math.acos(clamp(u.dot(w) / (norm(u) * norm(w)), -1.0, 1.0))
+    angle = math.acos(clamp(u.dot(v) / (norm(u) * norm(v)), -1.0, 1.0))
 
     if degrees:
         angle = math.degrees(angle)
 
-    # For linear dependent vectors v and w we either get 0.0 or pi. There
+    # For linear dependent vectors u and v we either get 0.0 or pi. There
     # is no point in introducing -pi!
-    if up is not None and up.dot(cross(u, w)) < 0.0:
+    if up is not None and up.dot(cross(u, v)) < 0.0:
         angle *= -1.0
 
     return angle
@@ -106,7 +106,7 @@ def clamp(x, lo, hi):
     x : float
         Value to clamp.
     lo, hi : float
-        Lower and upper bound.
+        Lower and upper bound. Assumes `lo` < `hi`.
 
     Returns
     -------
@@ -144,12 +144,12 @@ def cross(u, v):
 
     Parameters
     ----------
-    u, v : array_like, shape (3, )
+    u, v : array_like, shape (3,)
         Vectors in 3-space.
 
     Returns
     -------
-    ndarray, shape (3, )
+    ndarray, shape (3,)
         Cross product of vectors `u` and `v`.
 
     See Also
@@ -168,17 +168,17 @@ def cross(u, v):
 def cross_mat(u):
     r""" Cross product matrix.
 
-    Let A be the matrix returned by this method, then
-    ``A @ x == cross(u, x)``.
+    Let :math:`A` be the matrix returned by this method, then
+    :math:`A \mathbf{x} = \mathbf{u} \times \mathbf{x}`.
 
     Parameters
     ----------
-    u : array_like, shape (3, )
+    u : array_like, shape (3,)
         Vector in 3-space.
 
     Returns
     -------
-    ndarray, shape (3, 3)
+    A : ndarray, shape (3, 3)
         Cross product matrix (always skew symmetric).
     """
     # Unpack the array. This will also catch any problem with array shape.
@@ -196,7 +196,7 @@ def norm(u):
 
     Parameters
     ----------
-    u : ndarray, shape (n, )
+    u : ndarray, shape (n,)
         Vector with n components.
 
     Returns
@@ -216,7 +216,7 @@ def norm_sqrd(u):
 
     Parameters
     ----------
-    u : ndarray, shape (n, )
+    u : ndarray, shape (n,)
         Vector with n components.
 
     Returns
@@ -234,12 +234,12 @@ def unit(u):
 
     Parameters
     ----------
-    u : ndarray, shape (n, )
+    u : ndarray, shape (n,)
         Vector with n components.
 
     Returns
     -------
-    ndarray, shape (n, )
+    ndarray, shape (n,)
         Normalized copy of input vector. The input vector `u` remains
         unchanged.
 
@@ -249,7 +249,9 @@ def unit(u):
 
     Notes
     -----
-    No error checking (division by zero, etc) is performed.
+    No error checking (division by zero, etc) is performed. Trying to
+    normalize the zero vector results in a vector of :obj:`~numpy.nan`
+    values.
     """
     return u / norm(u)
 
@@ -257,22 +259,27 @@ def unit(u):
 def unit_inplace(u):
     r""" In-place vector normalization.
 
-    Convenience function to normalize a vector. Modifies the input
-    argument!
+    Convenience function to normalize a vector.
 
     Parameters
     ----------
-    u : ndarray, shape (n, )
+    u : ndarray, shape (n,)
         Vector with n components.
 
     Returns
     -------
-    ndarray, shape (n, )
+    ndarray, shape (n,)
         The normalized input vector (not a normalized copy).
+
+    Warnings
+    --------
+    This function modifies the input argument!
 
     Notes
     -----
-    No error checking (division by zero, etc) is performed.
+    No error checking (division by zero, etc) is performed. Trying to
+    normalize the zero vector results in a vector of :obj:`~numpy.nan`
+    values.
     """
     u /= norm(u)
     return u
@@ -352,19 +359,19 @@ def rotate(x, a, phi, sinphi=None):
     return x * cphi + a * a.dot(x) * (1.0 - cphi) + cross(a, x) * sphi
 
 
-def rotation(u, w, a):
+def rotation(u, v, a):
     r""" Rotation parameters.
 
     Computes the values :math:`\cos(\varphi)` and :math:`\sin(\varphi)`
     of the rotation about the axis :math:`\mathbf{a}` that aligns the
-    vectors :math:`\mathbf{u}^{\bot}` and :math:`\mathbf{w}^{\bot}`,
+    vectors :math:`\mathbf{u}^{\bot}` and :math:`\mathbf{v}^{\bot}`,
     see the notes for more details.
 
     Parameters
     ----------
-    u, w : ndarray, shape (3, )
+    u, v : ndarray, shape (3,)
         Vectors in 3-space.
-    a : ndarray, shape (3, )
+    a : ndarray, shape (3,)
         Unit length vector in 3-space.
 
     Returns
@@ -382,26 +389,26 @@ def rotation(u, w, a):
     -----
     Let :math:`\mathbf{x}^{\bot} = \mathbf{x} - \mathbf{a}\mathbf{a}^T
     \mathbf{x}`. In particular the vectors :math:`\mathbf{u}^{\bot}` and
-    :math:`\mathbf{w}^{\bot}` are perpendicular to :math:`\mathbf{a}`. If
-    :math:`\mathbf{u}` and :math:`\mathbf{w}` are two vectors of equal
+    :math:`\mathbf{v}^{\bot}` are perpendicular to :math:`\mathbf{a}`. If
+    :math:`\mathbf{u}` and :math:`\mathbf{v}` are two vectors of equal
     length and perpendicular to :math:`\mathbf{a}` then
 
-    >>> w = rotate(u, a, *rotation(u, w, a))
+    >>> v = rotate(u, a, *rotation(u, v, a))
     """
-    # Projection of v and w into the plane orthogonal to the axis a. The
-    # axis vector may not be in the span of v and w.
+    # Projection of u and v into the plane orthogonal to the axis a. The
+    # axis vector may not be in the span of u and v.
     u = u - a * a.dot(u)
-    w = w - a * a.dot(w)
+    v = v - a * a.dot(v)
 
     # Normalization necessary before computing inner products.
     u /= norm(u)
-    w /= norm(w)
+    v /= norm(v)
 
     # A vector parallel to the axis. Inner product with the axis determines
     # the sign of the angle.
-    n = cross(u, w)
+    n = cross(u, v)
 
-    cos_alpha = clamp(u.dot(w), -1.0, 1.0)
+    cos_alpha = clamp(u.dot(v), -1.0, 1.0)
     sin_alpha = norm(n)
 
     if n.dot(a) < 0.0:
