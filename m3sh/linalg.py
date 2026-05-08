@@ -29,18 +29,18 @@ import math
 import numpy as np
 
 
-def angle(v, w, up=None, degrees=False):
+def angle(u, w, up=None, degrees=False):
     r""" Angle between vectors.
 
-    Angle between vectors `v` and `w` in radians. To obtain an oriented
+    Angle between vectors `u` and `w` in radians. To obtain an oriented
     angle the `up` vector has to be specified. If specified, `up` must not
-    be contained in the span of `v` and `w`.
+    be contained in the span of `u` and `w`.
 
     Parameters
     ----------
-    v, w : ndarray, shape (3, )
+    u, w : ndarray, shape (3,)
         Vectors in 3-space.
-    up : ndarray, shape (3, ), optional
+    up : ndarray, shape (3,), optional
         Vector in 3-space.
     degrees : bool, optional
         Convert result from radians to degrees.
@@ -53,22 +53,47 @@ def angle(v, w, up=None, degrees=False):
     Notes
     -----
     If the `up` vector is defined the sign is determined via the right-hand
-    rule, i.e., it is positive if the cross product of `v` and `w` (in this
+    rule, i.e., it is positive if the cross product of `u` and `w` (in this
     order) points in the same direction as `up`.
     """
     # Yields a value between 0 and pi. We can define a sign by specifying
     # a third vector.
-    angle = math.acos(clamp(v.dot(w) / (norm(v) * norm(w)), -1.0, 1.0))
+    angle = math.acos(clamp(u.dot(w) / (norm(u) * norm(w)), -1.0, 1.0))
 
     if degrees:
         angle = math.degrees(angle)
 
     # For linear dependent vectors v and w we either get 0.0 or pi. There
     # is no point in introducing -pi!
-    if up is not None and up.dot(cross(v, w)) < 0.0:
+    if up is not None and up.dot(cross(u, w)) < 0.0:
         angle *= -1.0
 
     return angle
+
+
+def cotan(u, v):
+    r""" Cotangent between vectors.
+
+    Computes :math:`\operatorname{cotan}(\alpha) =
+    \mathbf{u}^T \mathbf{v} / \| \mathbf{u} \times \mathbf{v} \|` where
+    :math:`\alpha = \angle(\mathbf{u}, \mathbf{v})`.
+
+    Parameters
+    ----------
+    u, v : ndarray, shape (3,)
+        Vectors in 3-space.
+
+    Returns
+    -------
+    float
+        Cotangent of the angle between vectors `u` and `v`.
+
+    Notes
+    -----
+    Division by zero produces :obj:`~numpy.inf` or :obj:`~numpy.nan`
+    (depending on the value of the numerator).
+    """
+    return u.dot(v) / norm(cross(u, v))
 
 
 def clamp(x, lo, hi):
@@ -327,17 +352,17 @@ def rotate(x, a, phi, sinphi=None):
     return x * cphi + a * a.dot(x) * (1.0 - cphi) + cross(a, x) * sphi
 
 
-def rotation(v, w, a):
+def rotation(u, w, a):
     r""" Rotation parameters.
 
     Computes the values :math:`\cos(\varphi)` and :math:`\sin(\varphi)`
     of the rotation about the axis :math:`\mathbf{a}` that aligns the
-    vectors :math:`\mathbf{v}^{\bot}` and :math:`\mathbf{w}^{\bot}`,
+    vectors :math:`\mathbf{u}^{\bot}` and :math:`\mathbf{w}^{\bot}`,
     see the notes for more details.
 
     Parameters
     ----------
-    v, w : ndarray, shape (3, )
+    u, w : ndarray, shape (3, )
         Vectors in 3-space.
     a : ndarray, shape (3, )
         Unit length vector in 3-space.
@@ -356,27 +381,27 @@ def rotation(v, w, a):
     Notes
     -----
     Let :math:`\mathbf{x}^{\bot} = \mathbf{x} - \mathbf{a}\mathbf{a}^T
-    \mathbf{x}`. In particular the vectors :math:`\mathbf{v}^{\bot}` and
+    \mathbf{x}`. In particular the vectors :math:`\mathbf{u}^{\bot}` and
     :math:`\mathbf{w}^{\bot}` are perpendicular to :math:`\mathbf{a}`. If
-    :math:`\mathbf{v}` and :math:`\mathbf{w}` are two vectors of equal
+    :math:`\mathbf{u}` and :math:`\mathbf{w}` are two vectors of equal
     length and perpendicular to :math:`\mathbf{a}` then
 
-    >>> w = rotate(v, a, *rotation(v, w, a))
+    >>> w = rotate(u, a, *rotation(u, w, a))
     """
     # Projection of v and w into the plane orthogonal to the axis a. The
     # axis vector may not be in the span of v and w.
-    v = v - a * a.dot(v)
+    u = u - a * a.dot(u)
     w = w - a * a.dot(w)
 
     # Normalization necessary before computing inner products.
-    v /= norm(v)
+    u /= norm(u)
     w /= norm(w)
 
     # A vector parallel to the axis. Inner product with the axis determines
     # the sign of the angle.
-    n = cross(v, w)
+    n = cross(u, w)
 
-    cos_alpha = clamp(v.dot(w), -1.0, 1.0)
+    cos_alpha = clamp(u.dot(w), -1.0, 1.0)
     sin_alpha = norm(n)
 
     if n.dot(a) < 0.0:
