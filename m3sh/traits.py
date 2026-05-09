@@ -65,6 +65,7 @@ def axis_angles(mesh, normals=None):
     r""" Rotation parameters.
 
     Edge based rotation parameters that align neighboring face planes.
+    Along the boundary this rotation is the identity.
 
     Parameters
     ----------
@@ -78,8 +79,12 @@ def axis_angles(mesh, normals=None):
     -------
     angles : dict
         Dictionary that maps halfedges to rotation parameters that
-        rotate the normal of ``halfedge.face`` about the common edge to the
-        normal of ``halfedge.pair.face``.
+        rotate the normal of ``halfedge.face`` about the common edge to
+        the normal of ``halfedge.pair.face``.
+
+    See Also
+    --------
+    linalg.rotation, linalg.rotate
 
     Notes
     -----
@@ -108,26 +113,67 @@ def axis_angles(mesh, normals=None):
 
     return axis_angles
 
-# This function should not be here! It is not mesh related at all. There
-# is an alternative aabb() function in the bounds module -> t3ch package.
-def _bounds(points):
-    r""" Bounding box vertices.
 
-    Corner vertices of the axis-aligned bounding box.
+def cotan_weight(halfedge, boundary=np.nan):
+    """ Cotangent weight.
+
+    Compute the cotangent of the angle opposite of `halfedge`.
 
     Parameters
     ----------
-    points : array_like, shape (n, k)
-        Coordinates of n points in k dimensions, one point per row.
+    halfedge : Halfedge
+        A halfedge instance of a triangle mesh.
+    boundary : float, optional
+        Default value for boundary edges. A :obj:`~numpy.nan` value
+        typically signals missing data. For numerical computations the
+        value 0.0 can be useful to skip missing data without raising
+        an error.
 
     Returns
     -------
-    a : ndarray
-        Holds the minimum value for each dimension.
-    b : ndarray
-        Holds the maximum value for each dimension.
+    float
+        Cotangent value. For degenerate triangles this value can be
+        :obj:`~numpy.inf` or :obj:`~numpy.nan` depending on the type of
+        degeneracy.
     """
-    return np.min(points, axis=0), np.max(points, axis=0)
+    if halfedge.boundary:
+        return boundary
+    else:
+        # Dividing 0/0 results in nan. Happens when two vertices coincide.
+        # Otherwise division by zero results in inf, i.e., when a vertex
+        # is contained in an edge but not one of the endpoints.
+        return linalg.cotan(halfedge.prev.vector,
+                            halfedge.next.pair.vector)
+
+
+def cotan_weights(mesh, boundary=np.nan):
+    """ Cotangent weights.
+
+    Compute cotangent weights for all halfedges of `mesh`.
+
+    Parameters
+    ----------
+    mesh : Mesh
+        A triangle mesh instance.
+    boundary : float, optional
+        Default value for boundary edges.
+
+    Returns
+    -------
+    weights : dict
+        A dictionary that maps halfedge instances to their cotangent
+        weight.
+
+    See Also
+    --------
+    cotan_weight
+
+    Notes
+    -----
+    Weights are assigned to halfedges! Add the weights of halfedge pairs
+    to obtain edge weights (as in the definition of the cotan-Laplacian).
+    """
+    return {h: cotan_weight(h, boundary) for h in mesh.halfedges.values()}
 
 
 def vertex_normal(vertex):
@@ -229,19 +275,23 @@ def vertex_normals(mesh, broadcast=False):
 def mean_curvature_vector(vertex):
     """
     """
-    mcv = np.zeros_like(vertex)
+    mcv = np.zeros_like(vertex.point)
 
     for h in vertex._hiter():
         mcv += h.pair.vector * (
             cotan_weight(h, 0.0) + cotan_weight(h.pair, 0.0))
 
+    mcv /= 2.0 * vertex_area(vertex)
+
     return mcv
 
 
-def mean_curvature_vectors(mesh):
+def mean_curvature_vectors(mesh, weights=None):
     """
     """
-    weights = cotan_weights(mesh, 0.0)
+    # When precomputing weights, boundary halfedges may not be assigend a
+    # NaN value, use 0.0 instead!
+    weights = cotan_weights(mesh, 0.0) if weights is None else weights
     mcvs = np.zeros_like(mesh.points)
 
     for v in mesh._viter():
@@ -253,44 +303,59 @@ def mean_curvature_vectors(mesh):
     return mcvs
 
 
-def vertex_mcvs(mesh):
-    """ Mean curvature vectors.
+# def vertex_mcvs(mesh):
+#     """ Mean curvature vectors.
 
-    The mean curvature vector field represents the gradient of surface
-    area. In particular, moving a vertex along the negative mean curvature
-    vector will locally decrease surface area.
+#     The mean curvature vector field represents the gradient of surface
+#     area. In particular, moving a vertex along the negative mean curvature
+#     vector will locally decrease surface area.
 
-    Parameters
-    ----------
-    mesh : Mesh
-        A triangle mesh instance.
+#     Parameters
+#     ----------
+#     mesh : Mesh
+#         A triangle mesh instance.
 
-    Returns
-    -------
-    ndarray
-    """
-    weights = cotan_weights(mesh, 0.0)
-    mcvs = np.zeros_like(mesh.points)
+#     Returns
+#     -------
+#     ndarray
+#     """
+#     weights = cotan_weights(mesh, 0.0)
+#     mcvs = np.zeros_like(mesh.points)
 
-    for v in mesh._viter():
-        for h in v._hiter():
-            mcvs[v] += h.pair.vector * (weights[h] + weights[h.pair])
+#     for v in mesh._viter():
+#         for h in v._hiter():
+#             mcvs[v] += h.pair.vector * (weights[h] + weights[h.pair])
 
-        mcvs[v] /= 2.0 * vertex_area_mixed(v)
+#         mcvs[v] /= 2.0 * vertex_area_mixed(v)
 
-    return mcvs
-
-
-def vertex_gauss_curvature(vertex):
-    """
-    """
-    pass
+#     return mcvs
 
 
-def vertex_principal_curvatures(vertex):
+# Should the curvature at boundary vertices be estimated by interpolation
+# of corresponding values at adjacent interior vertices?
+def gauss_curvature(vertex, area=1.0):
     """
     """
-    pass
+    if vertex.deleted or vertex.isolated:
+        return np.nan
+
+    return (2.0 * np.pi - vertex_angle(vertex)) / vertex_area(vertex)
+
+
+def gauss_curvatures(mesh):
+    """
+    """
+    return np.array([gauss_curvature(v) for v in mesh.vertices])
+
+
+def principal_curvatures(vertex):
+    """
+    """
+    H = 0.5 * linalg.norm(mean_curvature_vector(vertex))
+    K = gauss_curvature(vertex)
+    D = math.sqrt(max(H*H - K, 0.0))
+
+    return H + D, H - D
 
 
 def vertex_angle(vertex):
@@ -324,29 +389,6 @@ def vertex_angle(vertex):
             angle += linalg.angle(h.vector, h.prev.pair.vector)
 
     return angle
-
-# Remove this function -> too simple.
-def _vertex_area(vertex):
-    """ Vertex area.
-
-    One third of the area of all faces incident to `vertex`. The most simple
-    choice of vertex area when doing spatial averages.
-
-    Parameters
-    ----------
-    vertex : Vertex
-        Vertex of a triangle mesh.
-
-    Returns
-    -------
-    area : float
-        Area assigned to `vertex`.
-
-    See Also
-    --------
-    vertex_area_voronoi, vertex_area_mixed
-    """
-    return sum(face_area(f) for f in vertex._fiter()) / 3.0
 
 
 def vertex_area_mixed(vertex):
@@ -404,7 +446,7 @@ def vertex_area_mixed(vertex):
 def vertex_area(vertex):
     """ Mixed vertex area.
 
-    Mixed area assigned to `vertex` as defined in [1]_.
+    The *mixed area* assigned to `vertex` as defined in [1]_.
 
     Parameters
     ----------
@@ -442,6 +484,10 @@ def vertex_area(vertex):
             else:
                 area += 0.25 * face_area(h.face)
 
+    # Remove test and assertion later!
+    assert abs(area - vertex_area_mixed(vertex)) < 1e-12
+    # print(f"{abs(area - vertex_area_mixed(vertex)):.6e}")
+
     return area
 
 
@@ -449,56 +495,6 @@ def vertex_areas(mesh, cotan_weights=None):
     """
     """
     pass
-
-# Remove this function -> equvialent to vertex_area for non-obtuse
-# triangles. Useless (because wrong) for obtuse triangles.
-def _vertex_area_voronoi(vertex):
-    """ Voronoi vertex area.
-
-    Voronoi area assigned to `vertex`, see [1]_. Only valid if none of
-    the incident triangles is obtuse!
-
-    Parameters
-    ----------
-    vertex : Vertex
-        Vertex of a triangle mesh. The condition on non-obtuse incident
-        triangles is not checked. Expect bogus results in such cases.
-
-    Returns
-    -------
-    area : float
-        Area assigned to `vertex`.
-
-    See Also
-    --------
-    vertex_area_mixed : Handle non-obtuse triangles gracefully.
-
-    References
-    ----------
-    .. [1] M. Meyer et al.: *Discrete differential-geometry operators for
-           triangulated 2-manifolds*. In: HC. Hege, K. Polthier (eds)
-           *Visualization and Mathematics III*, 2003.
-    """
-    cotan = lambda x: 1.0 / math.tan(x)
-
-    a = vertex.point
-    area = 0.0
-
-    for h in vertex._hiter():
-        if h.boundary:
-            continue
-
-        b = h.target.point
-        c = h.next.target.point
-
-        angle_b = linalg.angle(c - b, a - b)
-        angle_c = linalg.angle(a - c, b - c)
-
-        area += 0.125 * (
-            linalg.norm_sqrd(b - a) * cotan(angle_c)
-          + linalg.norm_sqrd(c - a) * cotan(angle_b))
-
-    return area
 
 
 def edge_stats(item):
@@ -519,63 +515,6 @@ def edge_stats(item):
     """
     len = [linalg.norm(h.vector) for h in item._eiter()]
     return min(len), max(len), stats.fmean(len), stats.median(len)
-
-
-def cotan_weight(halfedge, boundary=np.nan):
-    """ Cotangent weight.
-
-    Compute the cotangent of the angle opposite of `halfedge`.
-
-    Parameters
-    ----------
-    halfedge : Halfedge
-        A halfedge instance of a triangle mesh.
-    boundary : float, optional
-        Default value for boundary edges. A :obj:`~numpy.nan` value
-        typically signals missing data. For numerical computations the
-        default value 0.0 can be useful to skip missing data without
-        raising an error.
-
-    Returns
-    -------
-    float
-        Cotangent value. For degenerate triangles this value can be
-        :obj:`~numpy.inf` or :obj:`~numpy.nan` depending on the type of
-        degeneracy.
-    """
-    if halfedge.boundary:
-        return boundary
-    else:
-        # Dividing 0/0 results in nan. Happens when two vertices coincide.
-        # Otherwise division by zero results in inf, i.e., when a vertex
-        # contained in an edge but not one of the endpoints.
-        return linalg.cotan(halfedge.prev.vector,
-                            halfedge.next.pair.vector)
-
-
-def cotan_weights(mesh, boundary=np.nan):
-    """ Cotangent weights.
-
-    Compute cotangent weights for all halfedges of `mesh`.
-
-    Parameters
-    ----------
-    mesh : Mesh
-        A triangle mesh instance.
-    boundary : float, optional
-        Default value for boundary edges.
-
-    Returns
-    -------
-    weights : dict
-        A dictionary that maps halfedge instances to their cotangent
-        weight.
-
-    See Also
-    --------
-    cotan_weight
-    """
-    return {h: cotan_weight(h, boundary) for h in mesh.halfedges.values()}
 
 
 def _halfedge_normal(halfedge):

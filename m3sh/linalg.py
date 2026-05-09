@@ -93,7 +93,14 @@ def cotan(u, v):
     Division by zero produces :obj:`~numpy.inf` or :obj:`~numpy.nan`
     (depending on the value of the numerator).
     """
-    return u.dot(v) / norm(cross(u, v))
+    # Remove this test and the assertion later!
+    cot_1 = 1.0 / math.tan(angle(u, v))
+    cot_2 = u.dot(v) / norm(cross(u, v))
+
+    assert abs(cot_1 - cot_2) < 1e-12
+    # print(f"{abs(cot_1 - cot_2):.6e}")
+
+    return cot_2
 
 
 def clamp(x, lo, hi):
