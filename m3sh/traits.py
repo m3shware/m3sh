@@ -132,7 +132,8 @@ def cotan_weight(halfedge, boundary=np.nan):
     Returns
     -------
     float
-        Cotangent value. For degenerate triangles this value can be
+        Cotangent value. This value is negative if the opposite angle
+        is obtuse. For degenerate triangles this value can be
         :obj:`~numpy.inf` or :obj:`~numpy.nan` depending on the type of
         degeneracy.
     """
@@ -160,7 +161,7 @@ def cotan_weights(mesh, boundary=np.nan):
 
     Returns
     -------
-    weights : dict
+    weights : dict[Halfedge, float]
         A dictionary that maps halfedge instances to their cotangent
         weight.
 
@@ -173,6 +174,8 @@ def cotan_weights(mesh, boundary=np.nan):
     Weights are assigned to halfedges! Add the weights of halfedge pairs
     to obtain edge weights (as in the definition of the cotan-Laplacian).
     """
+    # The halfedge dictionary of a mesh never contains deleted halfedges.
+    # For halfedges the exceptional case is being on the boundary.
     return {h: cotan_weight(h, boundary) for h in mesh.halfedges.values()}
 
 
@@ -189,7 +192,7 @@ def vertex_normal(vertex):
 
     Returns
     -------
-    normal : ndarray, shape (3, )
+    normal : ndarray, shape (3,)
         Unit length normal vector. Deleted and isolated vertices are
         assigned a vector of :obj:`~numpy.nan` values.
 
@@ -272,9 +275,28 @@ def vertex_normals(mesh, broadcast=False):
         return np.array([vertex_normal(v) for v in mesh.vertices])
 
 
-def mean_curvature_vector(vertex):
+def mean_curvature_vector(vertex, isolated=np.nan):
+    """ Mean curvature vector.
+
+    Parameters
+    ----------
+    vertex : Vertex
+        Vertex of a triangle mesh.
+    isolated : float, optional
+        Default value for isolated vertices.
+
+    Returns
+    -------
+    vector : ndarray
+        The mean curvature vector assigned to `vertex`. For deleted
+        vertices this array holds :obj:`~numpy.nan` entries.
     """
-    """
+    if vertex.deleted:
+        return np.full_like(vertex.point, np.nan)
+
+    if vertex.isolated:
+        return np.full_like(vertex.point, isolated)
+
     mcv = np.zeros_like(vertex.point)
 
     for h in vertex._hiter():
@@ -286,83 +308,48 @@ def mean_curvature_vector(vertex):
     return mcv
 
 
-def mean_curvature_vectors(mesh, weights=None):
+def mean_curvature_vectors(mesh, weights=None, isolated=np.nan):
+    """ Mean curvature vectors.
+
+    Parameters
+    ----------
+    mesh : Mesh
+        A triangle mesh instance.
+    weights : dict[Halfedge, float], optional
+        A dictionary with precomputed cotangent weights. When using
+        precomputed weights, the weight assigned to boundary
+        halfedges has to be zero!
+    isolated : float, optional
+        Default value for isolated vertices.
+
+    Returns
+    -------
+    vectors : ndarray, shape (n, 3)
+        Array of mean curvature vectors where n denotes the number of
+        vertices of `mesh` (including vertices marked as deleted).
+
+    See Also
+    --------
+    mean_curvature_vector
     """
-    """
-    # When precomputing weights, boundary halfedges may not be assigend a
-    # NaN value, use 0.0 instead!
-    weights = cotan_weights(mesh, 0.0) if weights is None else weights
-    mcvs = np.zeros_like(mesh.points)
+    # When precomputing weights, boundary halfedges should be assigned
+    # zero weights!
+    w = cotan_weights(mesh, 0.0) if weights is None else weights
+    a = vertex_areas(mesh, w)
+
+    mcvs = np.full_like(mesh.points, np.nan)
 
     for v in mesh._viter():
-        for h in v._hiter():
-            mcvs[v] += h.pair.vector * (weights[h] + weights[h.pair])
-
-        mcvs[v] /= 2.0 * vertex_area(v)
+        mcvs[v] = sum(h.pair.vector * (w[h] + w[h.pair]) for h in v._hiter())
+        mcvs[v] /= 2.0 * a[v]
 
     return mcvs
 
 
-# def vertex_mcvs(mesh):
-#     """ Mean curvature vectors.
+def gauss_curvature(vertex):
+    """ Gaussian curvature estimate.
 
-#     The mean curvature vector field represents the gradient of surface
-#     area. In particular, moving a vertex along the negative mean curvature
-#     vector will locally decrease surface area.
-
-#     Parameters
-#     ----------
-#     mesh : Mesh
-#         A triangle mesh instance.
-
-#     Returns
-#     -------
-#     ndarray
-#     """
-#     weights = cotan_weights(mesh, 0.0)
-#     mcvs = np.zeros_like(mesh.points)
-
-#     for v in mesh._viter():
-#         for h in v._hiter():
-#             mcvs[v] += h.pair.vector * (weights[h] + weights[h.pair])
-
-#         mcvs[v] /= 2.0 * vertex_area_mixed(v)
-
-#     return mcvs
-
-
-# Should the curvature at boundary vertices be estimated by interpolation
-# of corresponding values at adjacent interior vertices?
-def gauss_curvature(vertex, area=1.0):
-    """
-    """
-    if vertex.deleted or vertex.isolated:
-        return np.nan
-
-    return (2.0 * np.pi - vertex_angle(vertex)) / vertex_area(vertex)
-
-
-def gauss_curvatures(mesh):
-    """
-    """
-    return np.array([gauss_curvature(v) for v in mesh.vertices])
-
-
-def principal_curvatures(vertex):
-    """
-    """
-    H = 0.5 * linalg.norm(mean_curvature_vector(vertex))
-    K = gauss_curvature(vertex)
-    D = math.sqrt(max(H*H - K, 0.0))
-
-    return H + D, H - D
-
-
-def vertex_angle(vertex):
-    r""" Total angle around a vertex.
-
-    Compute :math:`\sum_{i=1}^k \alpha_i` where :math:`\alpha_i` denote
-    the angles incident to `vertex`.
+    Point-wise Gaussian curvature estimate.
 
     Parameters
     ----------
@@ -372,7 +359,82 @@ def vertex_angle(vertex):
     Returns
     -------
     float
+        Gaussian curvature estimate. Isolated vertices and vertices
+        marked as deleted are assigned :obj:`~numpy.nan`.
+
+    """
+    # Should curvature at boundary vertices be estimated by interpolation
+    # of values at adjacent interior vertices?
+    if vertex.deleted or vertex.isolated:
+        return np.nan
+
+    return (2.0 * np.pi - vertex_angle(vertex)) / vertex_area(vertex)
+
+
+def gauss_curvatures(mesh, weights=None):
+    """ Gaussian curvate estimate.
+
+    Point-wise Gaussian curvature estimate for all vertices of `mesh`.
+
+    Parameters
+    ----------
+    mesh : Mesh
+        A triangle mesh instance.
+    weights : dict[Halfedge, float], optional
+        A dictionary of precomputed cotangent weights.
+
+    Returns
+    -------
+    ndarray
+        An array of length n, where n denotes the number of vertices
+        of `mesh`, holding Gaussian curvature estimates.
+    """
+    w = cotan_weights(mesh) if weights is None else weights
+    a = vertex_areas(mesh, w)
+
+    return np.array([(2.0 * np.pi - vertex_angle(v)) / a[v]
+                     for v in mesh.vertices])
+
+
+def principal_curvature(vertex):
+    """ Principal curvature estimate.
+
+    Parameters
+    ----------
+    vertex : Vertex
+        Vertex of a triangle mesh.
+    """
+    if vertex.deleted or vertex.isolated:
+        return np.nan, np.nan
+
+    H = 0.5 * linalg.norm(mean_curvature_vector(vertex))
+    K = gauss_curvature(vertex)
+    D = math.sqrt(max(H*H - K, 0.0))
+
+    return H + D, H - D
+
+
+def vertex_angle(vertex, isolated=np.nan):
+    r""" Total angle around a vertex.
+
+    Compute :math:`\sum_{i=1}^k \alpha_i` where :math:`\alpha_i` denote
+    the angles incident to `vertex`.
+
+    Parameters
+    ----------
+    vertex : Vertex
+        Vertex of a triangle mesh.
+    isolated : float, optional
+        Default angle for isolated vertices.
+
+    Returns
+    -------
+    float
         Sum of incident angles in radians.
+
+    See Also
+    --------
+    gauss_curvature
 
     Notes
     -----
@@ -382,6 +444,12 @@ def vertex_angle(vertex):
 
     >>> K = (2.0 * pi - vertex_angle(v)) / vertex_area(v)
     """
+    if vertex.deleted:
+        return np.nan
+
+    if vertex.isolated:
+        return isolated
+
     angle = 0.0
 
     for h in vertex._hiter():
@@ -443,20 +511,24 @@ def vertex_area_mixed(vertex):
     return area
 
 
-def vertex_area(vertex):
+def vertex_area(vertex, isolated=np.nan):
     """ Mixed vertex area.
 
-    The *mixed area* assigned to `vertex` as defined in [1]_.
+    The mixed area assigned to `vertex` as defined in [1]_.
 
     Parameters
     ----------
     vertex : Vertex
         Vertex of a triangle mesh.
+    isolated : float, optional
+        Default area for isolated vertices.
 
     Returns
     -------
     area : float
-        Area assigned to `vertex`.
+        Area assigned to `vertex`. Vertices marked as deleted are
+        assigned :obj:`~numpy.nan` as area. Isolated vertices are
+        assigned `default`.
 
     References
     ----------
@@ -464,17 +536,26 @@ def vertex_area(vertex):
            triangulated 2-manifolds*. In: HC. Hege, K. Polthier (eds)
            *Visualization and Mathematics III*, 2003.
     """
+    if vertex.deleted:
+        return np.nan
+
+    if vertex.isolated:
+        return isolated
+
     area = 0.0
 
     for h in vertex._hiter():
         if not h.boundary:
+            # The default value for boundary edges does actually not
+            # matter: if h is not a boundary halfedge, no halfedge in
+            # the same cycle can be a boundary halfedge!
             cotan_c = cotan_weight(h, 0.0)
             cotan_a = cotan_weight(h.next, 0.0)
             cotan_b = cotan_weight(h.prev, 0.0)
 
             if cotan_a > 0.0 and cotan_b > 0.0 and cotan_c > 0.0:
-                # All interior angles of the triangle are smaller than pi/2.
-                # Voronoi area is contained inside the triangle.
+                # All interior angles of the triangle are smaller than
+                # pi/2. Voronoi area is contained inside the triangle.
                 area += 0.125 * (
                     linalg.norm_sqrd(h.vector) * cotan_c
                     + linalg.norm_sqrd(h.prev.vector) * cotan_b)
@@ -491,10 +572,50 @@ def vertex_area(vertex):
     return area
 
 
-def vertex_areas(mesh, cotan_weights=None):
+def vertex_areas(mesh, weights=None, isolated=np.nan):
+    """ Mixed vertex areas.
+
+    Parameters
+    ----------
+    mesh : Mesh
+        A triangle mesh instance.
+    weights : dict[Halfedge, float], optional
+        A dictionary of precomputed cotangent weights.
+    isolated : float, optional
+        Default area for isolated vertices.
+
+    Returns
+    -------
+    area : ndarray
+        An array of length n, where n denotes the number of vertices
+        of `mesh` (including vertices marked as deleted).
+
+    See Also
+    --------
+    vertex_area
     """
-    """
-    pass
+    w = cotan_weights(mesh, 0.0) if weights is None else weights
+    a = np.full(len(mesh.vertices), np.nan)
+
+    for v in mesh._viter():
+        a[v] = isolated if v.isolated else 0.0
+
+        for h in v._hiter():
+            if not h.boundary:
+                cotan_c = w[h]
+                cotan_a = w[h.next]
+                cotan_b = w[h.prev]
+
+                if cotan_a > 0.0 and cotan_b > 0.0 and cotan_c > 0.0:
+                    a[v] += 0.125 * (
+                        linalg.norm_sqrd(h.vector) * cotan_c
+                        + linalg.norm_sqrd(h.prev.vector) * cotan_b)
+                elif cotan_a <= 0.0:
+                    a[v] += 0.5 * face_area(h.face)
+                else:
+                    a[v] += 0.25 * face_area(h.face)
+
+    return a
 
 
 def edge_stats(item):
@@ -624,6 +745,126 @@ def _halfedge_rotation(self):
     return cos_alpha, sin_alpha
 
 
+def face_area(face):
+    """ Area of triangular face.
+
+    Compute the area of a triangle. Faces marked as deleted are assigned
+    :obj:`~numpy.nan` as area.
+
+    Parameters
+    ----------
+    face : Face
+        A triangular face.
+
+    Raises
+    ------
+    NotImplementedError
+        For non-triangular faces.
+
+    Returns
+    -------
+    area : float
+        Face area.
+
+    Notes
+    -----
+    For non-triangular faces, an ad-hoc fan-like triangulation would still
+    give a wrong result for a non-planar and/or non-convex face.
+
+    Examples
+    --------
+    Use a list comprehension to compute the area for all faces of a mesh:
+
+    >>> areas = [face_area(f) for f in mesh.faces]
+
+
+    """
+    if face.deleted:
+        return np.nan
+
+    if len(face) == 3:
+        halfedge = face.halfedge
+        vector = linalg.cross(halfedge.vector, halfedge.next.vector)
+    else:
+        raise NotImplementedError('triangular face required')
+
+    return 0.5 * linalg.norm(vector)
+
+
+# def curvature(mesh, normals=None):
+#     """ Face based curvature estimation.
+
+#     Returns
+#     -------
+#     kappa : ndarray, shape (2,)
+#         Principal curvature values.
+#     vec : ndarray, shape (2, 3)
+#         Corresponding principal carvature directions.
+#     """
+
+#     def shape_operator(face, normals):
+#         # The local positively oriented orthonormal bases of the tangent
+#         # space, i.e., the plane of the triangle. The shape operator with
+#         # respect to such a bases has a symmetric matrix.
+#         x = linalg.unit_inplace(face.halfedge.vector)
+#         y = face.halfedge.prev.pair.vector
+#         y = linalg.unit_inplace(y - x.dot(y) * x)
+
+#         # The sequence of points and normals has to correspond by index!
+#         points = [v.point for v in face]
+
+#         lhs = np.zeros((6, 3))
+#         rhs = np.zeros(6)
+
+#         for i in range(3):
+#             j = (i + 1) % 3
+
+#             v = points[j] - points[i]
+#             v = (x.dot(v), y.dot(v))
+
+#             lhs[2*i] = [v[0], v[1], 0.0]
+#             lhs[2*i + 1] = [0.0, v[0], v[1]]
+
+#             n = normals[j] - normals[i]
+#             n = (x.dot(n), y.dot(n))
+
+#             rhs[2*i] = n[0]
+#             rhs[2*i + 1] = n[1]
+
+#         a, b, c = np.linalg.lstsq(lhs, rhs)[0]
+#         w = np.array([[a, b], [b, c]])
+#         k, v = np.linalg.eigh(w)
+
+#         return k, v.T @ [x, y]
+
+#     if normals is None:
+#         normals = face_normals(mesh)
+
+#     kappa = np.full((len(mesh.faces), 2), np.nan)
+#     vec = np.full((len(mesh.faces), 2, 3), np.nan)
+
+#     mean = np.full(len(mesh.faces), np.nan)
+#     gauss = np.full(len(mesh.faces), np.nan)
+
+#     for face in mesh.faces:
+#         k, v = shape_operator(face, [normals[v] for v in face])
+
+#         kappa[face] = k
+#         vec[face] = v
+
+#         mean[face] = 0.5 * (k[0] + k[1])
+#         gauss[face] = k[0] * k[1]
+
+#     H = np.full(len(mesh.vertices), np.nan)
+#     K = np.full(len(mesh.vertices), np.nan)
+
+#     for v in mesh.vertices:
+#         H[v] = sum(mean[f] for f in v._fiter()) / v.degree
+#         K[v] = sum(gauss[f] for f in v._fiter()) / v.degree
+
+#     return H
+
+
 def face_normal(face):
     """ Face normal vector.
 
@@ -637,10 +878,10 @@ def face_normal(face):
 
     Returns
     -------
-    normal : ndarray, shape (3, )
+    normal : ndarray, shape (3,)
         Unit length normal vector. For triangular faces this vector
-        is consistent with the face orientation. Deleted faces are
-        assigned a vector of :obj:`~numpy.nan` values.
+        is consistent with the face orientation. Faces marked as deleted
+        are assigned a vector of :obj:`~numpy.nan` values.
 
     See Also
     --------
@@ -704,39 +945,11 @@ def face_normals(mesh):
     """
     # Note that a mesh itself is iterable. In the presence of deleted faces
     # the lists [f for f in mesh] and [f for f in mesh.faces] are different!
+    # The first list omits deleted faces.
     return np.array([face_normal(f) for f in mesh.faces])
 
 
-def face_area(face):
-    """ Area of triangular face.
 
-    Parameters
-    ----------
-    face : Face
-        A triangular face.
-
-    Raises
-    ------
-    NotImplementedError
-        For non-triangular faces.
-
-    Returns
-    -------
-    area : float
-        Face area.
-
-    Notes
-    -----
-    For faces of higher valence, an ad-hoc fan-like triangulation of the face
-    would still give a wrong result for a non-planar and/or non-convex face.
-    """
-    if len(face) == 3:
-        halfedge = face.halfedge
-        vector = linalg.cross(halfedge.vector, halfedge.next.vector)
-    else:
-        raise NotImplementedError('triangular face required')
-
-    return 0.5 * linalg.norm(vector)
 
 
 def planarity_score(face, denom=None):
