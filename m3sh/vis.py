@@ -872,6 +872,19 @@ def quiver(points, vectors, size=1.0, radius=0.025, resolution=6,
     return vf
 
 
+def _quiver(points, vectors, color=colors.green_pale):
+    """
+    """
+    points = np.atleast_2d(points).reshape(-1, 3, copy=False)
+    vectors = np.atleast_2d(vectors).reshape(-1, 3, copy=False)
+
+    pl = PolyLine(points, vectors)
+    pl.color = color
+
+    add(pl)
+    return pl
+
+
 def _generic_lut(range=(0.0, 1.0), gradient='default', logscale=False,
                  size=128, below=None, above=None, nan=None):
     """ Generate lookup table.
@@ -5369,6 +5382,46 @@ class PolyGraph(PolyData):
 
         # mapper = self._vtk_prop.GetMapper()
         # mapper.SetResolveCoincidentTopologyToPolygonOffset()
+
+    def edges(self, style=None, width=None):
+        """ Edge display.
+
+        Set visual properties of edges.
+
+        Parameters
+        ----------
+        style : str, optional
+            Either 'lines' or 'tubes'.
+        width : int, optional
+            Edge width in pixels.
+
+        Note
+        ----
+        Parameters with a :obj:`None` value do not affect the corresponding
+        edge display property.
+        """
+        if style == 'lines':
+            self._vtk_prop.GetProperty().SetRenderLinesAsTubes(False)
+        elif style == 'tubes':
+            self._vtk_prop.GetProperty().SetRenderLinesAsTubes(True)
+
+        if width is not None:
+            self._vtk_prop.GetProperty().SetLineWidth(width)
+
+
+class PolyLine(PolyData):
+    """
+    """
+
+    def __init__(self, points, vectors):
+        n = len(points)
+        edges = ((i, i+n) for i in range(n))
+
+        origin = points
+        target = points + vectors
+        points = np.append(origin, target, axis=0)
+
+        super().__init__(points, lines=edges)
 
     def edges(self, style=None, width=None):
         """ Edge display.
