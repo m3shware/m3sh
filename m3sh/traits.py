@@ -21,7 +21,7 @@
 """ Geometric mesh traits.
 
 Convenience functions to compute common and often used geometric mesh
-traits like vertex normals and face normals.
+traits like normals and curvature.
 
 References
 ----------
@@ -57,6 +57,7 @@ import math
 import statistics as stats
 
 import numpy as np
+import scipy as sp
 
 import m3sh.linalg as linalg
 
@@ -84,7 +85,7 @@ def axis_angles(mesh, normals=None):
 
     See Also
     --------
-    linalg.rotation, linalg.rotate
+    :func:`~m3sh.linalg.rotation`, :func:`~m3sh.linalg.rotate`
 
     Notes
     -----
@@ -111,10 +112,17 @@ def axis_angles(mesh, normals=None):
         axis_angles[h] = (axis, cos_phi, sin_phi)
         axis_angles[h.pair] = (-axis, cos_phi, sin_phi)
 
+        # Validate the connection with the dihedral angle. Remove this
+        # test later!
+        angle = dihedral_angle(h)
+
+        assert cos_phi == math.cos(angle)
+        assert sin_phi == math.sin(angle)
+
     return axis_angles
 
 
-def cotan_weight(halfedge, boundary=np.nan):
+def cotan_weight(halfedge, boundary=np.nan, clamp=False):
     """ Cotangent weight.
 
     Compute the cotangent of the angle opposite of `halfedge`.
@@ -128,6 +136,7 @@ def cotan_weight(halfedge, boundary=np.nan):
         typically signals missing data. For numerical computations the
         value 0.0 can be useful to skip missing data without raising
         an error.
+    clamp : bool, optional
 
     Returns
     -------
@@ -140,14 +149,19 @@ def cotan_weight(halfedge, boundary=np.nan):
     if halfedge.boundary:
         return boundary
     else:
-        # Dividing 0/0 results in nan. Happens when two vertices coincide.
+        # Dividing 0/0 results in NaN. Happens when two vertices coincide.
         # Otherwise division by zero results in inf, i.e., when a vertex
         # is contained in an edge but not one of the endpoints.
-        return linalg.cotan(halfedge.prev.vector,
-                            halfedge.next.pair.vector)
+        cotan = linalg.cotan(halfedge.prev.vector,
+                             halfedge.next.pair.vector)
+
+        if clamp:
+            return max(cotan, 0.0)
+
+        return cotan
 
 
-def cotan_weights(mesh, boundary=np.nan):
+def cotan_weights(mesh, boundary=np.nan, clamp=False):
     """ Cotangent weights.
 
     Compute cotangent weights for all halfedges of `mesh`.
@@ -158,6 +172,7 @@ def cotan_weights(mesh, boundary=np.nan):
         A triangle mesh instance.
     boundary : float, optional
         Default value for boundary edges.
+    clamp : bool, optional
 
     Returns
     -------
@@ -176,7 +191,46 @@ def cotan_weights(mesh, boundary=np.nan):
     """
     # The halfedge dictionary of a mesh never contains deleted halfedges.
     # For halfedges the exceptional case is being on the boundary.
-    return {h: cotan_weight(h, boundary) for h in mesh.halfedges.values()}
+    return {h: cotan_weight(h, boundary, clamp)
+            for h in mesh.halfedges.values()}
+
+
+def dihedral_angle(halfedge, degrees=False):
+    """ Dihedral angle.
+
+    Dihedral angle along `halfedge` in radians, i.e., the angle between
+    the normals of adjacent faces. The dihedral angle has a sign:
+    assuming the outward normal field it is positive for a convex edge
+    and negative for a concave edge.
+
+    Parameters
+    ----------
+    halfedge : Halfedge
+        Halfedge of a triangle mesh.
+    degrees : bool, optional
+        Convert result from radians to degrees.
+
+    Returns
+    -------
+    angle : float
+        Angle in degrees or radians. If `halfedge` or its pair is a
+        boundary halfedge the corresponding dihedral angle does not
+        exists and :obj:`~numpy.nan` is returned.
+    """
+    if halfedge.boundary or halfedge.pair.boundary:
+        return np.nan
+
+    # Computing cos() and sin() of this angle should be the same as the
+    # values returned by linalg.rotation().
+    return linalg.angle(face_normal(halfedge.face),
+                        face_normal(halfedge.pair.face),
+                        up=halfedge.vector, degrees=degrees)
+
+
+def dihedral_angles(mesh, normals=None, degrees=False):
+    """
+    """
+    pass
 
 
 def vertex_normal(vertex):
@@ -208,10 +262,7 @@ def vertex_normal(vertex):
     """
     # Accessing the point property of a deleted vertex does not trigger
     # an assertion error.
-    if vertex.deleted:
-        return np.full_like(vertex.point, np.nan)
-
-    if vertex.isolated:
+    if vertex.deleted or vertex.isolated:
         return np.full_like(vertex.point, np.nan)
 
     normal = np.zeros_like(vertex.point)
@@ -275,27 +326,30 @@ def vertex_normals(mesh, broadcast=False):
         return np.array([vertex_normal(v) for v in mesh.vertices])
 
 
-def mean_curvature_vector(vertex, isolated=np.nan):
-    """ Mean curvature vector.
+def mean_curvature_vector(vertex):
+    r""" Mean curvature vector.
+
+    .. math::
+
+       \mathbf{H}_i = \sum_{j \sim i} (\cot \alpha_{ij} + \cot \beta_{ij})
+       (\mathbf{v}_i - \mathbf{v}_j) / \operatorname{area} \mathbf{v}_i
+
+    is the gradient of surface area (not true because of divsion by
+    local area term).
 
     Parameters
     ----------
     vertex : Vertex
         Vertex of a triangle mesh.
-    isolated : float, optional
-        Default value for isolated vertices.
 
     Returns
     -------
-    vector : ndarray
+    mcv : ndarray
         The mean curvature vector assigned to `vertex`. For deleted
         vertices this array holds :obj:`~numpy.nan` entries.
     """
-    if vertex.deleted:
+    if vertex.deleted or vertex.isolated:
         return np.full_like(vertex.point, np.nan)
-
-    if vertex.isolated:
-        return np.full_like(vertex.point, isolated)
 
     mcv = np.zeros_like(vertex.point)
 
@@ -304,11 +358,10 @@ def mean_curvature_vector(vertex, isolated=np.nan):
             cotan_weight(h, 0.0) + cotan_weight(h.pair, 0.0))
 
     mcv /= 2.0 * vertex_area(vertex)
-
     return mcv
 
 
-def mean_curvature_vectors(mesh, weights=None, isolated=np.nan):
+def mean_curvature_vectors(mesh, weights=None):
     """ Mean curvature vectors.
 
     Parameters
@@ -319,8 +372,6 @@ def mean_curvature_vectors(mesh, weights=None, isolated=np.nan):
         A dictionary with precomputed cotangent weights. When using
         precomputed weights, the weight assigned to boundary
         halfedges has to be zero!
-    isolated : float, optional
-        Default value for isolated vertices.
 
     Returns
     -------
@@ -339,11 +390,58 @@ def mean_curvature_vectors(mesh, weights=None, isolated=np.nan):
 
     mcvs = np.full_like(mesh.points, np.nan)
 
+    # This iterator skips deleted vertices. Isolated vertices do not
+    # have incident halfedges and mcv results in 0.0 / 0.0 = NaN.
     for v in mesh._viter():
         mcvs[v] = sum(h.pair.vector * (w[h] + w[h.pair]) for h in v._hiter())
         mcvs[v] /= 2.0 * a[v]
 
     return mcvs
+
+
+def mean_curvature(vertex, normal=None):
+    """ Mean curvature estimate.
+
+    Parameters
+    ----------
+    vertex : Vertex
+        Vertex of a triangle mesh.
+    normal : ndarray, shape (3,), optional
+        Vertex normal, used to determine the sign of mean curvature.
+
+    Returns
+    -------
+    H : float
+        Mean curvature.
+
+    Notes
+    -----
+    Absolute mean curvature can be obtained as
+
+    >>> 0.5 * norm(mean_curvature_vector(vertex))
+    """
+    if vertex.deleted or vertex.isolated:
+        return np.nan
+
+    mcv = mean_curvature_vector(vertex)
+    vec = vertex_normal(vertex) if normal is None else normal
+
+    if mcv.dot(vec) < 0.0:
+        return -0.5 * linalg.norm(mcv)
+
+    return 0.5 * linalg.norm(mcv)
+
+
+def mean_curvatures(mesh, mcvs=None, normals=None):
+    """ Mean curvature estimates.
+    """
+    mcvs = mean_curvature_vectors(mesh) if mcvs is None else mcvs
+    vecs = vertex_normals(mesh) if normals is None else normals
+
+    sign = np.array([-1.0, 1.0])
+    sign = sign[(np.vecdot(mcvs, vecs) > 0.0).astype(int)]
+
+    return 0.5 * np.linalg.norm(mcvs, axis=-1) * sign
 
 
 def gauss_curvature(vertex):
@@ -396,25 +494,27 @@ def gauss_curvatures(mesh, weights=None):
                      for v in mesh.vertices])
 
 
-def principal_curvature(vertex):
+def principal_curvature(vertex, normal=None):
     """ Principal curvature estimate.
 
     Parameters
     ----------
     vertex : Vertex
         Vertex of a triangle mesh.
+    normal : ndarray, shape (3,), optional
+        Vertex normal.
     """
     if vertex.deleted or vertex.isolated:
         return np.nan, np.nan
 
-    H = 0.5 * linalg.norm(mean_curvature_vector(vertex))
+    H = mean_curvature(vertex, normal)
     K = gauss_curvature(vertex)
     D = math.sqrt(max(H*H - K, 0.0))
 
     return H + D, H - D
 
 
-def vertex_angle(vertex, isolated=np.nan):
+def vertex_angle(vertex):
     r""" Total angle around a vertex.
 
     Compute :math:`\sum_{i=1}^k \alpha_i` where :math:`\alpha_i` denote
@@ -424,8 +524,6 @@ def vertex_angle(vertex, isolated=np.nan):
     ----------
     vertex : Vertex
         Vertex of a triangle mesh.
-    isolated : float, optional
-        Default angle for isolated vertices.
 
     Returns
     -------
@@ -444,11 +542,8 @@ def vertex_angle(vertex, isolated=np.nan):
 
     >>> K = (2.0 * pi - vertex_angle(v)) / vertex_area(v)
     """
-    if vertex.deleted:
+    if vertex.deleted or vertex.isolated:
         return np.nan
-
-    if vertex.isolated:
-        return isolated
 
     angle = 0.0
 
@@ -511,7 +606,7 @@ def vertex_area_mixed(vertex):
     return area
 
 
-def vertex_area(vertex, isolated=np.nan):
+def vertex_area(vertex):
     """ Mixed vertex area.
 
     The mixed area assigned to `vertex` as defined in [1]_.
@@ -520,15 +615,12 @@ def vertex_area(vertex, isolated=np.nan):
     ----------
     vertex : Vertex
         Vertex of a triangle mesh.
-    isolated : float, optional
-        Default area for isolated vertices.
 
     Returns
     -------
     area : float
-        Area assigned to `vertex`. Vertices marked as deleted are
-        assigned :obj:`~numpy.nan` as area. Isolated vertices are
-        assigned `default`.
+        Area assigned to `vertex`. Isolated vertices and vertices
+        marked as deleted are assigned :obj:`~numpy.nan` as area.
 
     References
     ----------
@@ -536,11 +628,8 @@ def vertex_area(vertex, isolated=np.nan):
            triangulated 2-manifolds*. In: HC. Hege, K. Polthier (eds)
            *Visualization and Mathematics III*, 2003.
     """
-    if vertex.deleted:
+    if vertex.deleted or vertex.isolated:
         return np.nan
-
-    if vertex.isolated:
-        return isolated
 
     area = 0.0
 
@@ -572,7 +661,7 @@ def vertex_area(vertex, isolated=np.nan):
     return area
 
 
-def vertex_areas(mesh, weights=None, isolated=np.nan):
+def vertex_areas(mesh, weights=None):
     """ Mixed vertex areas.
 
     Parameters
@@ -581,8 +670,6 @@ def vertex_areas(mesh, weights=None, isolated=np.nan):
         A triangle mesh instance.
     weights : dict[Halfedge, float], optional
         A dictionary of precomputed cotangent weights.
-    isolated : float, optional
-        Default area for isolated vertices.
 
     Returns
     -------
@@ -598,7 +685,7 @@ def vertex_areas(mesh, weights=None, isolated=np.nan):
     a = np.full(len(mesh.vertices), np.nan)
 
     for v in mesh._viter():
-        a[v] = isolated if v.isolated else 0.0
+        a[v] = np.nan if v.isolated else 0.0
 
         for h in v._hiter():
             if not h.boundary:
@@ -1033,3 +1120,112 @@ def planarity_scores(mesh, denom=None, offset=0.0):
     >>> planarity_scores(mesh, edge_stats(mesh)[-1])
     """
     return [offset + planarity_score(f, denom) for f in mesh]
+
+
+def laplace_matrix(mesh, weights=None, normalize=False):
+    """ Laplace matrix.
+
+    Parameters
+    ----------
+    mesh : Mesh
+        Triangle mesh instance.
+    weights : dict[Halfedge, float], optional
+        Edge weights. By default cotangent weights are used.
+    normalize : bool, optional
+        Normalize result to obtain corresponding umbrella operator.
+
+    Returns
+    -------
+    L : csr_array
+        Laplace matrix.
+    """
+    print(1)
+
+    # Use halfedge weights 0.5 to get the uniform Laplace matrix or,
+    # when normalizing, the uniform umbrella operator.
+    w = cotan_weights(mesh, 0.0, True) if weights is None else weights
+    n = len(mesh.vertices)
+    L = sp.sparse.lil_array((n, n))
+
+    for i, v in enumerate(mesh.vertices):
+        weight_sum = 0.0
+
+        for h in v._hiter():
+            L[i, int(h.target)] = (weight := w[h] + w[h.pair])
+            weight_sum += weight
+
+        L[i, i] = -weight_sum
+
+        if normalize:
+            L[i, :] /= weight_sum
+
+    return L.tocsr()
+
+
+def smooth_(mesh, func, iterations, step=0.5, weights=None):
+    """ Smooth piecewise linear function.
+
+    Parameters
+    ----------
+    mesh : Mesh
+        A triangle mesh instance.
+    func : ndarray, shape (n, ...)
+        A piecewise linear function defined by values at the
+        n vertices of `mesh`.
+    iterations : int
+        Number of
+    step : float, optional
+        Step size.
+    weights : dict[Halfedge, float], optional
+        Halfedge weights of Laplace operator. By default cotangent
+        weights are used.
+
+    Returns
+    -------
+    func : ndarray
+        The smoothed function (not a copy).
+    """
+    L = laplace_matrix(mesh, weights, normalize=True)
+
+    for _ in range(iterations):
+        func += step * L @ func
+
+    return func
+
+
+def smooth(mesh, func, iterations, step=0.5, weights=None):
+    """ Smooth piecewise linear function.
+
+    Parameters
+    ----------
+    mesh : Mesh
+        A triangle mesh instance.
+    func : ndarray, shape (n, ...)
+        A piecewise linear function defined by values at the
+        n vertices of `mesh`.
+    iterations : int
+        Number of
+    step : float, optional
+        Step size.
+    weights : dict[Halfedge, float], optional
+        Halfedge weights of Laplace operator. By default cotangent
+        weights are used.
+
+    Returns
+    -------
+    func : ndarray
+        The smoothed function (not a copy).
+    """
+    w = cotan_weights(mesh, 0.0, True) if weights is None else weights
+
+    for _ in range(iterations):
+        for v in mesh.vertices:
+            weight_sum = 0.0
+
+            for h in v._hiter():
+                d = (weight := w[h] + w[h.pair]) * (func[h.target] - func[v])
+                weight_sum += weight
+
+            func[v] += step * (d / weight_sum)
+
+    return func
