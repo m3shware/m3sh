@@ -30,7 +30,7 @@ import numpy as np
 
 
 def angle(u, v, up=None, degrees=False):
-    r""" Angle between vectors.
+    """ Angle between vectors.
 
     Angle between vectors `u` and `v` in radians. To obtain an oriented
     angle the `up` vector has to be specified. If specified, `up` must
@@ -39,9 +39,9 @@ def angle(u, v, up=None, degrees=False):
     Parameters
     ----------
     u, v : ndarray, shape (3,)
-        Vectors in 3-space.
+        Non-zero vectors in 3-space.
     up : ndarray, shape (3,), optional
-        Vector in 3-space.
+        Non-zero vector in 3-space. Does not have to be of unit length.
     degrees : bool, optional
         Convert result from radians to degrees.
 
@@ -145,7 +145,7 @@ def clamp(x, lo, hi):
 
 
 def cross(u, v):
-    r""" Cross product.
+    """ Cross product.
 
     Alternative to NumPy's vectorized :func:`~numpy.cross` function.
 
@@ -197,7 +197,7 @@ def cross_mat(u):
 
 
 def norm(u):
-    r""" Length of vector.
+    """ Length of vector.
 
     Alternative to NumPy's vectorized :func:`~numpy.linalg.norm` function.
 
@@ -219,7 +219,7 @@ def norm(u):
 
 
 def norm_sqrd(u):
-    r""" Squared length of vector.
+    """ Squared length of vector.
 
     Parameters
     ----------
@@ -235,7 +235,7 @@ def norm_sqrd(u):
 
 
 def unit(u):
-    r""" Vector normalization.
+    """ Vector normalization.
 
     Convenience function to normalize a vector.
 
@@ -264,7 +264,7 @@ def unit(u):
 
 
 def unit_inplace(u):
-    r""" In-place vector normalization.
+    """ In-place vector normalization.
 
     Convenience function to normalize a vector.
 
@@ -313,36 +313,38 @@ def rank(A):
     return sum(s > tol)
 
 
-def rotate(x, a, phi, sinphi=None):
+def rotate(x, axis, phi, sin_phi=None):
     r""" Rotate vector about axis.
 
-    Rotation is performed via Rodrigues' rotation formula,
+    A rotation is defined by an oriented axis vector of unit length and
+    an oriented angle. The corresponding rotation can be performed via
+    Rodrigues' rotation formula:
 
     .. math::
 
        \mathbf{x}_{\text{rot}} = \mathbf{x} \cos(\varphi) +
             (1-\cos(\varphi)) \mathbf{a} \mathbf{a}^T \mathbf{x} +
-            (\mathbf{a} \times \mathbf{x}) \sin(\varphi)
+            (\mathbf{a} \times \mathbf{x}) \sin(\varphi).
 
-    which results in a positive (counter-clockwise) rotation for
+    This corresponds to a positive (counter-clockwise) rotation for
     :math:`\varphi > 0` when looking on the normal plane of the axis
-    vector :math:`a` pointing towards the viewer (right-hand rule).
+    vector pointing towards the viewer (right-hand rule).
 
     Parameters
     ----------
     x : ndarray, shape (3, )
         Vector to be rotated.
-    a : ndarray, shape (3, )
+    axis : ndarray, shape (3, )
         Unit length axis vector.
     phi : float
         Rotation angle in radians or the value :math:`\cos(\varphi)`,
         see notes.
-    sinphi : float, optional
+    sin_phi : float, optional
         The value :math:`\sin(\varphi)`.
 
     Returns
     -------
-    ndarray
+    x_rot : ndarray
         The rotated vector.
 
     See Also
@@ -352,40 +354,45 @@ def rotate(x, a, phi, sinphi=None):
     Notes
     -----
     Computation of :math:`\sin(\varphi)` can be avoid by providing this
-    value as the optional argument `sinphi`. In this case `phi` is assumed
-    to hold :math:`\cos(\varphi)` and no trigonometric functions are
-    evaluated.
+    value as the optional argument `sin_phi`. In this case `phi` is
+    assumed to hold :math:`\cos(\varphi)` and no trigonometric functions
+    are evaluated.
     """
-    if sinphi is not None:
+    if sin_phi is not None:
         cphi = phi
-        sphi = sinphi
+        sphi = sin_phi
     else:
         cphi = math.cos(phi)
         sphi = math.sin(phi)
 
-    return x * cphi + a * a.dot(x) * (1.0 - cphi) + cross(a, x) * sphi
+    return (x * cphi
+            + axis * axis.dot(x) * (1.0 - cphi)
+            + cross(axis, x) * sphi)
 
 
-def rotation(u, v, a):
+def rotation(u, v, axis):
     r""" Rotation parameters.
 
     Computes the values :math:`\cos(\varphi)` and :math:`\sin(\varphi)`
-    of the rotation about the axis :math:`\mathbf{a}` that aligns the
-    vectors :math:`\mathbf{u}^{\bot}` and :math:`\mathbf{v}^{\bot}`,
-    see the notes for more details.
+    of the rotation about `axis` that aligns the vectors `u` and `v` in
+    the sense that `u` and `v` become parallel and point in the same
+    direction. This assumes that `u` and `v` are orthogonal to `axis`.
+    If this is not the case the vectors are first projected onto
+    the plane perpendicular to `axis`.
 
     Parameters
     ----------
     u, v : ndarray, shape (3,)
-        Vectors in 3-space.
-    a : ndarray, shape (3,)
-        Unit length vector in 3-space.
+        Non-zero vectors in 3-space.
+    axis : ndarray, shape (3,)
+        Unit length vector in 3-space not contained in the span
+        of `u` and `v`.
 
     Returns
     -------
-    cosphi : float
+    cos_phi : float
         Cosine of rotation angle.
-    sinphi : float
+    sin_phi : float
         Sine of rotation angle.
 
     See Also
@@ -394,31 +401,31 @@ def rotation(u, v, a):
 
     Notes
     -----
-    Let :math:`\mathbf{x}^{\bot} = \mathbf{x} - \mathbf{a}\mathbf{a}^T
-    \mathbf{x}`. In particular the vectors :math:`\mathbf{u}^{\bot}` and
-    :math:`\mathbf{v}^{\bot}` are perpendicular to :math:`\mathbf{a}`. If
-    :math:`\mathbf{u}` and :math:`\mathbf{v}` are two vectors of equal
-    length and perpendicular to :math:`\mathbf{a}` then
+    Assume that vectors :math:`\mathbf{u}` and :math:`\mathbf{v}` are
+    orthogonal to :math:`\mathbf{a}`. If this is not the case set
+    :math:`\mathbf{x} = \mathbf{x} - \mathbf{a}\mathbf{a}^T \mathbf{x}`
+    for :math:`\mathbf{x} \in \{ \mathbf{u}, \mathbf{v} \}`. There is
+    :math:`\mu > 0` such that
 
-    >>> v = rotate(u, a, *rotation(u, v, a))
+    >>> v = mu * rotate(u, a, *rotation(u, v, a))
     """
-    # Projection of u and v into the plane orthogonal to the axis a. The
-    # axis vector may not be in the span of u and v.
-    u = u - a * a.dot(u)
-    v = v - a * a.dot(v)
+    # Projection of u and v into the plane orthogonal to axis. The axis
+    # vector may not be in the span of u and v.
+    u = u - axis * axis.dot(u)
+    v = v - axis * axis.dot(v)
 
     # Normalization necessary before computing inner products.
     u /= norm(u)
     v /= norm(v)
 
-    # A vector parallel to the axis. Inner product with the axis determines
-    # the sign of the angle.
-    n = cross(u, v)
+    # Since u and v are orthogonal to axis, this vector is parallel to
+    # axis. Inner product with the axis determines the sign of the angle.
+    normal = cross(u, v)
 
     cos_alpha = clamp(u.dot(v), -1.0, 1.0)
-    sin_alpha = norm(n)
+    sin_alpha = norm(normal)
 
-    if n.dot(a) < 0.0:
+    if normal.dot(axis) < 0.0:
         sin_alpha *= -1.0
 
     return cos_alpha, sin_alpha
@@ -431,8 +438,8 @@ def rotation_from_quaternion(a):
 
     Parameters
     ----------
-    a : ndarray, shape (4, )
-        Unit quaternion, i.e., ``norm(a) = 1``.
+    a : ndarray, shape (4,)
+        Unit quaternion.
 
     Returns
     -------
@@ -441,8 +448,8 @@ def rotation_from_quaternion(a):
 
     References
     ----------
-    .. [1] B. Horn: "Closed-form solution of absolute orientation using
-           unit quaternions", J. Opt. Soc. Am. A 4, 629-642, 1987.
+    .. [1] B. Horn: *Closed-form solution of absolute orientation using
+           unit quaternions*, J. Opt. Soc. Am. A 4, 629-642, 1987.
     """
     # If a[0] = 1.0 or a[0] = -1.0 we get the (3, 3) identity matrix. We
     # could catch this case and explicitly return np.eye(3).
