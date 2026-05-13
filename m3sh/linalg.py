@@ -56,15 +56,15 @@ def angle(u, v, up=None, degrees=False):
     via the right-hand rule, i.e., it is positive if the cross product
     of `u` and `v` (in this order) points in the same direction as `up`.
     """
-    # Yields a value between 0 and pi. We can define a sign by specifying
-    # a third vector.
+    # If either u or v is the zero vector, the division results in NaN.
+    # In this case clamp() will complain.
     angle = math.acos(clamp(u.dot(v) / (norm(u) * norm(v)), -1.0, 1.0))
 
     if degrees:
         angle = math.degrees(angle)
 
-    # For linear dependent vectors u and v we either get 0.0 or pi. There
-    # is no point in introducing -pi!
+    # Angle is a value between 0 and pi (or 0 and 180). We can define a
+    # sign by specifying a third vector.
     if up is not None and up.dot(cross(u, v)) < 0.0:
         angle *= -1.0
 
@@ -85,22 +85,15 @@ def cotan(u, v):
 
     Returns
     -------
-    float
-        Cotangent of the angle between vectors `u` and `v`.
-
-    Notes
-    -----
-    Division by zero produces :obj:`~numpy.inf` or :obj:`~numpy.nan`
-    (depending on the value of the numerator).
+    cot : float
+        Cotangent of the angle between vectors `u` and `v`. If at least
+        one input vector is the zero vector the returned value is
+        :obj:`~numpy.nan`. If input vectors are linearly dependent but
+        neither the zero vector, the returned value is :obj:`~numpy.inf`.
     """
-    # Remove this test and the assertion later!
-    cot_1 = 1.0 / math.tan(angle(u, v))
-    cot_2 = u.dot(v) / norm(cross(u, v))
-
-    if abs(cot_1 - cot_2) > 1e-12:
-        print(f"{abs(cot_1 - cot_2):.6e}")
-
-    return cot_2
+    # By definition we also have cot = 1.0 / math.tan(angle(u, v)). The
+    # obtained values agree up to around 10 decimal places.
+    return u.dot(v) / norm(cross(u, v))
 
 
 def clamp(x, lo, hi):
@@ -111,9 +104,11 @@ def clamp(x, lo, hi):
     Parameters
     ----------
     x : float
-        Value to clamp.
+        Value to clamp. Assumed finite, in particular it may not be
+        :obj:`~numpy.nan`.
     lo, hi : float
-        Lower and upper bound. Assumes `lo` < `hi`.
+        Lower and upper bound. Assumes `lo` <= `hi`, negative and positive
+        :obj:`~numpy.inf` are allowed.
 
     Returns
     -------
@@ -129,7 +124,9 @@ def clamp(x, lo, hi):
 
     if `x` is a floating point value, not ``clamp(x, -1, 1)``.
     """
+    assert not math.isnan(lo) and not math.isnan(hi)
     assert lo <= hi
+    assert math.isfinite(x)
 
     # When clamping happens, the data type changes if not all three
     # arguments are of the same type - might induce hard to track bugs.
@@ -161,7 +158,7 @@ def cross(u, v):
 
     See Also
     --------
-    cross_mat
+    cross_mat, numpy.cross, numpy.linalg.cross
     """
     # Unpack the arrays. This will also catch any problem with array shape.
     u0, u1, u2 = u
@@ -213,7 +210,7 @@ def norm(u):
 
     See Also
     --------
-    norm_sqrd
+    norm_sqrd, numpy.linalg.norm
     """
     return math.sqrt(u.dot(u))
 
@@ -229,7 +226,12 @@ def norm_sqrd(u):
     Returns
     -------
     float
-        Squared Euclidean length of the vector `u`.
+        Squared Euclidean length of the vector `u`, i.e., the
+        inner product of `u` with itself.
+
+    See Also
+    --------
+    numpy.inner, numpy.vecdot
     """
     return u.dot(u)
 

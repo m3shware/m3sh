@@ -21,7 +21,7 @@
 """ Geometric mesh traits.
 
 Convenience functions to compute common and often used geometric mesh
-traits like normals and curvature.
+traits like normals (see e.g. [1]_) and curvature (see [2]_).
 
 References
 ----------
@@ -132,19 +132,21 @@ def cotan_weight(halfedge, boundary=np.nan, clamp=False):
     halfedge : Halfedge
         A halfedge instance of a triangle mesh.
     boundary : float, optional
-        Default value for boundary edges. A :obj:`~numpy.nan` value
-        typically signals missing data. For numerical computations the
-        value 0.0 can be useful to skip missing data without raising
-        an error.
+        Default value if `halfedge` is on the boundary. A :obj:`~numpy.nan`
+        value typically signals missing data. For numerical computations
+        the value 0.0 can be useful to skip missing data without raising an
+        error.
     clamp : bool, optional
+        Pass :obj:`True` to set negative weights to zero.
 
     Returns
     -------
     float
         Cotangent value. This value is negative if the opposite angle
-        is obtuse. For degenerate triangles this value can be
-        :obj:`~numpy.inf` or :obj:`~numpy.nan` depending on the type of
-        degeneracy.
+        is obtuse. For halfedges incident to degenerate triangles (zero
+        area) this value can be :obj:`~numpy.inf` or :obj:`~numpy.nan`
+        depending on the type of degeneracy. Such cases currently trigger
+        an assertion.
     """
     if halfedge.boundary:
         return boundary
@@ -154,6 +156,10 @@ def cotan_weight(halfedge, boundary=np.nan, clamp=False):
         # is contained in an edge but not one of the endpoints.
         cotan = linalg.cotan(halfedge.prev.vector,
                              halfedge.next.pair.vector)
+
+        # For non-boundary edges one would expect to get a finite result.
+        # Could be turned into an exception.
+        assert math.isfinite(cotan)
 
         if clamp:
             return max(cotan, 0.0)
@@ -171,8 +177,9 @@ def cotan_weights(mesh, boundary=np.nan, clamp=False):
     mesh : Mesh
         A triangle mesh instance.
     boundary : float, optional
-        Default value for boundary edges.
+        Default value if `halfedge` is on the boundary of `mesh`.
     clamp : bool, optional
+        Pass :obj:`True` to set negative weights to zero.
 
     Returns
     -------
@@ -221,16 +228,47 @@ def dihedral_angle(halfedge, degrees=False):
         return np.nan
 
     # Computing cos() and sin() of this angle should be the same as the
-    # values returned by linalg.rotation().
+    # cos_phi and sin_phi values returned by linalg.rotation().
     return linalg.angle(face_normal(halfedge.face),
                         face_normal(halfedge.pair.face),
                         up=halfedge.vector, degrees=degrees)
 
 
 def dihedral_angles(mesh, normals=None, degrees=False):
+    """ Dihedral angles.
+
+    Dihedral angles for all halfedges of `mesh`.
+
+    Parameters
+    ----------
+    mesh : Mesh
+        A polyhedral mesh instance.
+    normals : ndarray, shape (m, 3), optional
+        Precomputed faces normals, `m` denotes the number of faces.
+    degrees : bool, optional
+        Convert angles from radians to degrees.
+
+    Returns
+    -------
+    angles : dict[Halfedge, float]
+        A dictionary that maps halfedges to the corresponding dihedral
+        angle.
+
+    See Also
+    --------
+    dihedral_angle
     """
-    """
-    pass
+    normals = face_normals(mesh) if normals is None else normals
+    angles = dict()
+
+    for h in mesh._eiter():
+        angle = linalg.angle(normals[h.face], normals[h.pair.face],
+                             up=h.vector, degrees=degrees)
+
+        angles[h] = angle
+        angles[h.pair] = angle
+
+    return angles
 
 
 def vertex_normal(vertex):
