@@ -1863,17 +1863,17 @@ class Mesh:
     def split_halfedge(self, halfedge, point=None, triangulate=True):
         """ Split halfedge.
 
-        Subdivides an edge by inserting a new vertex. The resulting
-        polygonal faces to the left and right of the edge are
-        triangulated on request.
+        Subdivides `halfedge` by inserting a new vertex at location
+        `point`. The resulting polygonal faces to the left and right of
+        the subdivided edge are triangulated on request.
 
         Parameters
         ----------
         halfedge : Halfedge
             Halfedge to split.
         point : array_like, optional
-            Coordinates of the inserted vertex. By default the halfedges'
-            :attr:`~Halfedge.midpoint` is used.
+            Coordinates of the new vertex. By default
+            :attr:`~Halfedge.midpoint` of `halfedge` is used.
         triangulate : bool, optional
             Triangle fan like triangulation of neighboring faces.
 
@@ -1881,6 +1881,13 @@ class Mesh:
         -------
         Vertex
             The newly inserted vertex.
+
+        Notes
+        -----
+        Combinatorially, the halfedges resulting from the split can be
+        accessed as ``halfedge`` and ``halfedge.next`` when this method
+        terminates. Note that ``halfedge.pair`` references a different
+        halfedge after the split.
         """
         assert not halfedge._deleted
 
@@ -1889,7 +1896,7 @@ class Mesh:
             point = halfedge.midpoint
 
         # Get the original endpoints of the halfedge. Add the new point
-        # as a vertex of the mesh.
+        # as a vertex of the mesh ...
         u = halfedge._origin
         v = self.add_vertex(point)
         w = halfedge._target
@@ -1925,7 +1932,7 @@ class Mesh:
         self._halfs[w, v] = halfedge._pair
 
         # Take care of the combinatorial attributes of halfedge and its
-        # pair. Since one of their endpoints changed ...
+        # pair. Since one of their endpoints changed.
         halfedge._pair._pair = h
         halfedge._pair._target = v
         halfedge._pair._next = hh
