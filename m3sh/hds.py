@@ -1693,6 +1693,133 @@ class Mesh:
 
         return halfedge._origin
 
+    def collapse_halfedge_(self, halfedge, point=None, pull=True):
+        """ Perform edge collapse.
+
+        Collapse `halfedge` into one of its vertices.
+
+        Parameters
+        ----------
+        halfedge : Halfedge
+            Halfedge to be contracted.
+        point : array_like, optional
+            Coordinates of collapse location.
+        pull : bool, optional
+            If :obj:`True` the halfedge `h` is collapsed to its origin
+            vertex, otherwise to its target.
+
+        Returns
+        -------
+        Vertex
+            Reference to the vertex that `h` was collapsed to.
+        """
+
+        def prepare_loop(h):
+            # The length of a face defining loop of halfedges. For a
+            # boundary halfedge this is the length of the boundary.
+            loop_len = h._compute_loop_len()
+
+            # If the face to the left is a triangle it will disappear
+            # during the halfedge collapse operation.
+            if loop_len == 3:
+                # There has to be a face, otherwise the edge cannot be
+                # collapsed because of topological problems.
+                h._face._deleted = True
+
+                # The vertex opposite the halfedge. Ensure its outgoing
+                # halfedge is valid after the collapse.
+                v = h._next._target
+                v._halfedge = h._next._pair
+
+                # Remove halfedges of the interior edge loop from the
+                # halfedge container.
+                self._pop_halfedge(h._prev)
+                self._pop_halfedge(h._next)
+
+            # Remove halfedge from halfedge dictionary. Sets its status
+            # to deleted.
+            self._pop_halfedge(h)
+
+            # Lazy property management. This could go inside an else
+            # block (no effect for triangular faces).
+            if h._face is not None:
+                h._face._valence = None
+
+            return loop_len
+
+        def glue(h):
+            # Glue previous and next halfedge of h, removing the triangle
+            # left of h.
+            h._prev._pair._pair = h._next._pair
+            h._next._pair._pair = h._prev._pair
+
+        # Early exit if halfedge cannot be collapsed. Return None value to
+        # signal failure.
+        if halfedge._deleted:
+            return None
+
+        # Use the opposite, non-boundary halfedge and invert the collapse
+        # direction.
+        if halfedge._face is None:
+            halfedge = halfedge._pair
+            pull = not pull
+
+        lt_len = prepare_loop(halfedge)
+        rt_len = prepare_loop(halfedge._pair)
+
+        # The edge spanned by halfedge is collapsed to the vertex u. The
+        # vertex v becomes unused and can be marked as deleted.
+        if pull:
+            u = halfedge._origin
+            v = halfedge._target
+
+            for h in v._hiter():
+                if h is not halfedge._pair:
+                    if lt_len > 3 or h is not halfedge._next:
+                        self._set_origin(h, u)
+
+                    if rt_len > 3 or h._pair is not halfedge._pair._prev:
+                        self._set_target(h._pair, u)
+        else:
+            u = halfedge._target
+            v = halfedge._origin
+
+            for h in v._hiter():
+                if h is not halfedge:
+                    if lt_len > 3 or h._pair is not halfedge._prev:
+                        self._set_target(h._pair, u)
+
+                    if rt_len > 3 or h is not halfedge._pair._next:
+                        self._set_origin(h, u)
+
+        u._halfedge = halfedge._prev._pair
+        v._deleted = True
+
+        # Now either glue two halfedges together to delete a neighboring
+        # triangle or skip a halfedge if case of larger face valence.
+        if lt_len == 3:
+            glue(halfedge)
+        else:
+            halfedge._prev._next = halfedge._next
+            halfedge._next._prev = halfedge._prev
+
+        if rt_len == 3:
+            glue(halfedge._pair)
+        else:
+            halfedge._pair._prev._next = halfedge._pair._next
+            halfedge._pair._next._prev = halfedge._pair._prev
+
+        # For consistency of the hds state, the set of outgoing halfedges
+        # of v has to be empty, no matter if we mark it as deleted or not.
+        assert not self._vhout[v]
+
+        # Move vertex u to its new location. Can raise ValueError if point
+        # could not be broadcast to the correct point shape.
+        if point is not None:
+            u.point = point
+
+        return u
+
     def flip_halfedge(self, halfedge, *, check=True):
         """ Flip halfedge.
 
@@ -2155,10 +2282,10 @@ class Mesh:
             halfedge data structure or erroneous code, e.g. trying to remove
             a halfedge twice.
 
-        Note
-        ----
+        Notes
+        -----
         Combinatorial halfedge attributes are neither invalidated nor changed
-        in any way.
+        in any way by this method.
         """
         assert not h._deleted
 
@@ -2172,7 +2299,6 @@ class Mesh:
 
         # Remove the halfedge from the dictionary that holds all halfedges.
         # Also remove it from the set of outgoing halfedges of its origin.
-        # Both operations can a KeyError if the halfedge is not present.
         del self._halfs[v, w]
         self._vhout[v].remove(h)
 
@@ -2180,16 +2306,13 @@ class Mesh:
         """ Add halfedge to halfedge container.
 
         (Re)insert existing halfedge into the dictionary of all halfedges.
+        This method should only be applied to halfedges that have previously
+        been removed by :meth:`_pop_halfedge`.
 
         Parameters
         ----------
         h : Halfedge
             Halfedge to be re-inserted.
-
-        Note
-        ----
-        This method should **only** be applied to halfedges that have
-        previously been removed by :meth:`_pop_halfedge`.
         """
         assert h._deleted
 
@@ -2214,11 +2337,14 @@ class Mesh:
         Parameters
         ----------
         h : Halfedge
-            Valid mesh halfedge.
+            Valid halfedge of a mesh, i.e., `h` may not be marked as
+            deleted.
         v : Vertex
-            Origin vertex, different from ``h.target``.
+            New origin vertex. Has to be different from both vertices
+            of `h`.
         """
         assert not h._deleted
+        assert not v._deleted
 
         u = h._origin
         w = h._target
@@ -2227,13 +2353,13 @@ class Mesh:
         assert h not in self._vhout[v]
         assert (v, w) not in self._halfs
 
+        h._origin = v
+
         self._vhout[u].remove(h)
         self._vhout[v].add(h)
 
         del self._halfs[u, w]
         self._halfs[v, w] = h
-
-        h._origin = v
 
     def _set_target(self, h, v):
         """ Set halfedge target vertex.
@@ -2243,11 +2369,14 @@ class Mesh:
         Parameters
         ----------
         h : Halfedge
-            Valid mesh halfedge.
+            Valid halfedge of a mesh, i.e., `h` may not be marked as
+            deleted.
         v : Vertex
-            Target vertex, different from ``h.origin``.
+            New target vertex. Has to be different from both vertices
+            of `h`.
         """
         assert not h._deleted
+        assert not v._deleted
 
         u = h._origin
         w = h._target
@@ -2255,10 +2384,10 @@ class Mesh:
         assert v is not u
         assert (u, v) not in self._halfs
 
+        h._target = v
+
         del self._halfs[u, w]
         self._halfs[u, v] = h
-
-        h._target = v
 
     def _set_vertices(self, h, v, w):
         """ Set halfedge vertices.
@@ -3197,16 +3326,16 @@ class Halfedge:
 
             return True
 
-        # Test makes no sense for deleted halfedges, they are not part
-        # of valid mesh combinatorics.
+        # Test makes no sense for deleted halfedges, they are not part of
+        # valid mesh combinatorics.
         if self._deleted or self._face is None:
             return False
 
         v = self._origin
         w = self._target
 
-        # This should never be a problem for pure triangle meshes but
-        # can happen for general polygonal meshes.
+        # This should never be a problem for pure triangle meshes but can
+        # happen for general polygonal meshes.
         v_faces = {x for x in v._fiter()} - {self._face, self._pair._face}
         w_faces = {x for x in w._fiter()} - {self._face, self._pair._face}
 
@@ -3253,6 +3382,96 @@ class Halfedge:
             # Triangular face to the right and n-gon to the left.
             if len(self._pair._face) == 3:
                 q = self._pair._next._target
+
+                if v_neigh.intersection(w_neigh) == {q}:
+                    return True
+
+            # There are n-gons to the left and to the right of the
+            # query edge.
+            return True
+
+        return False
+
+    @property
+    def collapsible_(self):
+        """ Topological state.
+        """
+
+        def one_sided_check(h):
+            assert h._face is not None
+            assert h._pair._face is None
+
+            if h._pair._compute_loop_len() == 3:
+                # The adjacent boundary loop has only three faces.
+                # Collapsing the halfedge would change the topology.
+                return False
+
+            if len(h._face) == 3:
+                if v_neigh.intersection(w_neigh) == {h._next._target}:
+                    return True
+
+                return False
+
+            return True
+
+        # Test makes no sense for deleted halfedges, they are not part of
+        # valid mesh combinatorics.
+        if self._deleted:
+            return False
+
+        h = self._pair if self._face is None else self
+
+        assert not h._deleted
+        assert h._face is not None
+
+        v = h._origin
+        w = h._target
+
+        # This should never be a problem for pure triangle meshes but can
+        # happen for general polygonal meshes.
+        v_faces = {x for x in v._fiter()} - {h._face, h._pair._face}
+        w_faces = {x for x in w._fiter()} - {h._face, h._pair._face}
+
+        if v_faces.intersection(w_faces):
+            return False
+
+        # Collect neighbors in a set to compute one-ring intersection.
+        v_neigh = {x for x in v._viter() if x is not w}
+        w_neigh = {x for x in w._viter() if x is not v}
+
+        if h._pair._face is None:
+            return one_sided_check(h)
+
+        # Interior edge that connects boundaries is not collapsible.
+        # Result would be a non-manifold mesh.
+        if v.boundary and w.boundary:
+            return False
+
+        if len(h._face) == 3:
+            p = h._next._target
+
+            if len(h._pair._face) == 3:
+                q = h._pair._next._target
+
+                if p is q:
+                    return False
+
+                if v_neigh == w_neigh:
+                    return False
+
+                # Triangular faces to the left and right. One rings of
+                # endpoints have to intersect in the vertices opposite
+                # the query edge.
+                if v_neigh.intersection(w_neigh) == {p, q}:
+                    return True
+            else:
+                # Triangular face to the left and n-gon to the right.
+                if v_neigh.intersection(w_neigh) == {p}:
+                    return True
+        else:
+            # Triangular face to the right and n-gon to the left.
+            if len(h._pair._face) == 3:
+                q = h._pair._next._target
 
                 if v_neigh.intersection(w_neigh) == {q}:
                     return True
