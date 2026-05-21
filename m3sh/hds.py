@@ -1164,8 +1164,14 @@ class Mesh:
                 # The first assignment has no effect on data for an empty
                 # list of indices, resize will then set the length of the
                 # first axis of data to zero.
-                data[:len(idx), ...] = data[idx, ...]
-                data.resize(shape, refcheck=False)
+
+                # data[:len(idx), ...] = data[idx, ...]
+                # data.resize(shape, refcheck=False)
+
+                data[:len(idx)] = data[idx]
+                data.resize((len(idx), *data.shape[1:]), refcheck=False)
+            else:
+                raise TypeError(f"not supported: {type(data)}")
 
         # Invalidate all attributes of vertices to be removed from the mesh.
         # This should prevent accidental access by triggering assertions and
