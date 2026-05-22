@@ -993,12 +993,10 @@ def write(filename, append=False, absolute=True, **data):
     filename : str
         Name of output file.
     append : bool, optional
-        Append to file if it exists. This makes most sense when using
-        relative indices.
+        Append to file if it exists.
     absolute : bool, optional
-        Pass ``False`` if indices are negative, i.e., relative.
-        If ``True``, absolute indices are assumed as 0-based. An offset
-        of 1 is added in this case before writing the data.
+        Pass :obj:`False` if indices are negative, i.e., relative. If
+        :obj:`True`, absolute indices are assumed as 0-based.
     **data
         Keyword arguments.
 

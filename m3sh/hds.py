@@ -425,7 +425,7 @@ class Mesh:
         return mesh
 
     @classmethod
-    def read(cls, filename, *args, merge=False, quiet=True):
+    def read(cls, filename, *args, merge=False, quiet=False):
         """ Read mesh from file.
 
         Read mesh combinatorics (face definitions) and vertex coordinates
@@ -449,6 +449,10 @@ class Mesh:
         data : ndarray or tuple(ndarray, ...)
             Data blocks as requested via `args`. If a data block could
             not be read, a :obj:`None` value is returned in its place.
+
+        Warnings
+        --------
+        This method cannot read multiple objects from a single file!
 
         Notes
         -----
@@ -569,7 +573,8 @@ class Mesh:
 
         return cls(verts, [[v[0] for v in f] for f in faces], name=filename)
 
-    def write(self, filename, quiet=True, **data):
+    def write(self, filename, append=False, absolute=True, quiet=False,
+              **data):
         """ Write mesh to file.
 
         Data arrays, like vertex normals and texture coordinates, can be
@@ -579,9 +584,14 @@ class Mesh:
         ----------
         filename : str
             If a file with this name already exists it will be overwritten
-            without warning.
+            unless `append` evaluates to :obj:`True`.
+        append : bool, optional
+            Append to file if it exists. When writing multiple meshes to
+            the same file `absolute` should be set to :obj:`False`.
+        absolute : bool, optional
+            Pass :obj:`False` to store relative indices.
         quiet : bool, optional
-            Suppress console output.
+            Suppress console output if :obj:`True`.
         **data
             Arbitrary number of keyword arguments.
 
@@ -638,22 +648,28 @@ class Mesh:
                        f'number of vertices ({len(self._points)})')
                 raise ValueError(msg)
 
-        tidx = lambda v : int(v) if vt_given else None
-        nidx = lambda v : int(v) if vn_given else None
+        # Mesh uses absolute 0-based indices. The low-level write() function
+        # accepts either negative or positive 0-based indices. In the latter
+        # case they are transformed to 1-based indices before writing them to
+        # disk. Note that 0 is never a valid index in an .obj file!
+        ofs = 0 if absolute else len(self._points)
+
+        tidx = lambda v : int(v) - ofs if vt_given else None
+        nidx = lambda v : int(v) - ofs if vn_given else None
 
         # Using the implicit face iterator (instead of using self.faces
         # explicitly) will skip all faces of the mesh that are marked as
         # deleted.
-        faces = (((int(v), tidx(v), nidx(v)) for v in f) for f in self)
+        faces = (((int(v) - ofs, tidx(v), nidx(v)) for v in f) for f in self)
 
         if not quiet:
             start = time()
             print(f'writing {CBOLD}{Path(filename).name}{CEND}', end=' ...')
 
         # Write all vertex coordinates (including unused/deleted/isolated)
-        # ones. This is necessary since the faces list generated above
-        # uses vertex offsets into the list of all vertices.
-        obj.write(filename, v=self._points, f=faces, **data)
+        # ones. This is necessary since the faces list generated above uses
+        # vertex offsets into the list of all vertices.
+        obj.write(filename, append, absolute, v=self._points, f=faces, **data)
 
         if not quiet:
             print(f' done ({time()-start:.3} sec)')
