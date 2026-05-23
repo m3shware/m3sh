@@ -22,7 +22,12 @@
 
 Low-level functions to read and write .obj files. Only a subset of the
 object file format standard is supported. Complete specifications can be
-found `here <https://paulbourke.net/dataformats/obj/>`_.
+found in [1]_ (`online version <https://paulbourke.net/dataformats/obj/>`_).
+
+References
+----------
+.. [1] Appendix B1: Object Files (.obj) in *Advanced Visualizer Manual*.
+       Wavefront Technologies.
 """
 
 from io import StringIO
@@ -609,19 +614,19 @@ class OBJError(Exception):
     pass
 
 
-def read(filename, *tags, dtype=np.ndarray, quiet=True):
+def read(filename, *tags, quiet=True):
     """ Read from .obj file.
 
-    Assumes an .obj-like file structure, i.e., a text file where each
-    line starts with a tag followed by numerical values. Lines whose tag
-    is contained in `tags` are read. The values corresponding to a tag
-    are returned as a list of lists: one list per tag that holds a list
-    of numerical values per line read.
+    Read from an .obj file, i.e., a text file where each line
+    starts with a tag followed by numerical values. Lines whose tag is
+    contained in `tags` are read. The values corresponding to a tag are
+    returned as a list of lists: one list per tag that holds a list of
+    numerical values per line read that start with the tag.
 
     Parameters
     ----------
     filename : str
-        Name of object file.
+        Name of .obj file.
     *tags
         Variable number of arguments of type :class:`str`.
     quiet : bool, optional
@@ -636,16 +641,18 @@ def read(filename, *tags, dtype=np.ndarray, quiet=True):
 
     Returns
     -------
-    data : list or tuple(list, ...)
+    data : list or tuple[list, ...]
         If multiple tags are specified the return value ``data[i]``
         corresponds to ``tags[i]``.
 
-
+    Examples
+    --------
     To read vertex coordinates and vertex normals from file do
 
     >>> v, vn = read('input-file.obj', 'v', 'vn')
 
-    Data blocks are returned as objects of type :class:`list`.
+    Data blocks are returned as objects of type :class:`list`. You may
+    want to convert them to :class:`~numpy.ndarray`.
     """
 
     def parse_vertex(string):
@@ -864,9 +871,9 @@ def read(filename, *tags, dtype=np.ndarray, quiet=True):
                     case 'curv2':
                         curv2cnt += 1
 
-                # Groups, merging groups, smoothing groups and objects
-                # defined in the file.
-                if tokens[0] in {'g', 'mg', 's', 'o'}:
+                # Groups, merging groups, and smoothing groups defined
+                # in the file.
+                if tokens[0] in {'g', 'mg', 's'}:
                     pass
 
                 # Print any comments encountered during file parsing if
@@ -897,7 +904,10 @@ def read(filename, *tags, dtype=np.ndarray, quiet=True):
                 # Parse data if a recognized tag is given in args. Skip
                 # everything else.
                 if tokens[0] in tags:
-                    if tokens[0] == 'p':
+                    if tokens[0] == 'o':
+                        data[tokens[0]].append(
+                            ' '.join(token for token in tokens[1:]))
+                    elif tokens[0] == 'p':
                         # Multiple point elements may be defined by listing
                         # their indices on a single line.
                         pass
@@ -969,7 +979,7 @@ def read(filename, *tags, dtype=np.ndarray, quiet=True):
         print(f'\t\u251c\u2500 {vncnt} vertex normal definitions')
         print(f'\t\u2514\u2500 {vtcnt} vertex texture definitions')
 
-    # Return None instead of () and data instead of (data, ) tuples if no
+    # Return either None or the data directly instead of (data, ) if no
     # or only one tag is specified.
     match len(tags):
         case 0:

@@ -43,7 +43,7 @@ from time import time   #use perf_counter instead
 from copy import copy, deepcopy
 
 import numpy as np
-import scipy as sp
+# import scipy as sp
 
 import m3sh.obj as obj
 import m3sh.flags as flags
@@ -57,13 +57,14 @@ class Mesh:
 
     The combinatorics of a mesh can be built by reading from a file or
     by converting a sequence of vertex coordinates and a sequence of face
-    definitions to its halfedge representation.
+    definitions to its halfedge representation. An empty mesh is created
+    when no arguments are specified.
 
     Parameters
     ----------
     points : array_like, optional
-        Vertex coordinates. Converted to an equivalent
-        :obj:`~numpy.ndarray` object if necessary.
+        Vertex coordinates. Converted to :obj:`~numpy.ndarray` if not
+        already of this type.
     faces : array_like, optional
         Face definitions, 0-based vertex indexing.
     name : str, optional
@@ -74,8 +75,12 @@ class Mesh:
     NonManifoldError
         When trying to initialize a mesh from non-manifold data.
 
-    Note
-    ----
+    See Also
+    --------
+    add_vertex, add_face
+
+    Notes
+    -----
     The `NumPy glossary <https://numpy.org/doc/stable/glossary.html>`_
     states the following about :term:`array_like` data representations:
 
@@ -87,25 +92,23 @@ class Mesh:
     """
 
     def __init__(self, points=None, faces=None, *, name=None):
-        """ Initialize from vertex and face lists.
-        """
-        CWHITERED = '\33[41m'               # white on red background
-        CEND = '\33[0m'
-
-        # The points argument could also be an integer resulting in an
-        # abstract connectivity-only halfedge mesh...
+        # If there are faces defined, a corresponding sequence of vertex
+        # coordinates has to be given.
         if points is None and faces is not None:
-            msg = "face definitions require 'points' argument != None"
-            raise ValueError(msg)
+            raise ValueError(f"'points' cannot be None")
+
+        # Measure mesh construction time, i.e., conversion from points
+        # and faces to halfedge representation.
+        start = time()
 
         if points is not None:
-            self._points = np.asarray(points)
+            self._points = np.atleast_2d(points)
             self._verts = [Vertex(i, parent=self)
                            for i in range(len(points))]
 
             if self._points.base is not None:
-                print(f"{CWHITERED}array data buffer not owned by " +
-                      f"'points' array{CEND}")
+                print("'points' is a view object, consider using a copy"
+                      + " to prevent unintentional data modification!")
         else:
             self._points = None
             self._verts = []
@@ -136,9 +139,9 @@ class Mesh:
                 self.add_face(face)
 
             # Typically one does not expect isolated vertices in a mesh
-            # that does define faces (i.e., not a point cloud).
+            # that does define faces. Such vertices might be artifacts.
             if any(v.isolated for v in self._verts):
-                print(f'{CWHITERED}there are isolated vertices{CEND}')
+                print('there are isolated vertices')
 
         # Vertex neighborhood iterators will not work properly in the
         # presence of non-manifold vertices.
@@ -146,17 +149,27 @@ class Mesh:
             if not v._manifold:
                 raise NonManifoldError(f'vertex #{v._idx} is non-manifold')
 
-        # The corresponding property setter will strip any directory
-        # prefix and type suffix from the name.
+        # Set creation date and time, invalid file name, and name attribute.
+        # The name value is converted to str by the corresponding setter.
+        self._date = f"{str(datetime.now())[:16]}"
+        self._file = None
+        self._time = time() - start
+
         self.name = name
 
     # def __repr__(self):
     #     return (f'Mesh({repr(self._points)}, \n' +
     #             f'{[[int(v) for v in f] for f in self]})')
 
-    # def __str__(self):
-    #     return (str(self._points)
-    #             + '\n[' + '\n '.join([str(f) for f in self]) + ']')
+    def __str__(self):
+        CBOLD = '\33[1m'
+        CEND = '\33[0m'
+
+        return (f"mesh instance {CBOLD}{self.name}{CEND}\n"
+                + f"\t\u251c\u2500 {len(self.vertices)} vertices\n"
+                + f"\t\u251c\u2500 {len(self.faces)} faces\n"
+                + f"\t\u251c\u2500 {self._time:.2f} sec construction time\n"
+                + f"\t\u2514\u2500 from {self._file!r}")
 
     def __iter__(self):
         """ Face iterator.
@@ -345,23 +358,12 @@ class Mesh:
     @property
     def name(self):
         """ Name property.
-
-        Name augmented with current time stamp.
-
-        :type: str
-
-        Note
-        ----
-        The returned string does not include a type suffix!
         """
-        date = str(datetime.now())[:10]
-        time = str(datetime.now())[11:16]
-
-        return f'{date}_{time}_{self._name}'
+        return self._name
 
     @name.setter
     def name(self, value):
-        self._name = value if value is None else Path(value).stem
+        self._name = str(value)
 
     @classmethod
     def _from_grid(cls, x, y, z=None, *, triangulate=False, name=None):
@@ -425,70 +427,81 @@ class Mesh:
         return mesh
 
     @classmethod
-    def read(cls, filename, *args, merge=False, quiet=False):
+    def read(cls, filename, *args, quiet=False):
         """ Read mesh from file.
 
         Read mesh combinatorics (face definitions) and vertex coordinates
-        from an .obj file. Additional data is read on request, see below.
+        from an .obj file. Additional data, like vertex normals, is read
+        only on request, see the example below.
 
         Parameters
         ----------
         filename : str
-            Name of an OBJ file.
+            Name of an .obj file.
         *args
             Variable number of arguments of type :class:`str`.
-        merge : bool, optional
-            Experimental.
         quiet : bool, optional
-            Suppress console output.
+            Suppress console output if :obj:`True`.
 
         Returns
         -------
         mesh : Mesh
-            Mesh object.
-        data : ndarray or tuple(ndarray, ...)
+            Mesh instance. Reading fails if mesh combinatorics does not
+            represent an orientable manifold surface mesh.
+        data : ndarray or tuple[ndarray, ...]
             Data blocks as requested via `args`. If a data block could
             not be read, a :obj:`None` value is returned in its place.
+
+        See Also
+        --------
+        m3sh.obj.read : low-level read function, can read non-manifold data
 
         Warnings
         --------
         This method cannot read multiple objects from a single file!
 
-        Notes
-        -----
-        Vertex normals or texture coordinates stored in a file can be
-        read via
+        Examples
+        --------
+        Vertex normals or texture coordinates stored in an .obj file can
+        be read via
 
         >>> mesh, vecs, uvs = Mesh.read(filename, 'vn', 'vt')
 
-        Additional return values (vertex normals, texture vertices, and
-        custom data) are returned in the same order as they are presented
-        in the argument list `args`.
+        Additional return values (in this case vertex normals and texture
+        coordinates) are returned in the same order as they are presented
+        in the argument list `args`. If the requested data is not stored
+        in the file a :obj:`None` value is returned in its place.
         """
-        CBOLD = '\33[1m'                    # bold text, white on black
-        CEND = '\33[0m'
-
-        if not quiet:
-            start = time()
-            print(f'reading {CBOLD}{Path(filename).name}{CEND}', end=' ...')
-
         if 'v' in args:
             raise ValueError("'v' cannot be used as argument")
 
         if 'f' in args:
             raise ValueError("'f' cannot be used as argument")
 
-        # The *data expression will assign a list of all return values not
-        # assigned to a name to data.
-        verts, faces, *data = obj.read(filename, 'v', 'f', *args)
+        CBOLD = '\33[1m'
+        CEND = '\33[0m'
+
+        if not quiet:
+            start = time()
+            print(f'reading {CBOLD}{Path(filename).name}{CEND}', end=' ... ')
+
+        # The *data expression will assign a list of all return values that
+        # correspond to *args to a list with name data.
+        verts, faces, objs, *data = obj.read(filename, 'v', 'f', 'o', *args)
+
+        if len(objs) > 1:
+            print(f"\n\tfile {filename!r} defines multiple objects: {objs}")
+
+        name = objs[0] if objs else Path(filename).name
 
         # Convert list of data blocks to a dictionary. Since insertion
         # order traversal is guaranteed, *data before conversion is equal
         # to *data.values() after conversion.
-        data = {arg: block for arg, block in zip(args, data, strict=True)}
+        data = {arg: np.asarray(block) if block else None
+                for arg, block in zip(args, data, strict=True)}
 
         if not quiet:
-            print(f' done ({time()-start:.3f} sec, {merge=})')
+            print(f'done ({time()-start:.2f} sec)') #, {merge=})')
 
             for arg in args:
                 print(f"\t\u251c\u2500 data block '{arg}' " +
@@ -497,13 +510,13 @@ class Mesh:
             print(f'\t\u251c\u2500 {len(verts)} vertices')
             print(f'\t\u2514\u2500 {len(faces)} faces')
 
-        if merge:
-            start = time()
-            faces = _merge(verts, faces)
+        # if merge:
+        #     start = time()
+        #     faces = _merge(verts, faces)
 
-            if not quiet:
-                print(f'merged vertices of {CBOLD}{Path(filename).name}' +
-                      f'{CEND} by distance ({time()-start:.3f} sec)')
+        #     if not quiet:
+        #         print(f'merged vertices of {CBOLD}{Path(filename).name}' +
+        #               f'{CEND} by distance ({time()-start:.3f} sec)')
 
         if 'vn' in args:
             # Check if each vertex is assigned the normal with identical
@@ -522,7 +535,8 @@ class Mesh:
                 # All vertices are assigned the normal vector with
                 # identical index. This is fine for mesh generation.
                 mesh = cls(verts, [[v[0] for v in f] for f in faces])
-                mesh.name = filename
+                mesh.name = name
+                mesh._file = filename
 
                 return mesh, *data.values()
 
@@ -565,13 +579,14 @@ class Mesh:
             if not quiet:
                 print(f'\t\u2514\u2500 {num_avg} averages performed')
 
-        if args:
-            mesh = cls(verts, [[v[0] for v in f] for f in faces])
-            mesh.name = filename
+        mesh = cls(verts, [[v[0] for v in f] for f in faces])
+        mesh.name = name
+        mesh._file = filename
 
+        if args:
             return mesh, *data.values()
 
-        return cls(verts, [[v[0] for v in f] for f in faces], name=filename)
+        return mesh
 
     def write(self, filename, append=False, absolute=True, quiet=False,
               **data):
@@ -4125,33 +4140,33 @@ def _array_clear(array):
     return array
 
 
-def _merge(points, faces, radius=1e-3):
-    """ Distance based vertex merging.
+# def _merge(points, faces, radius=1e-3):
+#     """ Distance based vertex merging.
 
-    Merging may yield a non-manifold complex.
+#     Merging may yield a non-manifold complex.
 
-    Parameters
-    ----------
-    points : array_like
-        Vertex coordinates.
-    faces : list
-        Face definitions.
-    radius : float
-        Distance threshold.
+#     Parameters
+#     ----------
+#     points : array_like
+#         Vertex coordinates.
+#     faces : list
+#         Face definitions.
+#     radius : float
+#         Distance threshold.
 
-    Returns
-    -------
-    faces : list
-        Updated faces definitions.
-    """
-    # For each point p, find the indices of all points that are in a
-    # radius r ball with center p.
-    kdtree = sp.KDTree(points)
-    idx = kdtree.query_ball_tree(kdtree, radius)
+#     Returns
+#     -------
+#     faces : list
+#         Updated faces definitions.
+#     """
+#     # For each point p, find the indices of all points that are in a
+#     # radius r ball with center p.
+#     kdtree = sp.KDTree(points)
+#     idx = kdtree.query_ball_tree(kdtree, radius)
 
-    # Assumes that each vertex of a face is defined as a v/vt/vn tuple
-    # as read directly from an object file.
-    return [[(min(idx[v]), vt, vn) for v, vt, vn in f] for f in faces]
+#     # Assumes that each vertex of a face is defined as a v/vt/vn tuple
+#     # as read directly from an object file.
+#     return [[(min(idx[v]), vt, vn) for v, vt, vn in f] for f in faces]
 
 
 def _orientation(up, forward):
