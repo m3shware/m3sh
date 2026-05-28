@@ -3643,6 +3643,40 @@ class Halfedge:
             h = h._prev._pair
 
 
+class Edge:
+
+    def __init__(self, halfedge):
+        self._halfedge = halfedge
+
+    def __getitem__(self, index):
+        """ Vertex access.
+        """
+        assert not self.deleted
+
+        if index == 0:
+            return self._halfedge._origin
+        elif index == 1:
+            return self._halfedge._target
+
+        raise IndexError(f'index {index} out of range(0, 2)')
+
+    @property
+    def deleted(self):
+        """ Internal state.
+        """
+        # The halfedges making up the edge should not have different
+        # status. Such cases probably indicate a problem
+        assert self._halfedge._deleted == self._halfedge._pair._deleted
+        return self._halfedge._deleted
+
+    @property
+    def boundary(self):
+        """ Topological state.
+        """
+        assert not self.deleted
+        return self._halfedge.boundary or self._halfedge._pair.boundary
+
+
 class Face:
     """ Face base class.
 
