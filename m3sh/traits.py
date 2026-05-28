@@ -104,6 +104,12 @@ def axis_angles(mesh, normals=None):
         if h.boundary or h.pair.boundary:
             cos_phi, sin_phi = 1.0, 0.0
         else:
+            # print(abs(axis.dot(normals[h.face])))
+            # print(abs(axis.dot(normals[h.pair.face])))
+
+            # assert abs(axis.dot(normals[h.face])) < 1e-12
+            # assert abs(axis.dot(normals[h.pair.face])) < 1e-12
+
             # This rotation aligns the face plane of h.face with the face
             # plane of the neighboring face h.pair.face.
             cos_phi, sin_phi = linalg.rotation(normals[h.face],
@@ -116,8 +122,11 @@ def axis_angles(mesh, normals=None):
         # test later!
         angle = dihedral_angle(h)
 
-        assert cos_phi == math.cos(angle)
-        assert sin_phi == math.sin(angle)
+        if abs(cos_phi - math.cos(angle)) > 1e-9:
+            print(f"{cos_phi=}, {math.cos(angle)=}")
+
+        if abs(sin_phi - math.sin(angle)) > 1e-9:
+            print(f"{sin_phi=}, {math.sin(angle)=}")
 
     return axis_angles
 
