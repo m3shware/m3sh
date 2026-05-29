@@ -39,11 +39,10 @@ via the "-O" command line argument.
 
 from pathlib import Path
 from datetime import datetime
-from time import time   #use perf_counter instead
-from copy import copy, deepcopy
+from time import perf_counter
+from copy import copy
 
 import numpy as np
-# import scipy as sp
 
 import m3sh.obj as obj
 import m3sh.flags as flags
@@ -99,7 +98,7 @@ class Mesh:
 
         # Measure mesh construction time, i.e., conversion from points
         # and faces to halfedge representation.
-        start = time()
+        start = perf_counter()
 
         if points is not None:
             self._points = np.atleast_2d(points)
@@ -153,7 +152,7 @@ class Mesh:
         # The name value is converted to str by the corresponding setter.
         self._date = f"{str(datetime.now())[:16]}"
         self._file = None
-        self._time = time() - start
+        self._time = perf_counter() - start
 
         self.name = name
 
@@ -482,8 +481,10 @@ class Mesh:
         CEND = '\33[0m'
 
         if not quiet:
-            start = time()
-            print(f'reading {CBOLD}{Path(filename).name}{CEND}', end=' ... ')
+            print(f'reading {CBOLD}{Path(filename).name}{CEND}', end=' ...',
+                  flush=True)
+
+        start = perf_counter()
 
         # The *data expression will assign a list of all return values that
         # correspond to *args to a list with name data.
@@ -501,7 +502,7 @@ class Mesh:
                 for arg, block in zip(args, data, strict=True)}
 
         if not quiet:
-            print(f'done ({time()-start:.2f} sec)') #, {merge=})')
+            print(f' done ({perf_counter() - start:.2f} sec)') #, {merge=})')
 
             for arg in args:
                 print(f"\t\u251c\u2500 data block '{arg}' " +
@@ -678,8 +679,10 @@ class Mesh:
         faces = (((int(v) - ofs, tidx(v), nidx(v)) for v in f) for f in self)
 
         if not quiet:
-            start = time()
-            print(f'writing {CBOLD}{Path(filename).name}{CEND}', end=' ...')
+            print(f'writing {CBOLD}{Path(filename).name}{CEND}', end=' ...',
+                  flush=True)
+
+        start = perf_counter()
 
         # Write all vertex coordinates (including unused/deleted/isolated)
         # ones. This is necessary since the faces list generated above uses
@@ -687,7 +690,7 @@ class Mesh:
         obj.write(filename, append, absolute, v=self._points, f=faces, **data)
 
         if not quiet:
-            print(f' done ({time()-start:.3} sec)')
+            print(f' done ({perf_counter() - start:.3} sec)')
 
     def add_vertex(self, point, *args, **kwargs):
         """ Create and add new vertex.
