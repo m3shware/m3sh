@@ -163,7 +163,7 @@ def canvas(*args, color=None, color2=None, camera=None, transparent=None,
         # Default camera orientation. Overwritten later if the camera
         # argument is given.
         cam = _renderer.GetActiveCamera()
-        cam.SetPosition(1.0, 1.0, 1.0)
+        cam.SetPosition(1.0, -0.3, 0.5)
         cam.SetViewUp(0.0, 0.0, 1.0)
 
         # Assign default color for new renderers if no color is given.
@@ -467,6 +467,27 @@ def aabb(points, opacity=0.15, edges=True, labels='dim', color=colors.snow):
 
     add(box)
     return box
+
+
+def _aabb_grid(points):
+    """ Axis aligned bounding box.
+    """
+    if isinstance(points, Prop):
+        a, b = points.bounds
+    else:
+        points = np.atleast_2d(points).reshape(-1, 3, copy=False)
+
+        a = np.min(points, axis=0)
+        b = np.max(points, axis=0)
+
+    grid = vtk.vtkGridAxesActor3D()
+    grid.GetProperty().SetColor(colors.black)
+    grid.SetGridBounds(a[0], b[0],
+                       a[1], b[1],
+                       a[2], b[2])
+
+    add(grid)
+    return grid
 
 
 def cross(origin, vector, normal, size=1.0, radius=0.025, resolution=6,
@@ -2366,6 +2387,13 @@ def show(width=1200, height=600, title=None, info=False, shadows=False, *,
         # A reference to the widget has to be maintained to prevent it
         # from being garbage collected immediately.
         iren.axes_widget = vtk.vtkCameraOrientationWidget()
+
+        if vtk.vtkVersion.GetVTKMinorVersion() > 5:
+            repr = iren.axes_widget.GetRepresentation()
+            repr.SetXAxisColor(colors.tomato)
+            repr.SetYAxisColor(colors.emerald_green)
+            repr.SetZAxisColor(colors.cornflower)
+
         iren.axes_widget.SetParentRenderer(_renderer)
         iren.axes_widget.GetRepresentation().SetPadding(40, 40)
         iren.axes_widget.SquareResize()
