@@ -1146,6 +1146,67 @@ class Mesh:
         setattr(self.__class__, name, property(get_data, set_data, del_data))
         setattr(Halfedge, attr, property(get, set))
 
+    def boundaries(self, vertices=True, ccw=True):
+        """ Extract boundary components.
+
+        By default, boundary curves are returned in counterclockwise
+        orientation, i.e., positively oriented with respect to the mesh
+        orientation.
+
+        Parameters
+        ----------
+        vertices : bool, optional
+            If :obj:`True` boundaries are represented as lists of boundary
+            vertices. Alternatively, if :obj:`False`, boundary curves are
+            represented as lists of halfedges.
+        ccw : bool, optional
+            Pass :obj:`False` to reverse the orientation of boundary loops.
+
+        Returns
+        -------
+        list[list[Vertex|Halfedge]]
+            Boundary components. Empty for closed meshes.
+        """
+        boundaries = []
+        visited_edges = set()
+
+        for halfedge in self.halfedges.values():
+            # Find a boundary halfedge that has not been visited before.
+            # The corresponding boundary component has not been traced yet.
+            if halfedge.boundary and halfedge not in visited_edges:
+                component = []
+                h = halfedge
+
+                # Sanity check. Should be removed later or turned off by
+                # running Python with the '-O' command line option.
+                assert h.pair not in visited_edges
+
+                # The current halfedge h belongs to an undiscovered boundary
+                # component. We follow the .prev/.next pointers until we
+                # reach h again.
+                while True:
+                    if vertices:
+                        component.append(h.target)
+                    else:
+                        component.append(h.pair if ccw else h)
+
+                    # Mark current edges as visited and advance to next edge
+                    # according to ccw value.
+                    visited_edges.add(h)
+                    h = h.prev if ccw else h.next
+
+                    if h is halfedge:
+                        break
+
+                    # There is a topological problem if hh or its pair have
+                    # been visited before!
+                    assert h not in visited_edges
+                    assert h.pair not in visited_edges
+
+                boundaries.append(component)
+
+        return boundaries
+
     def clear(self):
         """ Clear all mesh items.
 
