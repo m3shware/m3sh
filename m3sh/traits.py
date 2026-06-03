@@ -62,6 +62,35 @@ import scipy as sp
 import m3sh.linalg as linalg
 
 
+def area(mesh):
+    """ Surface area of triangle mesh.
+
+    Parameters
+    ----------
+    mesh : Mesh
+        Triangle mesh instance.
+
+    Returns
+    -------
+    area : float
+        Surface area. This value is meaningless if `mesh` has polygonal
+        faces with valence greater than three.
+
+    See Also
+    --------
+    face_area
+    """
+    area = 0.0
+
+    # Use the face iterator of a mesh. It skips all faces that are marked
+    # as deleted.
+    for f in mesh._fiter():
+        area += linalg.norm(linalg.cross(f.halfedge.vector,
+                                         f.halfedge.next.vector))
+
+    return 0.5 * area
+
+
 def axis_angles(mesh, normals=None):
     r""" Rotation parameters.
 
@@ -900,10 +929,14 @@ def face_area(face):
     area : float
         Face area.
 
+    See Also
+    --------
+    area
+
     Notes
     -----
     For non-triangular faces, an ad-hoc fan-like triangulation would still
-    give a wrong result for a non-planar and/or non-convex face.
+    give a wrong result for a non-planar and/or non-convex faces.
 
     Examples
     --------
