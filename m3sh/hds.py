@@ -1815,7 +1815,7 @@ class Mesh:
             Reference to the vertex that `h` was collapsed to.
         """
 
-        def prepare_loop(h):
+        def _prepare_loop(h):
             # The length of a face defining loop of halfedges. For a
             # boundary halfedge this is the length of the boundary.
             loop_len = h._compute_loop_len()
@@ -1848,7 +1848,46 @@ class Mesh:
 
             return loop_len
 
-        def glue(h):
+        def prepare_loop(h):
+
+            if h.face is not None:
+                # The length of a face defining loop of halfedges. For a
+                # boundary halfedge this is the length of the boundary.
+                # loop_len = h._compute_loop_len()
+
+                # If the face to the left is a triangle it will disappear
+                # during the halfedge collapse operation.
+                if len(h.face) == 3:
+                    # The vertex opposite the halfedge. Ensure its outgoing
+                    # halfedge is valid after the collapse.
+                    h.next.target._halfedge = h.next.pair
+                    h.face._deleted = True
+
+                    # Glue previous and next halfedge of h, removing the
+                    # triangle left of h.
+                    h.prev.pair._pair = h.next.pair
+                    h.next.pair._pair = h.prev.pair
+
+                    # Remove halfedges of the interior edge loop from the
+                    # halfedge container.
+                    self._pop_halfedge(h.prev)
+                    self._pop_halfedge(h.next)
+                else:
+                    h.prev._next = h.next
+                    h.next._prev = h.prev
+
+                # Lazy property management. This could go inside an else
+                # block (no effect for triangular faces).
+                h.face._valence = None
+            else:
+                h.prev._next = h.next
+                h.next._prev = h.prev
+
+            # Remove halfedge from halfedge dictionary. Sets its status
+            # to deleted.
+            self._pop_halfedge(h)
+
+        def _glue(h):
             # Glue previous and next halfedge of h, removing the triangle
             # left of h.
             h._prev._pair._pair = h._next._pair
@@ -1856,59 +1895,201 @@ class Mesh:
 
         # Early exit if halfedge cannot be collapsed. Return None value to
         # signal failure.
-        if halfedge._deleted:
+        if halfedge.deleted:
             return None
 
         # Use the opposite, non-boundary halfedge and invert the collapse
         # direction.
-        if halfedge._face is None:
-            halfedge = halfedge._pair
+        if halfedge.face is None:
+            halfedge = halfedge.pair
             pull = not pull
 
-        lt_len = prepare_loop(halfedge)
-        rt_len = prepare_loop(halfedge._pair)
+        assert not halfedge.deleted
+        assert halfedge.face is not None
+
+        # lt_len = prepare_loop(halfedge)
+        # rt_len = prepare_loop(halfedge._pair)
 
         # The edge spanned by halfedge is collapsed to the vertex u. The
         # vertex v becomes unused and can be marked as deleted.
         if pull:
-            u = halfedge._origin
-            v = halfedge._target
+            u = halfedge.origin
+            v = halfedge.target
 
-            for h in v._hiter():
-                if h is not halfedge._pair:
-                    if lt_len > 3 or h is not halfedge._next:
-                        self._set_origin(h, u)
+            # for h in v._hiter():
+            #     if h is not halfedge._pair:
+            #         if lt_len > 3 or h is not halfedge._next:
+            #             self._set_origin(h, u)
 
-                    if rt_len > 3 or h._pair is not halfedge._pair._prev:
-                        self._set_target(h._pair, u)
+            #         if rt_len > 3 or h._pair is not halfedge._pair._prev:
+            #             self._set_target(h._pair, u)
         else:
-            u = halfedge._target
-            v = halfedge._origin
+            u = halfedge.target
+            v = halfedge.origin
 
-            for h in v._hiter():
-                if h is not halfedge:
-                    if lt_len > 3 or h._pair is not halfedge._prev:
-                        self._set_target(h._pair, u)
+            # for h in v._hiter():
+            #     if h is not halfedge:
+            #         if lt_len > 3 or h._pair is not halfedge._prev:
+            #             self._set_target(h._pair, u)
 
-                    if rt_len > 3 or h is not halfedge._pair._next:
-                        self._set_origin(h, u)
+            #         if rt_len > 3 or h is not halfedge._pair._next:
+            #             self._set_origin(h, u)
 
-        u._halfedge = halfedge._prev._pair
+        u._halfedge = halfedge.prev.pair
+
+        # Collect incident halfedges before making changes to the halfedge
+        # attributes. Iteration will only work again after all such changes
+        # are complete.
+        halfedges = [(h, h.pair) for h in v._hiter()]
+
+        prepare_loop(halfedge.pair)
+        prepare_loop(halfedge)
+
+        for vw, wv in halfedges:
+            if not vw._deleted:
+                self._set_origin(vw, u)
+
+            if not wv._deleted:
+                self._set_target(wv, u)
+
+        # u._halfedge = halfedge._prev._pair
         v._deleted = True
 
         # Now either glue two halfedges together to delete a neighboring
         # triangle or skip a halfedge if case of larger face valence.
-        if lt_len == 3:
-            glue(halfedge)
-        else:
-            halfedge._prev._next = halfedge._next
-            halfedge._next._prev = halfedge._prev
+        # if lt_len == 3:
+        #     glue(halfedge)
+        # else:
+        #     halfedge._prev._next = halfedge._next
+        #     halfedge._next._prev = halfedge._prev
 
-        if rt_len == 3:
-            glue(halfedge._pair)
+        # if rt_len == 3:
+        #     glue(halfedge._pair)
+        # else:
+        #     halfedge._pair._prev._next = halfedge._pair._next
+        #     halfedge._pair._next._prev = halfedge._pair._prev
+
+        # For consistency of the hds state, the set of outgoing halfedges
+        # of v has to be empty, no matter if we mark it as deleted or not.
+        assert not self._vhout[v]
+
+        # Move vertex u to its new location. Can raise ValueError if point
+        # could not be broadcast to the correct point shape.
+        if point is not None:
+            u.point = point
+
+        return u
+
+    def _collapse_halfedge(self, halfedge, point=None, pull=True):
+        """
+        """
+
+        def prepare_left(h):
+
+            if h.face is not None:
+                if len(h.face) == 3:
+                    prev = h.prev
+                    pair = h.next.pair
+
+                    h.face._valence = None
+                    h.face._deleted = True
+                    h.next.target._halfedge = prev
+
+                    prev._prev = pair.prev
+                    prev._next = pair.next
+                    prev._face = pair.face
+                    prev.face._halfedge = prev
+
+                    pair.prev._next = prev
+                    pair.next._prev = prev
+
+                    self._pop_halfedge(h)
+                    self._pop_halfedge(pair.pair)
+                    self._pop_halfedge(pair)
+                else:
+                    h.face._valence = None
+                    h.prev._next = h.next
+                    h.next._prev = h.prev
+            else:
+                h.prev._next = h.next
+                h.next._prev = h.prev
+
+        def prepare_right(h):
+
+            if h._face is not None:
+                if len(h.face) == 3:
+                    next = h.next
+                    pair = h.prev.pair
+
+                    h.face._deleted = True
+                    h.face._valence = None
+                    h.next.target._halfedge = next.pair
+
+                    next._next = pair.next
+                    next._prev = pair.prev
+                    next._face = pair.face
+                    next.face._halfedge = next
+
+                    pair.next._prev = next
+                    pair.prev._next = next
+
+                    self._pop_halfedge(h)
+                    self._pop_halfedge(pair.pair)
+                    self._pop_halfedge(pair)
+                else:
+                    h.face._valence = None
+                    h.prev._next = h.next
+                    h.next._prev = h.prev
+            else:
+                    h.prev._next = h.next
+                    h.next._prev = h.prev
+
+        # Early exit if halfedge cannot be collapsed. Return None value to
+        # signal failure.
+        if halfedge.deleted:
+            assert halfedge not in self.halfedges.values()
+            return None
+
+        # Does not work for boundary edges... lots of special cases are not
+        # handled correctly.
+        assert halfedge.face is not None
+
+        # Use the opposite, non-boundary halfedge and invert the collapse
+        # direction.
+        if halfedge.face is None:
+            halfedge = halfedge.pair
+            pull = not pull
+
+        assert not halfedge.deleted
+        assert halfedge.face is not None
+
+        # The edge spanned by halfedge is collapsed to the vertex u. The
+        # vertex v becomes unused and can be marked as deleted.
+        if pull:
+            u = halfedge.origin
+            u._halfedge = halfedge.prev.pair
+
+            v = halfedge.target
+            halfedges = [h for h in v._hiter()]
+
+            prepare_right(halfedge.pair)
+            prepare_left(halfedge)
         else:
-            halfedge._pair._prev._next = halfedge._pair._next
-            halfedge._pair._next._prev = halfedge._pair._prev
+            u = halfedge.target
+            u._halfedge = halfedge.next
+
+            v = halfedge.origin
+            halfedges = [h for h in v._hiter()]
+
+            prepare_left(halfedge.pair)
+            prepare_right(halfedge)
+
+        for h in halfedges:
+            if not h.deleted:
+                self._set_origin(h, u)
+                self._set_target(h.pair, u)
+
+        v._deleted = True
 
         # For consistency of the hds state, the set of outgoing halfedges
         # of v has to be empty, no matter if we mark it as deleted or not.
@@ -2390,18 +2571,22 @@ class Mesh:
         """
         assert not h._deleted
 
+        v = h._origin
+        w = h._target
+
+        assert self._halfs[v, w] is h
+
+        # Remove the halfedge from the dictionary that holds all halfedges.
+        # Also remove it from the set of outgoing halfedges of its origin.
+        # The latter will raise KeyError is not a member of this set. Note
+        # that .discard() would not raise an exception in this case.
+        del self._halfs[v, w]
+        self._vhout[v].remove(h)
+
         # In case there are external references to this halfedge we set its
         # deleted flag. In this way user code can check if a halfedge is
         # still valid without searching through the halfedge container.
         h._deleted = True
-
-        v = h._origin
-        w = h._target
-
-        # Remove the halfedge from the dictionary that holds all halfedges.
-        # Also remove it from the set of outgoing halfedges of its origin.
-        del self._halfs[v, w]
-        self._vhout[v].remove(h)
 
     def _push_halfedge(self, h):
         """ Add halfedge to halfedge container.
@@ -2417,7 +2602,7 @@ class Mesh:
         """
         assert h._deleted
 
-        # Assumes that h has been removed by _pop_halfedge. Undo all the
+        # Assumes that h has been removed by _pop_halfedge(). Undo all the
         # changes that were made in said function.
         v = h._origin
         w = h._target
@@ -2425,10 +2610,10 @@ class Mesh:
         assert (v, w) not in self._halfs
         assert h not in self._vhout[v]
 
-        h._deleted = False
-
         self._halfs[v, w] = h
         self._vhout[v].add(h)
+
+        h._deleted = False
 
     def _set_origin(self, h, v):
         """ Set halfedge origin vertex.
@@ -4087,6 +4272,7 @@ class Face:
         """
         assert not self._deleted
         assert self._halfedge is not None
+        assert not self._halfedge._deleted
 
         h = self._halfedge
 
