@@ -3,6 +3,8 @@
 m3sh -- a mutable halfedge mesh data structure 
 ==============================================
 
+**Version:** |release|
+
 .. image:: _static/dragon_full.png
 
 |

@@ -4,14 +4,6 @@
 # list see the documentation:
 # https://www.sphinx-doc.org/en/master/usage/configuration.html
 
-# -- Project information -----------------------------------------------------
-
-project = 'm3sh'
-copyright = '2024-2026, m3shware developers'
-author = 'm3shware'
-
-# The full version, including alpha/beta/rc tags
-release = '1.0.0'
 
 # -- Path setup --------------------------------------------------------------
 #
@@ -23,6 +15,19 @@ import os
 import sys
 
 sys.path.insert(0, os.path.abspath('../../.'))
+
+
+# -- Project information -----------------------------------------------------
+
+project = 'm3sh'
+copyright = '2024-2026, m3shware developers'
+author = 'm3shware'
+
+from m3sh import __version__
+
+# The full version, including alpha/beta/rc tags
+release = __version__
+
 
 # -- General configuration ---------------------------------------------------
 
@@ -70,6 +75,7 @@ toc_object_entries = 'numpydoc' in extensions
 
 add_module_names = False
 
+
 # -- Options for AutoDoc output -------------------------------------------
 
 # Members are listed as in the source file. Possible values are 
@@ -90,7 +96,7 @@ def skip(app, what, name, obj, skip, options):
 
 def setup(app):
     app.connect("autodoc-skip-member", skip)
-
+    
 
 # -- Options for HTML output -------------------------------------------------
 
