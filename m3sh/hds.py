@@ -21,20 +21,16 @@
 """ Halfedge data structure.
 
 An orientable 2-manifold mesh (with or without boundary) is described by
-three containers:
+three containers that are managed by the :class:`Mesh` class:
 
-    - a list of :class:`Vertex` objects,
-    - a list of :class:`Face` objects,
-    - and a dictionary of :class:`Halfedge` objects.
+- a list :attr:`~Mesh.vertices` of :class:`Vertex` instances,
+- a list :attr:`~Mesh.faces` of :class:`Face` instances,
+- and a dictionary :attr:`~Mesh.halfedges` that maps vertex pairs to
+  corresponding :class:`Halfedge` instances.
 
-These containers and the relations between their items are managed by
-the :class:`Mesh` class.
-
-Note
-----
-To ease debugging, this module relies on assertions which can slow down
-script execution. You can disable assertions by running in optimized mode
-via the "-O" command line argument.
+References
+----------
+.. [1] tbd
 """
 
 from pathlib import Path
@@ -54,20 +50,23 @@ import m3sh.flags as flags
 class Mesh:
     """ Mesh kernel.
 
-    The combinatorics of a mesh can be built by reading from a file or
-    by converting a sequence of vertex coordinates and a sequence of face
-    definitions to its halfedge representation. An empty mesh is created
-    when no arguments are specified.
+    A mesh can be built by converting a sequence of vertex coordinates and
+    a sequence of face definitions to its halfedge representation. An empty
+    mesh is created when no arguments are specified.
 
     Parameters
     ----------
     points : array_like, optional
         Vertex coordinates. Converted to :obj:`~numpy.ndarray` if not
-        already of this type.
-    faces : array_like, optional
-        Face definitions, 0-based vertex indexing.
+        already of this type. In the latter case the created mesh uses
+        the `points` array directly without making a copy.
+    faces : list[list[int]], optional
+        Face definitions, 0-based vertex indexing. The `faces` list is
+        not stored or modified but converted to an equivalent list of
+        :obj:`Face` instances that is accessibly via the :attr:`faces`
+        attribute of a mesh.
     name : str, optional
-        Name tag.
+        Name tag. Defaults to the string 'None' if not specified.
 
     Raises
     ------
@@ -76,18 +75,8 @@ class Mesh:
 
     See Also
     --------
-    add_vertex, add_face
-
-    Notes
-    -----
-    The `NumPy glossary <https://numpy.org/doc/stable/glossary.html>`_
-    states the following about :term:`array_like` data representations:
-
-        *Any scalar or sequence that can be interpreted as*
-        :class:`numpy.ndarray`. *In addition to ndarrays and scalars
-        this category includes lists (possibly nested and with different
-        element types) and tuples. Any argument accepted by*
-        :func:`numpy.array` *is array_like.*
+    from_OBJ : read from Wavefront OBJ file
+    from_grid : convert grid data to quadrilateral mesh
     """
 
     def __init__(self, points=None, faces=None, *, name=None):
@@ -107,13 +96,13 @@ class Mesh:
 
             if self._points.base is not None:
                 print("'points' is a view object, consider using a copy"
-                      + " to prevent unintentional data modification!")
+                      + " to prevent unintentional data modification")
         else:
             self._points = None
             self._verts = []
 
         # Used to detect and handle non-manifold vertices during mesh
-        # construction.
+        # construction and modification.
         self._vhout = {v: set() for v in self._verts}
 
         # User defined vertex, halfedge, and face data. Each container
@@ -154,11 +143,13 @@ class Mesh:
         self._file = None
         self._time = perf_counter() - start
 
+        # The property setter converts name to its corresponding string
+        # representation (using str()).
         self.name = name
 
-    # def __repr__(self):
-    #     return (f'Mesh({repr(self._points)}, \n' +
-    #             f'{[[int(v) for v in f] for f in self]})')
+    def __repr__(self):
+        return (f"{type(self).__name__}(\n{repr(self._points)},\n"
+                + f"{[[int(v) for v in f] for f in self]})")
 
     def __str__(self):
         CBOLD = '\33[1m'
@@ -168,7 +159,7 @@ class Mesh:
                 + f"\t\u251c\u2500 {len(self.vertices)} vertices\n"
                 + f"\t\u251c\u2500 {len(self.faces)} faces\n"
                 + f"\t\u251c\u2500 {self._time:.2f} sec construction time\n"
-                + f"\t\u2514\u2500 from {self._file!r}")
+                + f"\t\u2514\u2500 from file {self._file!r}")
 
     def __iter__(self):
         """ Face iterator.
@@ -426,17 +417,19 @@ class Mesh:
         return mesh
 
     @classmethod
-    def read(cls, filename, *args, quiet=False):
-        """ Read mesh from file.
+    def from_OBJ(cls, filename, *args, quiet=False):
+        """ Read mesh from Wavefront OBJ file.
+
+        .. version-added:: 1.1.0 replaces `read`
 
         Read mesh combinatorics (face definitions) and vertex coordinates
-        from an .obj file. Additional data, like vertex normals, is read
+        from an OBJ file. Additional data, like vertex normals, is read
         only on request, see the example below.
 
         Parameters
         ----------
         filename : str
-            Name of an .obj file.
+            Name of OBJ file.
         *args
             Variable number of arguments of type :class:`str`.
         quiet : bool, optional
@@ -445,7 +438,7 @@ class Mesh:
         Returns
         -------
         mesh : Mesh
-            Mesh instance. Reading fails if mesh combinatorics does not
+            Mesh instance. Reading fails if mesh combinatorics do not
             represent an orientable manifold surface mesh.
         data : ndarray or tuple[ndarray, ...]
             Data blocks as requested via `args`. If a data block could
@@ -457,14 +450,22 @@ class Mesh:
 
         Warnings
         --------
-        This method cannot read multiple objects from a single file!
+        This method cannot read multiple meshes from a single file! If the
+        file defines multiples meshes they are interpreted as the connected
+        components of a single mesh.
+
+        Notes
+        -----
+        By default `filename` (without suffix) is used as the name of the
+        created mesh instance. If the OBJ file defines an object name it
+        is used instead.
 
         Examples
         --------
-        Vertex normals or texture coordinates stored in an .obj file can
+        Vertex normals or texture coordinates stored in an OBJ file can
         be read via
 
-        >>> mesh, vecs, uvs = Mesh.read(filename, 'vn', 'vt')
+        >>> mesh, vecs, uvs = Mesh.from_OBJ(filename, 'vn', 'vt')
 
         Additional return values (in this case vertex normals and texture
         coordinates) are returned in the same order as they are presented
@@ -476,6 +477,9 @@ class Mesh:
 
         if 'f' in args:
             raise ValueError("'f' cannot be used as argument")
+
+        if 'o' in args:
+            raise ValueError("'o' cannot be used as argument")
 
         CBOLD = '\33[1m'
         CEND = '\33[0m'
@@ -493,7 +497,8 @@ class Mesh:
         if len(objs) > 1:
             print(f"\n\tfile {filename!r} defines multiple objects: {objs}")
 
-        name = objs[0] if objs else Path(filename).name
+        name = objs[0] if objs else Path(filename).stem
+        file = Path(filename).name
 
         # Convert list of data blocks to a dictionary. Since insertion
         # order traversal is guaranteed, *data before conversion is equal
@@ -537,7 +542,7 @@ class Mesh:
                 # identical index. This is fine for mesh generation.
                 mesh = cls(verts, [[v[0] for v in f] for f in faces])
                 mesh.name = name
-                mesh._file = filename
+                mesh._file = file
 
                 return mesh, *data.values()
 
@@ -582,12 +587,42 @@ class Mesh:
 
         mesh = cls(verts, [[v[0] for v in f] for f in faces])
         mesh.name = name
-        mesh._file = filename
+        mesh._file = file
 
         if args:
             return mesh, *data.values()
 
         return mesh
+
+    @classmethod
+    def read(cls, filename, *args, quiet=False):
+        """ Read mesh from file.
+
+        .. version-deprecated:: 1.1.0 use `from_OBJ` in new code
+
+        Read mesh combinatorics (face definitions) and vertex coordinates
+        from an OBJ file. Additional data, like vertex normals, is read
+        only on request.
+
+        Parameters
+        ----------
+        filename : str
+            Name of OBJ file.
+        *args
+            Variable number of arguments of type :class:`str`.
+        quiet : bool, optional
+            Suppress console output if :obj:`True`.
+
+        Returns
+        -------
+        mesh : Mesh
+            Mesh instance. Reading fails if mesh combinatorics do not
+            represent an orientable manifold surface mesh.
+        data : ndarray or tuple[ndarray, ...]
+            Data blocks as requested via `args`. If a data block could
+            not be read, a :obj:`None` value is returned in its place.
+        """
+        return cls.from_OBJ(filename, *args, quiet=quiet)
 
     def write(self, filename, append=False, absolute=True, quiet=False,
               **data):
