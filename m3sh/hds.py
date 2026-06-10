@@ -30,7 +30,9 @@ three containers that are managed by the :class:`Mesh` class:
 
 References
 ----------
-.. [1] tbd
+.. [1] H. Brönnimann: *Designing and Implementing a General Purpose Halfedge
+       Data Structure*, Proceedings of the 5th International Workshop on
+       Algorithm Engineering, 2001.
 """
 
 from pathlib import Path
@@ -382,6 +384,8 @@ class Mesh:
         ----
         Currently no `array_like` arguments are accepted.
         """
+        assert False, 'deprecated, use from_grid() instead'
+
         # Raises an error if x has not the proper number of axis. Shapes
         # of y (and z if not None) have to match.
         m, n = x.shape
@@ -2394,28 +2398,32 @@ class Mesh:
         return v
 
     @classmethod
-    def from_grid(cls, grid, *coo, triangulate=False, order='C', name=None):
-        """ Alternative constructor.
+    def from_grid(cls, array, *arrays, triangulate=False, order='C',
+                  name=None, quiet=False):
+        r""" Construct mesh from grid data.
 
-        Construct mesh from grid data. A quadrilateral mesh with `mn`
-        faces is generated from coordinate arrays of shape (m, n) or
-        stacked coordinates or shape (m, n, k).
+        .. version-added:: 1.1.0
+
+        A quadrilateral mesh with m⋅n faces is generated from k coordinate
+        arrays of shape (m, n). Alternatively a single stacked coordinate
+        array of shape (m, n, k) can be provided.
 
         Parameters
         ----------
-        grid : ~numpy.ndarray, shape (m, n, k)
+        array : ndarray, shape (m, n, k)
             Stacked coordinate arrays. Points in k-d space are defined by
             the last axis.
-        *coo : ~numpy.ndarray
-            Coordinate arrays of shape (m, n). When not empty, `grid` is
-            assumed to have the same shape.
+        *arrays
+            Variable number of coordinate arrays of shape (m, n).
         triangulate : bool, optional
             Triangulate quadrilateral faces.
         order : str, optional
-            Flatten coordinate arrays in row-major mode 'C' or
-            column-major mode 'F'.
+            Flatten coordinate arrays in row-major mode 'C' or column-major
+            mode 'F'.
         name : str, optional
-            Name tag.
+            Name tag. Defaults to the string 'None' if not specified.
+        quite : bool, optional
+            Suppress console output if :obj:`True`.
 
         Returns
         -------
@@ -2424,13 +2432,38 @@ class Mesh:
 
         Notes
         -----
-        Use C order when meshgrid was used with 'xy' option. Use F order
-        when meshgrid was used with 'ij' option.
+        As a rule of thumb, use 'C' order when `meshgrid` was used with the
+        'xy' option and 'F' order when `meshgrid` was used with the 'ij'
+        option.
+
+        Examples
+        --------
+        Create a quadrilateral mesh of the graph of :math:`\frac{1}{2}
+        x^2 - y^2` over :math:`[-1, 1] \times [-1, 1]` where the interval
+        in x-direction is sampled at n=10 points and the y-direction at
+        m=20 points:
+
+        >>> x = np.linspace(-1.0, 1.0, 10)
+        >>> y = np.linspace(-1.0, 1.0, 20)
+
+        Prepare the three coordinate arrays using `meshgrid` with the default
+        'xy' indexing (resulting in coordinate arrays of shape (m, n) each)
+        and create the mesh:
+
+        >>> X, Y = np.meshgrid(x, y)
+        >>> Z = 0.5 * X**2 - Y**2
+        >>> mesh = Mesh.from_grid(X, Y, Z)
+
+        The mesh stores rows of the grid contiguously ('C' order is used by
+        default). Hence, all points of the slice ``mesh.points[i*n:(i+1)*n]``
+        of length n have equal y-coordinate ``y[i]``.
         """
         if order != 'C' and order != 'F':
             raise ValueError(f"invalid order argument {order!r}")
 
         def face(m, n):
+            # Generator function that produces the face definitions of
+            # grid data with given shape (m, n).
             for major_idx in range(m - 1):
                 ofs = major_idx * n
 
@@ -2442,25 +2475,41 @@ class Mesh:
                         yield [ofs + j, ofs + j + 1,
                                ofs + j + n + 1, ofs + j + n]
 
-        if coo:
-            if order == 'C':
-                m, n = grid.shape
-            elif order == 'F':
-                n, m = grid.shape
+        CBOLD = '\33[1m'
+        CEND = '\33[0m'
 
-            arrays = tuple(c.reshape(-1, order=order) for c in coo)
-            points = np.stack((grid.reshape(-1, order=order), *arrays), axis=-1)
-            faces = [f for f in face(m, n)]
+        if not quiet:
+            print(f"generating mesh {CBOLD}{name}{CEND} from grid data ...")
+
+        if arrays:
+            # The case where all coordinates array are given as individual
+            # arrays. All arrays have the same shape and are assumed to have
+            # 2 axis (because it is grid data).
+            if order == 'C':
+                m, n = array.shape
+            elif order == 'F':
+                n, m = array.shape
+
+            # All arrays have to be flattened. Each flattened array froms
+            # a column of the points coordinate array of the generated mesh.
+            arrays = tuple(arr.reshape(-1, order=order) for arr in arrays)
+            points = np.stack(
+                (array.reshape(-1, order=order), *arrays), axis=-1)
         else:
+            # All coordinates are already stacked. We only need to flatten it
+            # in the correct order.
             if order == 'C':
-                m, n, k = grid.shape
+                m, n, k = array.shape
             elif order == 'F':
-                n, m, k = grid.shape
+                n, m, k = array.shape
 
-            points = grid.reshape(-1, k, order=order)
-            faces = [f for f in face(m, n)]
+            points = array.reshape(-1, k, order=order)
 
-        return cls(points, faces, name=name)
+        if not quiet:
+            print(f"\t\u251c\u2500 grid shape {(m, n)}")
+            print(f"\t\u2514\u2500 dimension {points.shape[-1]}")
+
+        return cls(points, [f for f in face(m, n)], name=name)
 
     def _add_attr_values(self, key, *args, **kwargs):
         """ Add attribute values.

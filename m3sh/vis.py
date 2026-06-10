@@ -1176,6 +1176,7 @@ def mesh(mesh, color=colors.snow):
     """
     renmesh = PolyMesh(mesh)
     renmesh.color = color
+    renmesh.backface_color = web_color('DarkGray')
 
     add(renmesh)
     return renmesh
@@ -1198,6 +1199,14 @@ def vectors(points, vectors, size=1.0, resolution=6, color=colors.black):
 
     add(vf)
     return vf
+
+
+def web_color(name):
+    """ Get web color by name.
+
+    .. version-added:: 1.1.0
+    """
+    return vtk.vtkNamedColors().GetColor3d(name)
 
 
 def graph(points, graph, color=colors.black):
