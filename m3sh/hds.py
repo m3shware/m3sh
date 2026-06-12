@@ -31,7 +31,7 @@ three containers that are managed by the :class:`Mesh` class:
 References
 ----------
 .. [1] H. Brönnimann: *Designing and Implementing a General Purpose Halfedge
-       Data Structure*, Proceedings of the 5th International Workshop on
+       Data Structure*, In Proceedings of the 5th International Workshop on
        Algorithm Engineering, 2001.
 """
 
@@ -1836,6 +1836,8 @@ class Mesh:
     def collapse_halfedge_(self, halfedge, point=None, pull=True):
         """ Perform edge collapse.
 
+        .. version-added:: 1.1.0
+
         Collapse `halfedge` into one of its vertices.
 
         Parameters
@@ -1845,55 +1847,66 @@ class Mesh:
         point : array_like, optional
             Coordinates of collapse location.
         pull : bool, optional
-            If :obj:`True` the halfedge `h` is collapsed to its origin
-            vertex, otherwise to its target.
+            If :obj:`True` `halfedge` is collapsed to its origin vertex,
+            otherwise to its target.
 
         Returns
         -------
         Vertex
-            Reference to the vertex that `h` was collapsed to.
+            Reference to the vertex that `halfedge` was collapsed to.
+
+        Warnings
+        --------
+        The caller is responsible to check the collapsibility of an edge
+        before using this method. Trying to collapse a non-collapsible edge
+        leads to undefined behavior and is likely to break the halfedge
+        data structure.
         """
 
-        def _prepare_loop(h):
-            # The length of a face defining loop of halfedges. For a
-            # boundary halfedge this is the length of the boundary.
-            loop_len = h._compute_loop_len()
+        # def _prepare_loop(h):
+        #     # The length of a face defining loop of halfedges. For a
+        #     # boundary halfedge this is the length of the boundary.
+        #     loop_len = h._compute_loop_len()
 
-            # If the face to the left is a triangle it will disappear
-            # during the halfedge collapse operation.
-            if loop_len == 3:
-                # There has to be a face, otherwise the edge cannot be
-                # collapsed because of topological problems.
-                h._face._deleted = True
+        #     # If the face to the left is a triangle it will disappear
+        #     # during the halfedge collapse operation.
+        #     if loop_len == 3:
+        #         # There has to be a face, otherwise the edge cannot be
+        #         # collapsed because of topological problems.
+        #         h._face._deleted = True
 
-                # The vertex opposite the halfedge. Ensure its outgoing
-                # halfedge is valid after the collapse.
-                v = h._next._target
-                v._halfedge = h._next._pair
+        #         # The vertex opposite the halfedge. Ensure its outgoing
+        #         # halfedge is valid after the collapse.
+        #         v = h._next._target
+        #         v._halfedge = h._next._pair
 
-                # Remove halfedges of the interior edge loop from the
-                # halfedge container.
-                self._pop_halfedge(h._prev)
-                self._pop_halfedge(h._next)
+        #         # Remove halfedges of the interior edge loop from the
+        #         # halfedge container.
+        #         self._pop_halfedge(h._prev)
+        #         self._pop_halfedge(h._next)
 
-            # Remove halfedge from halfedge dictionary. Sets its status
-            # to deleted.
-            self._pop_halfedge(h)
+        #     # Remove halfedge from halfedge dictionary. Sets its status
+        #     # to deleted.
+        #     self._pop_halfedge(h)
 
-            # Lazy property management. This could go inside an else
-            # block (no effect for triangular faces).
-            if h._face is not None:
-                h._face._valence = None
+        #     # Lazy property management. This could go inside an else
+        #     # block (no effect for triangular faces).
+        #     if h._face is not None:
+        #         h._face._valence = None
 
-            return loop_len
+        #     return loop_len
+
+        # def _glue(h):
+        #     # Glue previous and next halfedge of h, removing the triangle
+        #     # left of h.
+        #     h._prev._pair._pair = h._next._pair
+        #     h._next._pair._pair = h._prev._pair
 
         def prepare_loop(h):
-
+            # Take care of the face (if any) to the left of h. If this is a
+            # triangle it gets deleted. In the process some of its halfedges
+            # are glued.
             if h.face is not None:
-                # The length of a face defining loop of halfedges. For a
-                # boundary halfedge this is the length of the boundary.
-                # loop_len = h._compute_loop_len()
-
                 # If the face to the left is a triangle it will disappear
                 # during the halfedge collapse operation.
                 if len(h.face) == 3:
@@ -1902,16 +1915,19 @@ class Mesh:
                     h.next.target._halfedge = h.next.pair
                     h.face._deleted = True
 
-                    # Glue previous and next halfedge of h, removing the
-                    # triangle left of h.
+                    # Glue previous and next halfedge of h, combinatorially
+                    # removing the triangle left of h.
                     h.prev.pair._pair = h.next.pair
                     h.next.pair._pair = h.prev.pair
 
                     # Remove halfedges of the interior edge loop from the
-                    # halfedge container.
+                    # halfedge container. This marks them as deleted.
                     self._pop_halfedge(h.prev)
                     self._pop_halfedge(h.next)
                 else:
+                    # There is a face but it is of valence greater than three.
+                    # Valence of this face is reduced by one by skipping h in
+                    # the face defining loop of halfedges.
                     h.prev._next = h.next
                     h.next._prev = h.prev
 
@@ -1919,21 +1935,20 @@ class Mesh:
                 # block (no effect for triangular faces).
                 h.face._valence = None
             else:
+                # There is no face to the left. Skip the halfedge h in the
+                # boundary defining loop of halfedges. If this loop has only
+                # three halfedges with run into a topological problem. The
+                # halfedge is not collapsible in this case!
                 h.prev._next = h.next
                 h.next._prev = h.prev
 
-            # Remove halfedge from halfedge dictionary. Sets its status
-            # to deleted.
+            # Remove halfedge from the halfedge dictionary. This also sets
+            # its status to deleted.
             self._pop_halfedge(h)
 
-        def _glue(h):
-            # Glue previous and next halfedge of h, removing the triangle
-            # left of h.
-            h._prev._pair._pair = h._next._pair
-            h._next._pair._pair = h._prev._pair
-
         # Early exit if halfedge cannot be collapsed. Return None value to
-        # signal failure.
+        # signal failure. Non-trivial collapsibility test has to be done
+        # before calling this method.
         if halfedge.deleted:
             return None
 
@@ -1977,13 +1992,16 @@ class Mesh:
         u._halfedge = halfedge.prev.pair
 
         # Collect incident halfedges before making changes to the halfedge
-        # attributes. Iteration will only work again after all such changes
+        # attributes. Iterators will only work again after all such changes
         # are complete.
         halfedges = [(h, h.pair) for h in v._hiter()]
 
         prepare_loop(halfedge.pair)
         prepare_loop(halfedge)
 
+        # If a halfedge starting at vertex v was marked as deleted by
+        # prepare_loop() its origin has to set to u, analogously set u as
+        # target for halfedges ending at v.
         for vw, wv in halfedges:
             if not vw._deleted:
                 self._set_origin(vw, u)
