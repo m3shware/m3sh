@@ -141,6 +141,47 @@ def clamp(x, lo, hi):
     return max(min(x, hi), lo)
 
 
+def cramer(A, b):
+    r""" Cramer's rule.
+
+    .. version-added:: 1.1.0
+
+    Solve the system :math:`Ax = b` using Cramer's rule. NumPy's general
+    purpose method :func:`~numpy.linalg.solve` is faster.
+
+    Parameters
+    ----------
+    A : ndarray, shape (3, 3)
+        Left-hand side matrix.
+    b : ndarray, shape (3,)
+        Right-hand side vector.
+
+    Returns
+    -------
+    x : ndarray, shape (3,)
+        Solution vector.
+
+    Notes
+    -----
+    As of now this function can fail without warning, regularity of `A` is
+    not checked.
+    """
+    def det3(a, b, c):
+        return (a[0]*b[1]*c[2] + b[0]*c[1]*a[2] + c[0]*a[1]*b[2]
+                - a[2]*b[1]*c[0] - b[2]*c[1]*a[0] - c[2]*a[1]*b[0])
+
+    a0, a1, a2 = A.T
+
+    sol = np.empty(3)
+    det = det3(a0, a1, a2)
+
+    sol[0] = det3(b, a1, a2) / det
+    sol[1] = det3(a0, b, a2) / det
+    sol[2] = det3(a0, a1, b) / det
+
+    return sol
+
+
 def cross(u, v):
     """ Cross product.
 
