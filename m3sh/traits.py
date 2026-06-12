@@ -1202,6 +1202,38 @@ def planarity_scores(mesh, denom=None, offset=0.0):
     return [offset + planarity_score(f, denom) for f in mesh]
 
 
+def plane_equation(face):
+    r""" Equation of face plane.
+
+    .. version-added:: 1.1.0
+
+    Computes the coefficient vector :math:`\mathbf{h} = (\mathbf{n}, c)
+    \in \mathbb{R}^3 \times \mathbb{R}` of the Hessian normal form of the
+    plane spanned by `face`, i.e., :math:`\mathbf{n}^T \mathbf{x} + c = 0`
+    such that :math:`\|\mathbf{n}\| = 1`.
+
+    Parameters
+    ----------
+    face : Face
+        Face of a triangle mesh.
+
+    Returns
+    -------
+    h : ndarray
+        Coefficient vector of the Hessian normal form. The computed
+        equation is only exact if `face` is planar. Faces marked as
+        deleted are assigned a vector of :obj:`~numpy.nan` values.
+    """
+    if face.deleted:
+        return np.full(4, np.nan)
+
+    vec = face_normal(face)
+    ofs = vec.dot(face.halfedge.origin.point)
+    eqn = np.array([*vec, -ofs])
+
+    return eqn
+
+
 def laplace_matrix(mesh, weights=None, normalize=False):
     """ Laplace matrix.
 
