@@ -29,6 +29,33 @@ import math
 import numpy as np
 
 
+def affine_map(p, q):
+    r""" Affine map from points in general position.
+
+    Compute matrix :math:`A` and vector :math:`\mathbf{b}` such that
+    :math:`A \mathbf{p}_i + \mathbf{b} = \mathbf{q}_i`.
+
+    Parameters
+    ----------
+    p, q : array_like, shape (n+1, n)
+        Two sequences of n+1 points in general position.
+
+    Returns
+    -------
+    A : ndarray, shape (n, n)
+        The linear part of the affine map.
+    b : ndarray, shape (n,)
+        The translational part of the affine map.
+    """
+    # Shape of p and q has to be (n+1) x n, i.e., n+1 points in n dim.
+    # space. Points are stored as rows!
+    p = np.append(p, [[1.0]] * len(p), axis=1)
+    q = np.asarray(q)
+    x = np.linalg.solve(p, q).T
+
+    return x[:, :-1], x[:, -1]
+
+
 def angle(u, v, up=None, degrees=False):
     """ Angle between vectors.
 
