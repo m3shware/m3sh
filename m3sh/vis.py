@@ -1176,7 +1176,7 @@ def mesh(mesh, color=colors.snow):
     """
     renmesh = PolyMesh(mesh)
     renmesh.color = color
-    renmesh.backface_color = web_color('DarkGray')
+    # renmesh.backface_color = rgb('DarkGray')
 
     add(renmesh)
     return renmesh
@@ -1201,11 +1201,28 @@ def vectors(points, vectors, size=1.0, resolution=6, color=colors.black):
     return vf
 
 
-def web_color(name):
-    """ Get web color by name.
+def rgb(name, char=True):
+    """ Get color by name.
 
     .. version-added:: 1.1.0
+
+    Parameters
+    ----------
+    name : str
+        Name of color, either a web color name or a VTK color name.
+    char : bool, optional
+        By default color components are unsigned integers ranging from
+        0 to 255. Passing :obj:`False` will return components as
+        percentages, i.e., floating point values from the interval [0, 1].
+
+    Returns
+    -------
+    rgb : list
+        A three element list holding RGB color components.
     """
+    if char:
+        return vtk.vtkNamedColors().GetColor3ub(name)
+
     return vtk.vtkNamedColors().GetColor3d(name)
 
 
@@ -2791,6 +2808,68 @@ def _show_cell_labels(obj):
 
     add(actor)
     return Prop(actor)
+
+
+class Texture:
+    """
+    """
+
+    @staticmethod
+    def checker(size=256, stride=128, black=[0, 0, 0], white=[255, 255, 255]):
+        """ Checker board texture.
+        """
+        data = vtk.vtkImageData()
+        data.SetDimensions(size, size, 1)
+        data.AllocateScalars(vtk.VTK_UNSIGNED_CHAR, 3)
+
+        for y in range(size):
+            dy = (y // stride) % 2
+
+            for x in range(size):
+                dx = (x // stride) % 2
+
+                if (dx == 0 and dy == 0) or (dx == 1 and dy == 1):
+                    pixel = black
+                else:
+                    pixel = white
+
+                data.SetScalarComponentFromDouble(x, y, 0, 0, pixel[0])
+                data.SetScalarComponentFromDouble(x, y, 0, 1, pixel[1])
+                data.SetScalarComponentFromDouble(x, y, 0, 2, pixel[2])
+
+        texture = vtk.vtkTexture()
+        texture.SetInputData(data)
+        texture.InterpolateOn()
+
+        return texture
+
+    @staticmethod
+    def grid(size=256, stride=128, u=[255, 0, 0], v=[0, 0, 255],
+             color=[255, 255, 255]):
+        """ Grid texture.
+        """
+        data = vtk.vtkImageData()
+        data.SetDimensions(size, size, 1)
+        data.AllocateScalars(vtk.VTK_UNSIGNED_CHAR, 3)
+
+        for y in range(size):
+            for x in range(size):
+                if y % stride == 0:
+                    pixel = u
+                elif x % stride == 0:
+                    pixel = v
+                else:
+                    pixel = color
+
+                data.SetScalarComponentFromDouble(x, y, 0, 0, pixel[0])
+                data.SetScalarComponentFromDouble(x, y, 0, 1, pixel[1])
+                data.SetScalarComponentFromDouble(x, y, 0, 2, pixel[2])
+
+        texture = vtk.vtkTexture()
+        texture.SetInputData(data)
+        texture.InterpolateOn()
+
+        return texture
 
 
 class Prop:
@@ -5281,28 +5360,31 @@ class PolyMesh(PolyData):
         if color is not None:
             self._vtk_prop.GetProperty().SetEdgeColor(color)
 
-    def texture(self, img, uv):
+    def texture(self, texture, uv):
         """ Texture mapping.
 
         Parameters
         ----------
-        img : str
-            Name of image file.
-        uv : ~numpy.ndarray
+        texture : vtkTexture or str
+            Name of image file or texture instance.
+        uv : ndarray
             Texture coordinates.
         """
         self._vtk_polydata.GetPointData().SetTCoords(numpy_to_vtk(uv))
 
-        # factory = vtk.vtkImageReader2Factory()
-        reader = vtk.vtkImageReader2Factory().CreateImageReader2(img)
-        reader.SetFileName(img)
-        reader.Update()
+        if isinstance(texture, vtk.vtkTexture):
+            self._vtk_prop.SetTexture(texture)
+        else:
+            # factory = vtk.vtkImageReader2Factory()
+            reader = vtk.vtkImageReader2Factory().CreateImageReader2(texture)
+            reader.SetFileName(texture)
+            reader.Update()
 
-        texture = vtk.vtkTexture()
-        texture.InterpolateOn()
-        texture.SetInputConnection(reader.GetOutputPort())
+            texture = vtk.vtkTexture()
+            texture.InterpolateOn()
+            texture.SetInputConnection(reader.GetOutputPort())
 
-        self._vtk_prop.SetTexture(texture)
+            self._vtk_prop.SetTexture(texture)
 
     # def contour(self, scalars=None, *, levels=None, range=(None, None),
     #             width=None, style=None, color=None):
