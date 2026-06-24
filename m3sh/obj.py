@@ -829,12 +829,7 @@ def read(filename, *tags, quiet=True):
 
         return value
 
-    # All input arguments have to be of type str (they are matched against
-    # tokens read from an OBJ file and used as keys in a dictionary).
-    # if any(not isinstance(tag, str) for tag in tags):
-    #     raise ValueError("tags have to be of type 'str'")
-
-    # Ouput data blocks for all arguments stored in a dictionary, keyed
+    # Output data blocks for all arguments stored in a dictionary, keyed
     # on the corresponding tag. All data blocks are represented as lists.
     data = {tag: [] for tag in tags}
 

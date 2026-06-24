@@ -163,7 +163,7 @@ def canvas(*args, color=None, color2=None, camera=None, transparent=None,
         # Default camera orientation. Overwritten later if the camera
         # argument is given.
         cam = _renderer.GetActiveCamera()
-        cam.SetPosition(1.0, -0.3, 0.5)
+        cam.SetPosition(1.0, -0.3, 0.25)
         cam.SetViewUp(0.0, 0.0, 1.0)
 
         # Assign default color for new renderers if no color is given.
