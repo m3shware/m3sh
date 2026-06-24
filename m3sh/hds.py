@@ -43,6 +43,7 @@ from copy import copy
 import numpy as np
 
 import m3sh.obj as obj
+import m3sh.off as off
 import m3sh.flags as flags
 
 # from . import obj
@@ -595,6 +596,45 @@ class Mesh:
 
         if args:
             return mesh, *data.values()
+
+        return mesh
+
+    @classmethod
+    def from_OFF(cls, filename, quiet=False):
+        """ Read from OFF file.
+
+        .. version-added:: 1.1.0
+
+        Parameters
+        ----------
+        filename : str
+            Name of OBJ file.
+        quiet : bool, optional
+            Suppress console output if :obj:`True`.
+
+        Returns
+        -------
+        mesh : Mesh
+            Mesh instance. Reading fails if mesh combinatorics do not
+            represent an orientable manifold surface mesh.
+        """
+        CBOLD = '\33[1m'
+        CEND = '\33[0m'
+
+        if not quiet:
+            print(f'reading {CBOLD}{Path(filename).name}{CEND}', end=' ...',
+                  flush=True)
+
+        start = perf_counter()
+        verts, faces = off.read(filename)
+
+        mesh = cls(verts, faces, name=Path(filename).stem)
+        mesh._file = Path(filename).name
+
+        if not quiet:
+            print(f' done ({perf_counter() - start:.2f} sec)')
+            print(f'\t├─ {len(verts)} vertices')
+            print(f'\t└─ {len(faces)} faces')
 
         return mesh
 

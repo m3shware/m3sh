@@ -615,9 +615,9 @@ class OBJError(Exception):
 
 
 def read(filename, *tags, quiet=True):
-    """ Read from .obj file.
+    """ Read from OBJ file.
 
-    Read from an .obj file, i.e., a text file where each line
+    Read from an OBJ file, i.e., a text file where each line
     starts with a tag followed by numerical values. Lines whose tag is
     contained in `tags` are read. The values corresponding to a tag are
     returned as a list of lists: one list per tag that holds a list of
@@ -626,7 +626,7 @@ def read(filename, *tags, quiet=True):
     Parameters
     ----------
     filename : str
-        Name of .obj file.
+        Name of OBJ file.
     *tags
         Variable number of arguments of type :class:`str`.
     quiet : bool, optional
