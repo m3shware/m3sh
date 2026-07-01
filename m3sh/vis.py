@@ -748,7 +748,7 @@ def _test():
     show()
 
 
-def colorbar(object, x=0.8, y=0.1):
+def colorbar(object, x=0.8, y=0.1, horizontal=False):
     """ Display colorbar.
 
     Display visual representation of the lookup table associated with
@@ -762,13 +762,14 @@ def colorbar(object, x=0.8, y=0.1):
         Horizontal position in normalized window coordinates.
     y : float, optional
         Vertical position in normalized window coordinates.
+    horizontal : bool, optional
 
     Returns
     -------
     LookupTable
         Visual representation of lookup table.
     """
-    colorbar = LookupTable(object)
+    colorbar = LookupTable(object, horizontal)
     colorbar.position = x, y
 
     add(colorbar)
@@ -1024,12 +1025,12 @@ def _tweak_lut(lut, range=None, gradient=None, logscale=None, size=None,
 
     Keyword arguments
     -----------------
-    below : array_like, shape (4, )
-        Color for scalars below the specified range.
-    above: array_like, shape (4, )
-        Color for scalars above the specified range.
-    nan : array_like, shape (4, )
-        Special color for NaN scalar values.
+    below : array_like
+        RGB or RGBA color for scalars below the specified range.
+    above: array_like
+        RGB or RGBA color for scalars above the specified range.
+    nan : array_like
+        RGB or RGBA color for NaN scalar values.
 
 
     Smooth color gradients are defined by the color scheme identifiers
@@ -1088,10 +1089,39 @@ def _tweak_lut(lut, range=None, gradient=None, logscale=None, size=None,
     else:
         series = vtk.vtkColorSeries()
         series.SetColorSchemeByName(gradient)
-        series.BuildLookupTable(lut, series.ORDINAL)
-        # series.BuildLookupTable(lut, series.CATEGORICAL)
+        # series.BuildLookupTable(lut, series.ORDINAL)
+        series.BuildLookupTable(lut, series.CATEGORICAL)
+
+        print(lut.GetNumberOfTableValues())
+        print(lut.GetIndexedLookup())
+
+        annotations = vtk.vtkVariantArray()
+        annotations.InsertNextValue(-4)
+        annotations.InsertNextValue(-3)
+        annotations.InsertNextValue(-2)
+        annotations.InsertNextValue(-1)
+        annotations.InsertNextValue(0)
+        annotations.InsertNextValue(1)
+        annotations.InsertNextValue(2)
+        annotations.InsertNextValue(3)
+        annotations.InsertNextValue(4)
+
+        strings = vtk.vtkStringArray()
+        strings.InsertNextValue('-4')
+        strings.InsertNextValue('-3')
+        strings.InsertNextValue('-2')
+        strings.InsertNextValue('-1')
+        strings.InsertNextValue('0')
+        strings.InsertNextValue('1')
+        strings.InsertNextValue('2')
+        strings.InsertNextValue('3')
+        strings.InsertNextValue('4')
+
+        lut.SetAnnotations(annotations, strings)
+
         # lut.SetIndexedLookup(True)
-        lut.SetTableRange(0, series.GetNumberOfColors() - 1)
+        # lut.SetTableRange(0, series.GetNumberOfColors() - 1)
+        # lut.SetNumberOfTableValues(series.GetNumberOfColors())
         # raise ValueError(f"unknown color scheme '{gradient}'")
 
     if range is not None:
@@ -1125,7 +1155,7 @@ def _tweak_lut(lut, range=None, gradient=None, logscale=None, size=None,
             color = [0., 0., 0., 1.]
             color[:len(above)] = above
 
-            lut.SetBelowRangeColor(color)
+            lut.SetAboveRangeColor(color)
             lut.SetUseAboveRangeColor(True)
         else:
             lut.SetUseAboveRangeColor(False)
@@ -1201,7 +1231,7 @@ def vectors(points, vectors, size=1.0, resolution=6, color=colors.black):
     return vf
 
 
-def rgb(name, char=True):
+def rgb(name, char=False):
     """ Get color by name.
 
     .. version-added:: 1.1.0
@@ -1224,6 +1254,31 @@ def rgb(name, char=True):
         return vtk.vtkNamedColors().GetColor3ub(name)
 
     return vtk.vtkNamedColors().GetColor3d(name)
+
+
+def rgba(name, char=False):
+    """ Get color by name.
+
+    .. version-added:: 1.1.0
+
+    Parameters
+    ----------
+    name : str
+        Name of color, either a web color name or a VTK color name.
+    char : bool, optional
+        By default color components are unsigned integers ranging from
+        0 to 255. Passing :obj:`False` will return components as
+        percentages, i.e., floating point values from the interval [0, 1].
+
+    Returns
+    -------
+    rgb : list
+        A three element list holding RGB color components.
+    """
+    if char:
+        return vtk.vtkNamedColors().GetColor4ub(name)
+
+    return vtk.vtkNamedColors().GetColor4d(name)
 
 
 def graph(points, graph, color=colors.black):
@@ -2417,8 +2472,9 @@ def show(width=1200, height=600, title=None, info=False, shadows=False, *,
         if vtk.vtkVersion.GetVTKMinorVersion() > 5:
             repr = iren.axes_widget.GetRepresentation()
             repr.SetXAxisColor(colors.tomato)
-            repr.SetYAxisColor(colors.emerald_green)
+            repr.SetYAxisColor(colors.lime_green)
             repr.SetZAxisColor(colors.cornflower)
+            # repr.AnchorToLowerLeft()
 
         iren.axes_widget.SetParentRenderer(_renderer)
         iren.axes_widget.GetRepresentation().SetPadding(40, 40)
@@ -5532,15 +5588,18 @@ class PolyLine(PolyData):
     """
     """
 
-    def __init__(self, points, vectors):
-        n = len(points)
-        edges = ((i, i+n) for i in range(n))
+    # def __init__(self, points, vectors):
+    #     n = len(points)
+    #     edges = ((i, i+n) for i in range(n))
 
-        origin = points
-        target = points + vectors
-        points = np.append(origin, target, axis=0)
+    #     origin = points
+    #     target = points + vectors
+    #     points = np.append(origin, target, axis=0)
 
-        super().__init__(points, lines=edges)
+    #     super().__init__(points, lines=edges)
+
+    def __init__(self, graph):
+        super().__init__(graph[0], lines=graph[1])
 
     def edges(self, style=None, width=None):
         """ Edge display.
@@ -5672,7 +5731,7 @@ class LookupTable(Prop):
     The wrapped actor is a 2-dimensional actor.
     """
 
-    def __init__(self, actor):
+    def __init__(self, actor, horizontal=False):
         if isinstance(actor, Prop):
             actor = actor.prop
 
@@ -5682,9 +5741,16 @@ class LookupTable(Prop):
         actor.SetDrawBelowRangeSwatch(lut.GetUseBelowRangeColor())
         actor.SetDrawAboveRangeSwatch(lut.GetUseAboveRangeColor())
 
+        if horizontal:
+            actor.SetOrientationToHorizontal()
+            actor.SetMaximumHeightInPixels(80)
+            actor.SetWidth(0.8)
+            actor.SetHeight(0.2)
+        else:
+            actor.SetBarRatio(0.2)
+            actor.SetMaximumWidthInPixels(180)
+
         actor.SetNumberOfLabels(5)
-        actor.SetBarRatio(0.2)
-        actor.SetMaximumWidthInPixels(180)
         actor.GetLabelTextProperty().SetFontSize(14)
         actor.SetUnconstrainedFontSize(True)
         actor.SetLookupTable(lut)
