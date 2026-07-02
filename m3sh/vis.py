@@ -763,11 +763,12 @@ def colorbar(object, x=0.8, y=0.1, horizontal=False):
     y : float, optional
         Vertical position in normalized window coordinates.
     horizontal : bool, optional
+        Orientation, either vertical (default) or horizontal.
 
     Returns
     -------
     LookupTable
-        Visual representation of lookup table.
+        Visual representation of a lookup table.
     """
     colorbar = LookupTable(object, horizontal)
     colorbar.position = x, y
@@ -1008,7 +1009,7 @@ def _tweak_lut(lut, range=None, gradient=None, logscale=None, size=None,
                **kwargs):
     """ Modify lookup table properties.
 
-    An objects lookup tables determines how entries of the scalar array
+    An objects lookup tables determines how entries of a scalar array
     are translated to color values. Lookup tables have no effect when
     directly mapping RGB color values.
 
@@ -1021,7 +1022,7 @@ def _tweak_lut(lut, range=None, gradient=None, logscale=None, size=None,
     logscale : bool
         Switch between linear and logarithmic scale.
     size : int
-        Size of lookup table.
+        Size of lookup table, i.e., the number of colors.
 
     Keyword arguments
     -----------------
@@ -1034,16 +1035,14 @@ def _tweak_lut(lut, range=None, gradient=None, logscale=None, size=None,
 
 
     Smooth color gradients are defined by the color scheme identifiers
-    'hot', 'cool', 'jet', and 'grey'. The color schemes 'spectral',
-    'diverging', 'blue', 'orange', and 'purple' define a discrete color
-    series.
+    'hot', 'cool', 'jet', and 'grey'.
 
     If provied, out of range values are marked with the `below`,
     `above`, and `nan` colors. Not that those colors also have an alpha
     intensity value to control opacity.
 
-    Note
-    ----
+    Notes
+    -----
     Arguments not provided have no affect on the corresponding lookup
     table property.
     """
@@ -1066,63 +1065,16 @@ def _tweak_lut(lut, range=None, gradient=None, logscale=None, size=None,
             lut.SetValueRange(0, 1)
 
         lut.ForceBuild()
-    elif gradient in {'spectral', 'diverging', 'blue', 'orange', 'purple'}:
-        # Color series define a fixed number of colors. A given size
-        # parameter is ignored in this case.
-        series = vtk.vtkColorSeries()
-
-        map = {'spectral': series.BREWER_DIVERGING_SPECTRAL_11,
-               'diverging': series.BREWER_DIVERGING_BROWN_BLUE_GREEN_10,
-               'blue': series.BREWER_SEQUENTIAL_BLUE_GREEN_9,
-               'orange': series.BREWER_SEQUENTIAL_YELLOW_ORANGE_BROWN_9,
-               'purple': series.BREWER_SEQUENTIAL_BLUE_PURPLE_9}
-
-        series.SetColorScheme(map[gradient])
-        series.BuildLookupTable(lut, series.ORDINAL)
     elif gradient == 'default':
         # This should reset the color gradient to some default value.
         # Currently does nothing.
         pass
     elif gradient is None:
-        # Nothing to do, no gradient argument defined.
         pass
     else:
         series = vtk.vtkColorSeries()
         series.SetColorSchemeByName(gradient)
-        # series.BuildLookupTable(lut, series.ORDINAL)
-        series.BuildLookupTable(lut, series.CATEGORICAL)
-
-        print(lut.GetNumberOfTableValues())
-        print(lut.GetIndexedLookup())
-
-        annotations = vtk.vtkVariantArray()
-        annotations.InsertNextValue(-4)
-        annotations.InsertNextValue(-3)
-        annotations.InsertNextValue(-2)
-        annotations.InsertNextValue(-1)
-        annotations.InsertNextValue(0)
-        annotations.InsertNextValue(1)
-        annotations.InsertNextValue(2)
-        annotations.InsertNextValue(3)
-        annotations.InsertNextValue(4)
-
-        strings = vtk.vtkStringArray()
-        strings.InsertNextValue('-4')
-        strings.InsertNextValue('-3')
-        strings.InsertNextValue('-2')
-        strings.InsertNextValue('-1')
-        strings.InsertNextValue('0')
-        strings.InsertNextValue('1')
-        strings.InsertNextValue('2')
-        strings.InsertNextValue('3')
-        strings.InsertNextValue('4')
-
-        lut.SetAnnotations(annotations, strings)
-
-        # lut.SetIndexedLookup(True)
-        # lut.SetTableRange(0, series.GetNumberOfColors() - 1)
-        # lut.SetNumberOfTableValues(series.GetNumberOfColors())
-        # raise ValueError(f"unknown color scheme '{gradient}'")
+        series.BuildLookupTable(lut, series.ORDINAL)
 
     if range is not None:
         lut.SetTableRange(range[0], range[1])
@@ -1165,8 +1117,47 @@ def _tweak_lut(lut, range=None, gradient=None, logscale=None, size=None,
         color[:len(nan)] = nan
 
         lut.SetNanColor(color)
-    # else:
-    #     lut.SetNanColor(None)
+
+
+def _tweak_categorical_lut(lut, labels=None, colors=None, **kwargs):
+    """ Modify lookup table properties.
+
+    An objects lookup tables determines how entries of the scalar array
+    are translated to color values. Lookup tables have no effect when
+    directly mapping RGB color values.
+
+    Parameters
+    ----------
+    labels : (float, float)
+        Accpeted range of scalar values.
+    colors : str
+        Color scheme identifier, see below.
+
+    Keyword arguments
+    -----------------
+    nan : array_like
+        RGB or RGBA color for out of bounds values.
+    """
+    if colors is not None:
+        series = vtk.vtkColorSeries()
+        series.SetColorSchemeByName(colors)
+        series.BuildLookupTable(lut, series.CATEGORICAL)
+
+    if labels is not None:
+        variants = vtk.vtkVariantArray()
+        strings = vtk.vtkStringArray()
+
+        for label in labels:
+            variants.InsertNextValue(label)
+            strings.InsertNextValue(str(label))
+
+        lut.SetAnnotations(variants, strings)
+
+    if (nan := kwargs.get('nan')) is not None:
+        color = [0., 0., 0., .5]
+        color[:len(nan)] = nan
+
+        lut.SetNanColor(color)
 
 
 def _app_icon(window, file='m3sh.png'):
@@ -2937,15 +2928,12 @@ class Prop:
     ----------
     prop : vtkProp
         Instance of a render object.
-
-    Note
-    ----
-    Wrapped objects are not pickable by default.
     """
 
     def __init__(self, prop):
         # Typically prop is an instance object derived from vtkProp like
-        # vtkActor or vtkActor2D.
+        # vtkActor or vtkActor2D. Wrapped objects are not pickable by
+        # default.
         self._vtk_prop = prop
         self._vtk_prop.SetPickable(False)
 
@@ -2953,35 +2941,26 @@ class Prop:
     def prop(self):
         """ Wrapped VTK instance.
 
-        Access the wrapped render object. Exposes all low-level
-        interaction with this object.
-
-        :type: vtkProp
+        Access the wrapped render object. Exposes all low-level VTK
+        functionality of the wrapped object.
         """
         return self._vtk_prop
 
-    @property
-    def actor(self):
-        """ Actor instance.
+    # @property
+    # def actor(self):
+    #     """ Actor instance.
 
-        Access the associated actor. Generically this is equal to the
-        :attr:`prop` attribute.
-
-        :type: vtkActor
-
-        Note
-        ----
-        Derived classes should provide their own implementation.
-        """
-        return self._vtk_prop
+    #     Access the associated actor. The generic implementation is equal
+    #     to the :attr:`prop` attribute. Derived classes should provide their
+    #     own implementation.
+    #     """
+    #     return self._vtk_prop
 
     @property
     def name(self):
         """ Prop name.
 
-        Set and get name of the prop (empty by default).
-
-        :type: str
+        Set and get name of the prop.
         """
         return self._vtk_prop.GetObjectName()
 
@@ -2995,8 +2974,6 @@ class Prop:
 
         Pair holding the min and max values along each of the three
         coordinate dimensions.
-
-        :type: tuple[ndarray, ndarray]
         """
         # Results in a list of intervals for each space dimension. Get
         # the lower bounds as every second entry starting from 0 and the
@@ -3009,8 +2986,6 @@ class Prop:
         """ Visibility property.
 
         Query and toggle object visibility.
-
-        :type: bool
         """
         return self._vtk_prop.GetVisibility()
 
@@ -3024,8 +2999,6 @@ class Prop:
 
         Query and toggle whether object geometry can be picked. Objects
         are not pickable by default.
-
-        :type: bool
         """
         return self._vtk_prop.GetPickable()
 
@@ -3037,15 +3010,13 @@ class Prop:
 class PropertyMixin:
     # Assumes that self._vtk_prop is derived from a class that provides
     # the GetProperty() method. Apparently this requires self._vtk_prop
-    # to a subclass of vtkActor.
+    # to be a subclass of vtkActor.
 
     @property
     def opacity(self):
         """ Opacity property.
 
         Set and get opacity value.
-
-        :type: float
         """
         return self._vtk_prop.GetProperty().GetOpacity()
 
@@ -3057,16 +3028,16 @@ class PropertyMixin:
     def backface_opacity(self):
         """ Backface opacity property.
 
-        :type: float
+        Set and get backface opacity value.
         """
-        if (property := self.actor.GetBackfaceProperty()) is not None:
+        if (property := self._vtk_prop.GetBackfaceProperty()) is not None:
             return property.GetOpacity()
 
         return self.opacity
 
     @backface_opacity.setter
     def backface_opacity(self, value):
-        actor = self.actor
+        actor = self._vtk_prop
 
         if (property := actor.GetBackfaceProperty()) is None:
             actor.SetBackfaceProperty(property := vtk.vtkProperty())
@@ -3136,6 +3107,10 @@ class MapperMixin:
         # given parameters. None values preserve the corresponding property.
         lut = self._vtk_prop.GetMapper().GetLookupTable()
         _tweak_lut(lut, range, gradient, logscale, size, **kwargs)
+
+    def categorical(self, labels=None, colors=None, **kwargs):
+        lut = self._vtk_prop.GetMapper().GetLookupTable()
+        _tweak_categorical_lut(lut, labels, colors, **kwargs)
 
 
 class GlyphMixin:
@@ -5716,7 +5691,7 @@ class _TetrahedralMesh(Prop, PropertyMixin, MapperMixin):
 
 
 class LookupTable(Prop):
-    """ Color bar.
+    """ Colorbar.
 
     Visual representation of a lookup table associated with a displayed
     shape.
@@ -5725,13 +5700,10 @@ class LookupTable(Prop):
     ----------
     actor : Prop or vtkActor
         A render object.
-
-    Note
-    ----
-    The wrapped actor is a 2-dimensional actor.
     """
 
     def __init__(self, actor, horizontal=False):
+        # Get the actor wrapped by the Prop instance.
         if isinstance(actor, Prop):
             actor = actor.prop
 
