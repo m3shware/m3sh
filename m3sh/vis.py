@@ -66,8 +66,8 @@ _renderers = []
 _interactors = []
 
 
-def canvas(*args, color=None, color2=None, camera=None, transparent=None,
-           interactive=None, layer=None, shadows=None, FXAA=False):
+def canvas(*args, color=None, top_color=None, camera=None, transparent=None,
+           interactive=None, layer=None, shadows=None, FXAA=None):
     r""" Create or modify viewport.
 
     Change properties of an existing viewport or create a new one inside
@@ -106,8 +106,8 @@ def canvas(*args, color=None, color2=None, camera=None, transparent=None,
     -----------------
     color : array_like, shape (3, ), optional
         Background color.
-    color2 : array_like, shape (3, ), optional
-        Top background color.
+    top_color : array_like, shape (3, ), optional
+        Top color for gradient background
     camera : vtkRenderer or vtkCamera, optional
         Shared camera.
     transparent : bool, optional
@@ -118,6 +118,8 @@ def canvas(*args, color=None, color2=None, camera=None, transparent=None,
         Layer index. Only for internal use.
     shadows : bool, optional
         Render shadows, experimental.
+    FXAA : bool, optional
+        Toggle anti-aliasing.
 
     Note
     ----
@@ -201,8 +203,8 @@ def canvas(*args, color=None, color2=None, camera=None, transparent=None,
         # windows (known bug).
         _renderer.SetUseShadows(shadows)
 
-    if FXAA:
-        _renderer.SetUseFXAA(1)
+    if FXAA is not None:
+        _renderer.SetUseFXAA(FXAA)
 
     # Viewports can be layered, i.e., occupy the same region in a render
     # window or overlap partially. In this case it can be useful to set
@@ -217,10 +219,10 @@ def canvas(*args, color=None, color2=None, camera=None, transparent=None,
     # A None value will not touch values for the top background color
     # and gradient background setting. A False value disables gradient
     # background for this renderer.
-    if color2 is False:
+    if top_color is False:
         _renderer.SetGradientBackground(False)
-    elif color2 is not None:
-        _renderer.SetBackground2(color2)
+    elif top_color is not None:
+        _renderer.SetBackground2(top_color)
         _renderer.SetGradientBackground(True)
 
     return _renderer
@@ -358,10 +360,9 @@ def _window(width=1200, height=600, title=None, color=colors.white,
 def add(obj, renderer=None):
     """ Queue object for display.
 
-    The `renderer` argument should be a value returned by :func:`canvas`
-    or a window instance returned by :func:`window`. If not specified,
-    the current viewport is used or a new one is created if this is the
-    first object to be displayed.
+    The `renderer` argument should be a value returned by :func:`canvas`.
+    If not specified, the current viewport is used or a new one is created
+    if this is the first object to be displayed.
 
     Parameters
     ----------
@@ -375,10 +376,10 @@ def add(obj, renderer=None):
     vtkRenderer
         The renderer instance used for display.
 
-    Note
-    ----
-    It is almost never necessary to use this function directly. It is
-    used by all drawing and plotting commands automatically.
+    Notes
+    -----
+    It is almost never necessary to use this function directly. It is used
+    by all drawing and plotting commands automatically.
     """
     if renderer is not None:
         if isinstance(renderer, vtk.vtkRenderWindow):
@@ -622,8 +623,8 @@ def delete(*actors, renderer=None):
     renderer : vtkRenderer, optional
         Remove actors only from this renderer.
 
-    Note
-    ----
+    Notes
+    -----
     This will prevent an object from being displayed. As long as there are
     other references to it, it will not be removed from memory.
     """
@@ -661,8 +662,8 @@ def update(*args, **kwargs):
     **kwargs
         Dictionary of keyword arguments.
 
-    Note
-    ----
+    Notes
+    -----
     This functions defines arguments (which are ignored) to make it directly
     usable as a callback function.
     """
@@ -685,8 +686,8 @@ def screenshot(filename, scale=1.0, window=None):
     window : vtkRenderWindow, optional
         Window to grab.
 
-    Note
-    ----
+    Notes
+    -----
     Some display properties (for example the width of mesh edges) are given
     in screen units (i.e., pixels). This may give some unexpected results when
     using the `scale` argument to change the resolution of the saved image.
@@ -751,7 +752,7 @@ def _test():
     show()
 
 
-def colorbar(object, x=0.8, y=0.1, horizontal=False):
+def colorbar(object, x=0.1, y=0.1, horizontal=False):
     """ Display colorbar.
 
     Display visual representation of the lookup table associated with
@@ -850,7 +851,7 @@ def splat(points, vectors, size=1.0, color=colors.snow):
 
 
 def quiver(points, vectors, size=1.0, radius=0.025, resolution=6,
-           color=colors.green_pale):
+           arrows=True, color=colors.cornflower):
     """ Quiver plot.
 
     Display arrows at given locations pointing in given directions. For each
@@ -890,71 +891,56 @@ def quiver(points, vectors, size=1.0, radius=0.025, resolution=6,
     points = np.atleast_2d(points).reshape(-1, 3, copy=False)
     vectors = np.atleast_2d(vectors).reshape(-1, 3, copy=False)
 
-    vf = Arrows(points, vectors, radius, 2.0 * radius, resolution=resolution)
-    vf.size = size
-    vf.color = color
+    if arrows:
+        vf = Arrows(points, vectors, radius, 2*radius, resolution=resolution)
+        vf.size = size
+        vf.color = color
 
-    add(vf)
-    return vf
+        add(vf)
+        return vf
 
+    origins = points
+    targets = points + vectors
 
-def _quiver(points, vectors, color=colors.green_pale):
-    """
-    """
-    points = np.atleast_2d(points).reshape(-1, 3, copy=False)
-    vectors = np.atleast_2d(vectors).reshape(-1, 3, copy=False)
+    n = len(points)
+    edges = ((i, i+n) for i in range(n))
 
-    pl = PolyLine(points, vectors)
+    pl = PolyGraph((np.append(origins, targets, axis=0), edges))
+    pl.edges(width=size)
     pl.color = color
 
     add(pl)
     return pl
 
 
-def _generic_lut(range=(0.0, 1.0), gradient='default', logscale=False,
-                 size=128, below=None, above=None, nan=None):
-    """ Generate lookup table.
-
-    Lookup table with `size` values in the given `range`. Gradient
-    values drawn from
-
-        {'default', 'hot', 'jet', 'grey'}
-
-    generate a continuous color gradient whereas values from
-
-        {'spectral', 'diverging', 'blue', 'orange', 'purple'}
-
-    only define a fixed number of discrete colors. The `size` parameter
-    has no effect in the latter case. Special colors can be assigned to
-    values outside the specified range.
+def _generic_lut(range=(0.0, 1.0), gradient='Brewer Diverging Spectral (11)',
+                 logscale=False, size=128, below=None, above=None, nan=None):
+    """ Generate ordinal lookup table.
 
     Parameters
     ----------
     range : (float, float), optional
-        Range of table values.
+        The valid range of scalar input.
     gradient : str, optional
-        Name of color gradient.
+        Name of color gradient or color series.
     logscale : bool, optional
         Toggle logarithmic scaling.
     size : int, optional
-        Number of table values.
-    below : array_like, shape (4, )
-        RGBA color for values below table range.
-    above : array_like, shape (4, )
-        RGBA color for values above table range.
-    nan : array_like, shape (4, )
-        RGBA color for NaN values.
+        Number of table values. Has no effect when using a predefined
+        discrete color series.
+    below : array_like, shape (3,) or (4,), optional
+        RGB(A) color intensities for scalars below table range.
+    above : array_like, shape (3,) or (4,), optional
+        RGB(A) color intensities for scalars above table range.
+    nan : array_like, shape (3,) or (4,), optional
+        RGB(A) color intensities for NaN scalars.
 
     Returns
     -------
     vtkLookupTable
-        The generated lookup table.
-
-    Note
-    ----
-    Passing 'default' as `gradient` will use VTK's default color gradient.
+        The generated ordinal lookup table instance.
     """
-    if gradient in {'default', 'hot', 'jet', 'grey', 'gray'}:
+    if gradient in {'default', 'hot', 'cool', 'jet', 'grey', 'gray'}:
         lut = vtk.vtkLookupTable()
         lut.SetNumberOfTableValues(size)
 
@@ -962,6 +948,10 @@ def _generic_lut(range=(0.0, 1.0), gradient='default', logscale=False,
             lut.SetHueRange(0, 1/6)
             lut.SetSaturationRange(1, 0.5)
             lut.SetValueRange(1, 1)
+        elif gradient == 'cool':
+            lut.SetHueRange(0.49, 0.6)
+            lut.SetSaturationRange(1, 0.1)
+            lut.SetValueRange(0.55, 1)
         elif gradient == 'jet':
             lut.SetHueRange(2/3, 0)
             lut.SetSaturationRange(1, 1)
@@ -972,22 +962,11 @@ def _generic_lut(range=(0.0, 1.0), gradient='default', logscale=False,
             lut.SetValueRange(0, 1)
 
         lut.Build()
-    elif gradient in {'spectral', 'diverging', 'blue', 'orange', 'purple'}:
-        series = vtk.vtkColorSeries()
-
-        map = {'spectral': series.BREWER_DIVERGING_SPECTRAL_11,
-               'diverging': series.BREWER_DIVERGING_BROWN_BLUE_GREEN_10,
-               'blue': series.BREWER_SEQUENTIAL_BLUE_GREEN_9,
-               'orange': series.BREWER_SEQUENTIAL_YELLOW_ORANGE_BROWN_9,
-               'purple': series.BREWER_SEQUENTIAL_BLUE_PURPLE_9}
-
-        series.SetColorScheme(map[gradient])
-        lut = series.CreateLookupTable(series.ORDINAL)
     else:
         series = vtk.vtkColorSeries()
         series.SetColorSchemeByName(gradient)
 
-        # raise ValueError(f"unknown color scheme '{gradient}'")
+        lut = series.CreateLookupTable(series.ORDINAL)
 
     lut.SetTableRange(range[0], range[1])
 
@@ -995,14 +974,23 @@ def _generic_lut(range=(0.0, 1.0), gradient='default', logscale=False,
         lut.SetScaleToLog10()
 
     if nan is not None:
-        lut.SetNanColor(nan)
+        color = [0., 0., 0., 1.]
+        color[:len(nan)] = nan
+
+        lut.SetNanColor(color)
 
     if below is not None:
-        lut.SetBelowRangeColor(below)
+        color = [0., 0., 0., 1.]
+        color[:len(below)] = below
+
+        lut.SetBelowRangeColor(color)
         lut.SetUseBelowRangeColor(True)
 
     if above is not None:
-        lut.SetAboveRangeColor(above)
+        color = [0., 0., 0., 1.]
+        color[:len(above)] = above
+
+        lut.SetAboveRangeColor(color)
         lut.SetUseAboveRangeColor(True)
 
     return lut
@@ -1010,45 +998,45 @@ def _generic_lut(range=(0.0, 1.0), gradient='default', logscale=False,
 
 def _tweak_lut(lut, range=None, gradient=None, logscale=None, size=None,
                **kwargs):
-    """ Modify lookup table properties.
+    """ Modify ordinal lookup table.
 
-    An objects lookup tables determines how entries of a scalar array
+    An objects lookup table determines how entries of a scalar array
     are translated to color values. Lookup tables have no effect when
     directly mapping RGB color values.
 
     Parameters
     ----------
-    range : (float, float)
-        Accpeted range of scalar values.
-    gradient : str
-        Color scheme identifier, see below.
-    logscale : bool
+    range : (float, float), optional
+        The valid range of scalar input.
+    gradient : str, optional
+        Name of color gradient or color series. Smooth color gradients are
+        defined by the identifiers 'hot', 'cool', 'jet', and 'grey'.
+    logscale : bool, optional
         Switch between linear and logarithmic scale.
-    size : int
-        Size of lookup table, i.e., the number of colors.
+    size : int, optional
+        Size of lookup table, i.e., the number of colors. Has no effect
+        when using a predefined discrete color series.
 
     Keyword arguments
     -----------------
-    below : array_like
+    below : array_like, optional
         RGB or RGBA color for scalars below the specified range.
-    above: array_like
+    above: array_like, optional
         RGB or RGBA color for scalars above the specified range.
-    nan : array_like
+    nan : array_like, optional
         RGB or RGBA color for NaN scalar values.
-
-
-    Smooth color gradients are defined by the color scheme identifiers
-    'hot', 'cool', 'jet', and 'grey'.
-
-    If provied, out of range values are marked with the `below`,
-    `above`, and `nan` colors. Not that those colors also have an alpha
-    intensity value to control opacity.
 
     Notes
     -----
-    Arguments not provided have no affect on the corresponding lookup
-    table property.
+    If provied, out of range values are marked with the `below`, `above`,
+    and `nan` colors. Not that those colors also have an alpha intensity
+    value to control opacity.
+
+    Any arguments not provided have no affect on the corresponding lookup
+    table property!
     """
+    lut.SetIndexedLookup(False)
+
     if gradient in {'hot', 'cool', 'jet', 'grey', 'gray'}:
         if gradient == 'hot':
             lut.SetHueRange(0, 1/6)
@@ -1122,39 +1110,46 @@ def _tweak_lut(lut, range=None, gradient=None, logscale=None, size=None,
         lut.SetNanColor(color)
 
 
-def _tweak_categorical_lut(lut, labels=None, colors=None, **kwargs):
-    """ Modify lookup table properties.
+def _tweak_categorical_lut(lut, values, labels=None, colors=None, **kwargs):
+    """ Modify categorial lookup table.
 
-    An objects lookup tables determines how entries of the scalar array
+    An objects lookup table determines how entries of a scalar array
     are translated to color values. Lookup tables have no effect when
     directly mapping RGB color values.
 
     Parameters
     ----------
-    labels : (float, float)
-        Accpeted range of scalar values.
-    colors : str
-        Color scheme identifier, see below.
+    values : list
+        Annotated values. Values not contained in this list are assigned
+        the NaN color.
+    labels : list, optional
+        Label for each entry of the `values` list.
+    colors : str, optional
+        Color series name.
 
     Keyword arguments
     -----------------
-    nan : array_like
+    nan : array_like, optional
         RGB or RGBA color for out of bounds values.
     """
+    lut.SetIndexedLookup(True)
+
     if colors is not None:
         series = vtk.vtkColorSeries()
         series.SetColorSchemeByName(colors)
         series.BuildLookupTable(lut, series.CATEGORICAL)
 
-    if labels is not None:
-        variants = vtk.vtkVariantArray()
-        strings = vtk.vtkStringArray()
+    if labels is None:
+        labels = values
 
-        for label in labels:
-            variants.InsertNextValue(label)
-            strings.InsertNextValue(str(label))
+    variants = vtk.vtkVariantArray()
+    strings = vtk.vtkStringArray()
 
-        lut.SetAnnotations(variants, strings)
+    for value, label in zip(values, labels, strict=True):
+        variants.InsertNextValue(value)
+        strings.InsertNextValue(str(label))
+
+    lut.SetAnnotations(variants, strings)
 
     if (nan := kwargs.get('nan')) is not None:
         color = [0., 0., 0., .5]
@@ -1177,106 +1172,37 @@ def _app_icon(window, file='m3sh.png'):
         window.SetIcon(reader.GetOutput())
 
 
-def mesh(mesh, color=colors.snow):
-    """ Mesh visualization.
-
-    Visualization of a polygonal mesh represented as a :class:`Mesh`
-    instance or a 2-tuple holding an `array_like` vertex coordinate
-    representation and a list of face definitions. The visual
-    appearance of a mesh can be modified by using the methods and
-    attributes of the returned object.
-
-    Parameters
-    ----------
-    mesh : Mesh or tuple
-        Polygonal mesh representation.
-    color : array_like, shape (3, ), optional
-        RGB color triple.
-
-    Returns
-    -------
-    PolyMesh
-        Polygonal mesh instance.
-    """
-    renmesh = PolyMesh(mesh)
-    renmesh.color = color
-    # renmesh.backface_color = rgb('DarkGray')
-
-    add(renmesh)
-    return renmesh
-
-
-def vectors(points, vectors, size=1.0, resolution=6, color=colors.black):
-    """
-    """
-    try:
-        points = [f.barycenter for f in points]
-    except AttributeError:
-        pass
-
-    points = np.asarray(points)
-    radius = 0.025 * size
-
-    vf = Arrows(points, vectors, radius, 2.0 * radius, resolution=resolution)
-    vf.size = size
-    vf.color = color
-
-    add(vf)
-    return vf
-
-
-def rgb(name, char=False):
-    """ Get color by name.
+def edges(mesh, width=1, color=colors.black):
+    """ Mesh edge visualization.
 
     .. version-added:: 1.1.0
 
     Parameters
     ----------
-    name : str
-        Name of color, either a web color name or a VTK color name.
-    char : bool, optional
-        By default color components are unsigned integers ranging from
-        0 to 255. Passing :obj:`False` will return components as
-        percentages, i.e., floating point values from the interval [0, 1].
+    mesh : Mesh
+        Polygon mesh instance.
+    width : int, optional
+        Thickness of mesh edges in pixels.
+    color : array_like, shape (3,), optional
+        RGB color intensity triple.
 
     Returns
     -------
-    rgb : list
-        A three element list holding RGB color components.
+    PolyGraph
+        Render object instance.
+
+    See Also
+    --------
+    graph : general graph visualization
     """
-    if char:
-        return vtk.vtkNamedColors().GetColor3ub(name)
-
-    return vtk.vtkNamedColors().GetColor3d(name)
-
-
-def rgba(name, char=False):
-    """ Get color by name.
-
-    .. version-added:: 1.1.0
-
-    Parameters
-    ----------
-    name : str
-        Name of color, either a web color name or a VTK color name.
-    char : bool, optional
-        By default color components are unsigned integers ranging from
-        0 to 255. Passing :obj:`False` will return components as
-        percentages, i.e., floating point values from the interval [0, 1].
-
-    Returns
-    -------
-    rgb : list
-        A three element list holding RGB color components.
-    """
-    if char:
-        return vtk.vtkNamedColors().GetColor4ub(name)
-
-    return vtk.vtkNamedColors().GetColor4d(name)
+    edges = [(int(h.origin), int(h.target)) for h in mesh._eiter()]
+    return graph((mesh.points, edges), width=width, color=color)
 
 
 def graph(graph, style=None, width=4, color=colors.black):
     """ Graph visualization.
+
+    .. version-added:: 1.1.0
 
     Experimental support for graph plotting. The `graph` parameter
     is described in more detail in SciPy's :mod:`~scipy.sparse.csgraph`
@@ -1308,6 +1234,120 @@ def graph(graph, style=None, width=4, color=colors.black):
 
     add(rengraph)
     return rengraph
+
+
+def mesh(mesh, show_orientation=True, color=colors.snow):
+    """ Mesh visualization.
+
+    Visualization of a polygonal mesh. The visual appearance of a mesh can
+    be customized by using the methods and attributes of the returned object.
+
+    Parameters
+    ----------
+    mesh : Mesh or 2-tuple
+        A polygonal mesh instance or a 2-tuple holding vertex coordinates
+        and face definitions.
+    show_orientation : bool, optional
+        Visualize face orientation by assiging a different color to back
+        facing faces, i.e., faces whose vertices appear in clockwise
+        orientation.
+    color : array_like, shape (3,), optional
+        RGB color intensity triple.
+
+    Returns
+    -------
+    PolyMesh
+        Render object instance.
+
+    See Also
+    --------
+    edges : mesh edge visualization
+    """
+    renmesh = PolyMesh(mesh)
+    renmesh.color = color
+
+    if show_orientation:
+        renmesh.backface_color = rgb('crimson')
+
+    add(renmesh)
+    return renmesh
+
+
+def vectors(points, vectors, size=1.0, resolution=6, color=colors.black):
+    """
+    """
+    try:
+        points = [f.barycenter for f in points]
+    except AttributeError:
+        pass
+
+    points = np.asarray(points)
+    radius = 0.025 * size
+
+    vf = Arrows(points, vectors, radius, 2.0 * radius, resolution=resolution)
+    vf.size = size
+    vf.color = color
+
+    add(vf)
+    return vf
+
+
+def rgb(*spec, char=False):
+    """ Get color by name.
+
+    .. version-added:: 1.1.0
+
+    Parameters
+    ----------
+    name : str
+        Name of color, either a web color name or a VTK color name.
+    char : bool, optional
+        By default color components are unsigned integers ranging from
+        0 to 255. Passing :obj:`False` will return components as
+        percentages, i.e., floating point values from the interval [0, 1].
+
+    Returns
+    -------
+    rgb : list
+        A three element list holding RGB color components.
+    """
+    if char:
+        if len(spec) == 3:
+            return [round(spec[0] * 255),
+                    round(spec[1] * 255),
+                    round(spec[2] * 255)]
+
+        return vtk.vtkNamedColors().GetColor3ub(spec[0])
+
+    if len(spec) == 3:
+        return [spec[0] / 255, spec[1] / 255, spec[2] / 255]
+
+    return vtk.vtkNamedColors().GetColor3d(spec[0])
+
+
+def rgba(name, char=False):
+    """ Get color by name.
+
+    .. version-added:: 1.1.0
+
+    Parameters
+    ----------
+    name : str
+        Name of color, either a web color name or a VTK color name.
+    char : bool, optional
+        By default color components are unsigned integers ranging from
+        0 to 255. Passing :obj:`False` will return components as
+        percentages, i.e., floating point values from the interval [0, 1].
+
+    Returns
+    -------
+    rgb : list
+        A three element list holding RGB color components.
+    """
+    if char:
+        return vtk.vtkNamedColors().GetColor4ub(name)
+
+    return vtk.vtkNamedColors().GetColor4d(name)
 
 
 def _tetmesh(points, tets, color=colors.snow):
@@ -2736,6 +2776,9 @@ def pick(x, y, type='cell', iren=None):
     Performs a pick operation at certain display coordinates. Cell and point
     picking is supported.
 
+    This function returns three values when picking points and four values
+    when picking cells.
+
     Parameters
     ----------
     x : int
@@ -2756,7 +2799,8 @@ def pick(x, y, type='cell', iren=None):
     point : ndarray
         World coordinates of the picked point.
 
-
+    Notes
+    ----
     By default all render objects created by functions in this module are
     not pickable. To make an actor available for picking, modify its
     :attr:`~Actor.pickable` attribute.
@@ -2768,11 +2812,6 @@ def pick(x, y, type='cell', iren=None):
     and the picked cell is returned in `point`. In addition to the index
     `cell_id` of the picked cell, the index of the closest vertex of the
     picked cells to this location is returned as `point_id`.
-
-    Note
-    ----
-    This function returns three values when picking points and four values
-    when picking cells.
     """
     # Get the viewport that corresponds to the given location. What happens
     # if window coordinates are out of bounds?
@@ -2873,7 +2912,9 @@ def _show_cell_labels(obj):
 
 
 class Texture:
-    """
+    """ Texture object.
+
+    Provides static methods to create simple textures.
     """
 
     @staticmethod
@@ -2942,7 +2983,7 @@ class Prop:
     Parameters
     ----------
     prop : vtkProp
-        Instance of a render object.
+        Instance of a VTK prop.
     """
 
     def __init__(self, prop):
@@ -2956,20 +2997,10 @@ class Prop:
     def prop(self):
         """ Wrapped VTK instance.
 
-        Access the wrapped render object. Exposes all low-level VTK
+        Access the wrapped VTK instance object. Exposes all low-level VTK
         functionality of the wrapped object.
         """
         return self._vtk_prop
-
-    # @property
-    # def actor(self):
-    #     """ Actor instance.
-
-    #     Access the associated actor. The generic implementation is equal
-    #     to the :attr:`prop` attribute. Derived classes should provide their
-    #     own implementation.
-    #     """
-    #     return self._vtk_prop
 
     @property
     def name(self):
@@ -3123,9 +3154,9 @@ class MapperMixin:
         lut = self._vtk_prop.GetMapper().GetLookupTable()
         _tweak_lut(lut, range, gradient, logscale, size, **kwargs)
 
-    def categorical(self, labels=None, colors=None, **kwargs):
+    def categorical(self, values, labels=None, colors=None, **kwargs):
         lut = self._vtk_prop.GetMapper().GetLookupTable()
-        _tweak_categorical_lut(lut, labels, colors, **kwargs)
+        _tweak_categorical_lut(lut, values, labels, colors, **kwargs)
 
 
 class GlyphMixin:
@@ -4030,18 +4061,19 @@ class __VectorField():
         self._polydata.GetPointData().Modified()
 
 
-class PolyData(Prop, PropertyMixin, MapperMixin):
+class PolyData(PropertyMixin, MapperMixin, Prop):
     """ Polygonal shape wrapper.
 
-    Manages visual properties of a polygonal shape. If `data` is an
-    `array_like` representation of a point set, it is converted to an
-    equivalent :class:`~numpy.ndarray` instance. The created array is
-    then accessible via the :attr:`points` attribute.
+    Manages most of the visual properties of a polygonal shape. If none of
+    the keyword arguments are specified the created object represents a point
+    cloud.
 
     Parameters
     ----------
     data : array_like or vtkPolyData
-        Point data.
+        Point data. If `data` is an array_like representation of a point
+        set, it is converted to an equivalent :class:`~numpy.ndarray`
+        instance. This array is accessible via the :attr:`points` attribute.
     verts : list, optional
         Combinatorial vertex definitions.
     lines : list, optional
@@ -4049,10 +4081,10 @@ class PolyData(Prop, PropertyMixin, MapperMixin):
     polys : list, optional
         Combinatorial face definitions.
 
-    Note
-    ----
-    The `verts`, `lines`, and `polys` arguments are ignored when
-    `data` is a :class:`vtkPolyData` instance.
+    Notes
+    -----
+    The `verts`, `lines`, and `polys` arguments are ignored when `data` is
+    a :class:`vtkPolyData` instance.
     """
 
     def __init__(self, data, *, verts=None, lines=None, polys=None):
@@ -4066,43 +4098,31 @@ class PolyData(Prop, PropertyMixin, MapperMixin):
             points = vtk.vtkPoints()
             points.SetData(numpy_to_vtk(self._points))
 
-            self._vtk_polydata.SetPoints(points)
+            polydata = self._vtk_polydata
+            polydata.SetPoints(points)
 
             if verts is not None:
-                polydata = self._vtk_polydata
                 cells = vtk.vtkCellArray()
-
                 for v in verts:
                     cells.InsertNextCell(1, [int(v)])
-
                 polydata.SetVerts(cells)
 
             if lines is not None:
-                polydata = self._vtk_polydata
                 cells = vtk.vtkCellArray()
-
                 for e in lines:
                     edge = vtk.vtkIdList()
-
                     for v in e:
                         edge.InsertNextId(int(v))
-
                     cells.InsertNextCell(edge)
-
                 polydata.SetLines(cells)
 
             if polys is not None:
-                polydata = self._vtk_polydata
                 cells = vtk.vtkCellArray()
-
                 for f in polys:
                     face = vtk.vtkIdList()
-
                     for v in f:
                         face.InsertNextId(int(v))
-
                     cells.InsertNextCell(face)
-
                 polydata.SetPolys(cells)
 
         mapper = vtk.vtkPolyDataMapper()
@@ -4110,7 +4130,7 @@ class PolyData(Prop, PropertyMixin, MapperMixin):
 
         # Create standard lookup table and how this table is used by
         # the mapper.
-        mapper.SetLookupTable(_generic_lut(gradient='spectral'))
+        mapper.SetLookupTable(_generic_lut())
         mapper.SetUseLookupTableScalarRange(True)
         mapper.SetScalarVisibility(False)
 
@@ -4129,10 +4149,8 @@ class PolyData(Prop, PropertyMixin, MapperMixin):
         """ Point coordinate array access.
 
         The contents of this array may be changed in place. Calling
-        :meth:`modified` will update the visual representation on the
-        next render pass.
-
-        :type: ~numpy.ndarray
+        :meth:`modified` will update the visual representation on the next
+        render pass.
         """
         return self._points
 
@@ -4142,8 +4160,6 @@ class PolyData(Prop, PropertyMixin, MapperMixin):
 
         Setting the global color attribute disables coloring using previously
         set scalars with :meth:`colorize`.
-
-        :type: array_like, shape (3, )
         """
         return self._vtk_prop.GetProperty().GetColor()
 
@@ -4154,9 +4170,7 @@ class PolyData(Prop, PropertyMixin, MapperMixin):
 
     @property
     def backface_color(self):
-        """ Backface color property.
-
-        :type: array_like, shape (3, )
+        """ Backface color.
         """
         if (property := self.actor.GetBackfaceProperty()) is not None:
             return property.GetColor()
@@ -4165,7 +4179,7 @@ class PolyData(Prop, PropertyMixin, MapperMixin):
 
     @backface_color.setter
     def backface_color(self, value):
-        actor = self.actor
+        actor = self.prop
 
         if (property := actor.GetBackfaceProperty()) is None:
             actor.SetBackfaceProperty(property := vtk.vtkProperty())
@@ -4178,8 +4192,8 @@ class PolyData(Prop, PropertyMixin, MapperMixin):
 
         Colorize by assinging vertex colors or face colors. Vertex colors
         are interpolated across faces. Colors can be specified directly as
-        RGB intensity triples or via a color map that maps scalar values
-        to colors (see :meth:`lookuptable` for details on the mapping).
+        RGB intensity triples or by mapping scalar values to colors (see
+        :meth:`lookuptable` for details on the mapping).
 
         Parameters
         ----------
@@ -4195,14 +4209,14 @@ class PolyData(Prop, PropertyMixin, MapperMixin):
         order : str, optional
             Flattening order when `scalars` is multi-dimensional.
 
-        Note
-        ----
+        Notes
+        -----
         Use the :func:`colorbar` function to display a visual representation
         of the lookup table used for color mapping.
 
 
-        .. rubric:: Examples
-
+        Examples
+        --------
         Apply colors to the vertices of the unit cube :math:`[0, 1]^3`.
         Since vertex coordinates range between 0 and 1 we use them directly
         as RGB color specification.
@@ -4251,7 +4265,8 @@ class PolyData(Prop, PropertyMixin, MapperMixin):
            vis.colorbar(box)
            vis.show()
         """
-        scalars = scalars.reshape(-1, order=order)
+        # scalars = scalars.reshape(-1, order=order)
+        scalars = np.asarray(scalars)
 
         if items == 'verts':
             self._set_point_scalars(scalars)
@@ -4431,14 +4446,14 @@ class PolyData(Prop, PropertyMixin, MapperMixin):
     def _set_scalars(self, data, size, value):
         mapper = self._vtk_prop.GetMapper()
 
-        if np.shape(value) == (size, ):
-            self._scalars = np.asarray(value)
+        if value.shape == (size, ):
+            self._scalars = value
 
             data.SetScalars(numpy_to_vtk(self._scalars))
             mapper.SetColorModeToMapScalars()
             mapper.SetScalarVisibility(True)
-        elif np.shape(value) == (size, 3):
-            self._scalars = np.asarray(value)
+        elif value.shape == (size, 3):
+            self._scalars = value
 
             data.SetScalars(numpy_to_vtk(self._scalars))
             mapper.SetColorModeToDirectScalars()
@@ -5295,46 +5310,6 @@ class PolyGraph(PolyData):
             self._vtk_prop.GetProperty().SetLineWidth(width)
 
 
-class PolyLine(PolyData):
-    """
-    """
-
-    def __init__(self, points, vectors):
-        n = len(points)
-        edges = ((i, i+n) for i in range(n))
-
-        origin = points
-        target = points + vectors
-        points = np.append(origin, target, axis=0)
-
-        super().__init__(points, lines=edges)
-
-    def edges(self, style=None, width=None):
-        """ Edge display.
-
-        Set visual properties of edges.
-
-        Parameters
-        ----------
-        style : str, optional
-            Either 'lines' or 'tubes'.
-        width : int, optional
-            Edge width in pixels.
-
-        Notes
-        -----
-        Parameters with a :obj:`None` value do not affect the corresponding
-        edge display property.
-        """
-        if style == 'lines':
-            self._vtk_prop.GetProperty().SetRenderLinesAsTubes(False)
-        elif style == 'tubes':
-            self._vtk_prop.GetProperty().SetRenderLinesAsTubes(True)
-
-        if width is not None:
-            self._vtk_prop.GetProperty().SetLineWidth(width)
-
-
 class _TetrahedralMesh(Prop, PropertyMixin, MapperMixin):
 
     def __init__(self, data, tets):
@@ -5436,7 +5411,6 @@ class LookupTable(Prop):
     """
 
     def __init__(self, actor, horizontal=False):
-        # Get the actor wrapped by the Prop instance.
         if isinstance(actor, Prop):
             actor = actor.prop
 
@@ -5466,8 +5440,7 @@ class LookupTable(Prop):
     def position(self):
         """ Position property.
 
-        Location of the lower left corner in normalized screen
-        coordinates.
+        Location of the lower left corner in normalized screen coordinates.
         """
         return self.prop.GetPosition()
 
