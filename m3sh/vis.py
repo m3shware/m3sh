@@ -65,9 +65,15 @@ _renderers = []
 # windows.
 _interactors = []
 
+# ANSI escape sequences to start and end bold terminal output. Not all
+# terminals may support this.
+BOLD = '\33[1m'
+ENDC = '\33[0m'
+
 
 def canvas(*args, color=None, top_color=None, camera=None, transparent=None,
-           interactive=None, layer=None, shadows=None, FXAA=None):
+           interactive=None, layer=None, shadows=None, hidden_line=None,
+           FXAA=None):
     r""" Create or modify viewport.
 
     Change properties of an existing viewport or create a new one inside
@@ -118,6 +124,8 @@ def canvas(*args, color=None, top_color=None, camera=None, transparent=None,
         Layer index. Only for internal use.
     shadows : bool, optional
         Render shadows, experimental.
+    hidden_line : bool, optional
+        Hidden line removal in wireframe mode.
     FXAA : bool, optional
         Toggle anti-aliasing.
 
@@ -205,6 +213,9 @@ def canvas(*args, color=None, top_color=None, camera=None, transparent=None,
 
     if FXAA is not None:
         _renderer.SetUseFXAA(FXAA)
+
+    if hidden_line is not None:
+        _renderer.SetUseHiddenLineRemoval(hidden_line)
 
     # Viewports can be layered, i.e., occupy the same region in a render
     # window or overlap partially. In this case it can be useful to set
@@ -630,8 +641,8 @@ def delete(*actors, renderer=None):
     """
     if renderer is None:
         for iren in _interactors:
-            renwin = iren.GetRenderWindow()
-            renderers = renwin.GetRenderers()
+            window = iren.GetRenderWindow()
+            renderers = window.GetRenderers()
 
             for renderer in renderers:
                 for actor in actors:
@@ -1546,10 +1557,11 @@ def silhouette(mesh, style=None, width=4, color=colors.black):
 
     mapper = vtk.vtkPolyDataMapper()
     mapper.SetInputConnection(silhouette.GetOutputPort())
+    mapper.SetResolveCoincidentTopologyToPolygonOffset()
 
     actor = vtk.vtkActor()
     actor.SetMapper(mapper)
-    actor.SetPickable(False)
+    # actor.SetPickable(False)
 
     if color is not None:
         actor.GetProperty().SetColor(color)
@@ -1563,7 +1575,7 @@ def silhouette(mesh, style=None, width=4, color=colors.black):
         actor.GetProperty().SetRenderLinesAsTubes(True)
 
     add(actor)
-    return actor
+    return Prop(actor)
 
 
 def _cones(points, vectors, angle=None, radius=None, height=None,
@@ -2120,8 +2132,9 @@ def _spheres(C, r):
 #     return tree
 
 
-def display(message, x=0.05, y=0.95, size=12, color=colors.white,
-            bold=False, italic=False, shadow=False, frame=False):
+def display(message, x=0.05, y=0.95, size=14, color=colors.white,
+            opacity=0.5, font='Courier', hjust='left', vjust='top',
+            bold=False, italic=False, shadow=False, timeout=None):
     """ Display static text in the render window.
 
     Location of the displayed text is given in normalized window
@@ -2132,12 +2145,28 @@ def display(message, x=0.05, y=0.95, size=12, color=colors.white,
     ----------
     message : str
         The message to be displayed.
-    x : float, optional
-        Coordinate in the interval [0, 1].
-    y : float, optional
-        Coordinate in the interval [0, 1].
+    x, y : float, optional
+        Anchor point. Coordinates in the interval [0, 1].
     size : int, optional
         Font size.
+    color : array_like, optional
+        Text color.
+    opacity : float, optional
+        Background opacity value in the interval [0, 1].
+    font : {'Arial', 'Courier', 'Times'}, optional
+        Font family.
+    hjust : {'left', 'center', 'right'}, optional
+        Horizontal justification relative to the anchor point.
+    vjust : {'bottom', 'center', 'top'}, optional
+        Vertical justification relative to the anchor point.
+    bold : bool, optional
+        Bold text.
+    italic : bool, optional
+        Italic text.
+    shadow : bool, optional
+        Text shadow.
+    timeout : int, optional
+        Time in milliseconds until the text gets removed.
 
     Returns
     -------
@@ -2146,15 +2175,23 @@ def display(message, x=0.05, y=0.95, size=12, color=colors.white,
     """
     text = vtk.vtkTextProperty()
     text.SetFontSize(size)
-    text.SetFontFamilyToCourier()
+    text.SetFontFamilyAsString(font)
     text.SetColor(color)
     text.SetBold(bold)
     text.SetBackgroundColor(colors.black)
-    text.SetBackgroundOpacity(0.0)
-    text.SetFrame(frame)
+    text.SetBackgroundOpacity(opacity)
+    # text.SetFrame(frame)
     text.SetItalic(italic)
     text.SetShadow(shadow)
-    text.SetVerticalJustificationToTop()
+
+    justification = {'left': 0,
+                     'bottom': 0,
+                     'center': 1,
+                     'right': 2,
+                     'top': 2}
+
+    text.SetJustification(justification[hjust])
+    text.SetVerticalJustification(justification[vjust])
 
     mapper = vtk.vtkTextMapper()
     mapper.SetInput(message)
@@ -2164,6 +2201,16 @@ def display(message, x=0.05, y=0.95, size=12, color=colors.white,
     actor.SetMapper(mapper)
     actor.GetPositionCoordinate().SetCoordinateSystemToNormalizedViewport()
     actor.GetPositionCoordinate().SetValue(x, y)
+
+    if timeout is not None:
+        def remove(iren, event):
+            iren.DestroyTimer(timer)
+            delete(actor)
+            update()
+
+        iren = _renwin.GetInteractor()
+        timer = iren.CreateRepeatingTimer(timeout)
+        iren.AddObserver('TimerEvent', remove)
 
     add(actor)
     return Prop(actor)
@@ -2554,7 +2601,7 @@ def show(width=1200, height=600, title=None, info=False, shadows=False, *,
         display(f"VTK Version {vtk.vtkVersion.GetVTKVersion()}\n" +
                 f"OpenGL support {_renwin.SupportsOpenGL()}\n" +
                 f"Hardware acceleration {_renwin.IsDirect()}",
-                x=0.8, y=.15, shadow=True)
+                x=0.8, y=.15, opacity=0.0, shadow=True)
 
         _renderer = ren
 
@@ -2770,7 +2817,7 @@ def _show(width=1200, height=600, title=None, position=(0, 0), *, info=False,
     # _splash = None
 
 
-def pick(x, y, type='cell', iren=None):
+def pick(x, y, items, *, iren=None):
     """ Perform pick action.
 
     Performs a pick operation at certain display coordinates. Cell and point
@@ -2818,24 +2865,26 @@ def pick(x, y, type='cell', iren=None):
     if iren is None:
         iren = _renwin.GetInteractor()
 
-    ren = iren.FindPokedRenderer(x, y)
+    renderer = iren.FindPokedRenderer(x, y)
 
     # The pick was successful, i.e., an actor was intersected with the pick
-    # ray if the actor returend by the picker is not None.
-    if type == 'point':
+    # ray if the actor returned by the picker is not None.
+    if items == 'verts':
+        # A point picker ignores occlusion of points by faces of a mesh. Use
+        # a cell picker instead. Use a point picker only for point clouds!
         picker = vtk.vtkPointPicker()
-        picker.Pick(x, y, 0, ren)
+        picker.Pick(x, y, 0, renderer)
 
         return (picker.GetActor(),
                 picker.GetPointId(), np.array(picker.GetPickPosition()))
-    elif type == 'cell':
+    elif items == 'cells':
         picker = vtk.vtkCellPicker()
-        picker.Pick(x, y, 0, ren)
+        picker.Pick(x, y, 0, renderer)
 
         return (picker.GetActor(), picker.GetCellId(),
                 picker.GetPointId(), np.array(picker.GetPickPosition()))
     else:
-        raise ValueError(f"invalid pick style '{type}'")
+        raise ValueError(f"invalid pick style '{items}'")
 
 
 def _main():
@@ -2847,7 +2896,7 @@ def _main():
     parser.add_argument('--silhouette', action='store_true')
 
     args = parser.parse_args()
-    canvas(color2=colors.black)
+    canvas(top_color=colors.black, hidden_line=True, FXAA=True)
 
     for file in args.file:
         reader = vtk.vtkOBJReader()
@@ -2856,10 +2905,15 @@ def _main():
 
         add(mesh := PolyMesh(reader.GetOutput()))
 
+        mesh.name = Path(file).name
+        mesh.pickable = True
+
         # Only for testing, remove later...
-        # scalars = mesh.points[:, 2]
-        # mesh.colorize(scalars, items='verts', interpolate_scalars=True)
-        # mesh.lookuptable((min(scalars), max(scalars)), gradient='spectral')
+        height = mesh.points[:, 2]
+        mesh.colorize(height, items='verts', interpolate_scalars=True)
+        mesh.lookuptable(range=(min(height), max(height)))
+
+        colorbar(mesh)
 
         if mesh.normals is not None:
             quiver(mesh, None, mesh._avg_edge_length()[0])
@@ -2874,41 +2928,32 @@ def _main():
             mesh.edges(width=1, color=colors.ivory_black)
 
         if args.silhouette:
-            silhouette(mesh, style='tubes', width=4, color=colors.black)
+            silhouette(mesh, width=4, color=colors.black)
 
-    # Window title holds the list of all given filenames even if only
-    # one file was given.
-    show(title=Path(args.file[0]).name, info=True)
+    # Window title holds the name of the first file even if multiple files
+    # were given.
+    show(title=Path(args.file[0]).name, info=True, lmbdown=[_show_id])
 
 
-def _show_vertex_index_cb(iren, x, y, **kwargs):
+def _show_id(iren, x, y, **kwargs):
     """
     """
-    print(pick(x, y, type='cell', iren=iren)[1:])
+    if iren.GetControlKey():
+        # This is meant for meshes. Does not work for pure point clouds
+        # since they define no cells.
+        actor, cell_id, id, point = pick(x, y, items='cells', iren=iren)
 
+        if actor is not None:
+            print(f"picked actor: {BOLD}{actor.GetObjectName()}{ENDC}")
+            print(f"\t├─ picked cell with index #{cell_id}")
+            print(f"\t├─ pick position in cell {point}")
+            print(f"\t└─ closest vertex of cell #{cell_id} " +
+                  f"to pick position: #{id}")
 
-def _show_cell_labels(obj):
-    """
-    """
-    ids = vtk.vtkIdFilter()
-    ids.SetInputData(obj._vtk_polydata)
-    ids.SetPointIds(False)
-    ids.SetCellIds(True)
-
-    cc = vtk.vtkCellCenters()
-    cc.SetInputConnection(ids.GetOutputPort())
-
-    # Labels are drawn on top of all other objects. It should be possible
-    # to take visibility into account.
-    mapper = vtk.vtkLabeledDataMapper()
-    mapper.SetInputConnection(cc.GetOutputPort())
-    mapper.SetLabelModeToLabelScalars()
-
-    actor = vtk.vtkActor2D()
-    actor.SetMapper(mapper)
-
-    add(actor)
-    return Prop(actor)
+            display(f"\n   {actor.GetObjectName()}: cell #{cell_id}, " +
+                    f"vert #{id}   \n", x=0.5, y=0.2, size=16,
+                    color=colors.white, hjust='center', vjust='center',
+                    shadow=True, bold=True, timeout=1500)
 
 
 class Texture:
@@ -4187,6 +4232,91 @@ class PolyData(PropertyMixin, MapperMixin, Prop):
 
         property.SetColor(value)
 
+    def label(self, items, size=14, color=colors.white, *, renderer=None,
+              tolerance=0.0001):
+        """ Data item labels.
+
+        .. version-added:: 1.1.0
+
+        Display labels at the vertices or cell centers of an object. This
+        is costly when many items are visible!
+
+        Parameters
+        ----------
+        items : {'verts', 'cells'}
+            Data items to label.
+        size : int, optional
+            Font size of data labels.
+        color : array_like, optional
+            RGB color of data labels.
+        renderer : vtkRenderer, optional
+            Renderer instance.
+        tolerance : float, optional
+            Tolerance value used the determine occlusion.
+        """
+        # Not using the visible points filter will display all labels. But
+        # using this filter without generating ids will not consistently
+        # label the data since hidden points are not assigned labels at all!
+        ids = vtk.vtkGenerateIds()
+        ids.SetInputData(self._vtk_polydata)
+
+        # Enable generation of point and cell ids. Store the result as field
+        # data. Update() will create the actual ids.
+        ids.SetPointIds(True)
+        ids.SetCellIds(True)
+        ids.SetFieldData(True)
+        ids.Update()
+
+        # Use the current renderer by default if no renderer is specified.
+        renderer = renderer or _renderer
+
+        if items == 'verts':
+            select = vtk.vtkSelectVisiblePoints()
+            select.SetRenderer(renderer)
+            select.SetInputData(ids.GetOutput())
+            select.SetTolerance(tolerance)
+
+            # select.SetSelection(500, 700, 200, 400)
+            # select.SetSelectionWindow(True)
+
+            mapper = vtk.vtkLabeledDataMapper()
+            mapper.SetInputConnection(select.GetOutputPort())
+            mapper.GetLabelTextProperty().SetFontSize(size)
+            mapper.GetLabelTextProperty().SetColor(color)
+            mapper.SetFieldDataName(ids.GetPointIdsArrayName())
+            mapper.SetLabelModeToLabelFieldData()
+
+            actor = vtk.vtkActor2D()
+            actor.SetMapper(mapper)
+
+            add(actor)
+
+        if items == 'cells':
+            # First create cell (bary)centers. Using the commented Update()
+            # and SetInputData() instead of SetInputConnection(), centers
+            # remain static and don't move when the underlying data changes.
+            centers = vtk.vtkCellCenters()
+            centers.SetInputData(ids.GetOutput())
+            # centers.Update()
+
+            select = vtk.vtkSelectVisiblePoints()
+            select.SetRenderer(renderer)
+            # select.SetInputData(centers.GetOutput())
+            select.SetInputConnection(centers.GetOutputPort())
+            select.SetTolerance(tolerance)
+
+            mapper = vtk.vtkLabeledDataMapper()
+            mapper.SetInputConnection(select.GetOutputPort())
+            mapper.GetLabelTextProperty().SetFontSize(size)
+            mapper.GetLabelTextProperty().SetColor(color)
+            mapper.SetFieldDataName(ids.GetCellIdsArrayName())
+            mapper.SetLabelModeToLabelFieldData()
+
+            actor = vtk.vtkActor2D()
+            actor.SetMapper(mapper)
+
+            add(actor)
+
     def colorize(self, scalars, items, interpolate_scalars=False, order='C'):
         r""" Colorize polygonal data.
 
@@ -4988,6 +5118,11 @@ class PolyMesh(PolyData):
             # treated as list[list[int]] to specify mesh connectivity.
             super().__init__(mesh[0], polys=mesh[1])
 
+            try:
+                self.name = mesh.name
+            except AttributeError:
+                pass
+
             # Initialize private instance attributes. Can be accessed as
             # properties of the same name.
             self._mesh = mesh
@@ -4996,8 +5131,6 @@ class PolyMesh(PolyData):
     @property
     def mesh(self):
         """ Mesh access.
-
-        :type: Mesh
         """
         return self._mesh
 
@@ -5005,10 +5138,8 @@ class PolyMesh(PolyData):
     def normals(self):
         """ Vertex normals.
 
-        Vertex normals are merely a visualization hint and result in
-        smooth shading of the mesh.
-
-        :type: ~numpy.ndarray
+        Vertex normals are merely a visualization hint and result in smooth
+        shading of the mesh.
         """
         return self._normals
 
