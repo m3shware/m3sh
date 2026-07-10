@@ -91,7 +91,8 @@ def add(obj, renderer=None):
     Returns
     -------
     vtkRenderer
-        The renderer instance used for display.
+        The renderer instance used for display. Equal to `renderer` if
+        not :obj:`None` on input.
 
     Notes
     -----
@@ -135,8 +136,8 @@ def canvas(*args, color=None, top_color=None, camera=None, transparent=None,
 
     The variable length argument list `args` may hold 0 (to create a new
     viewport with default settings that spans the whole render window), 1
-    (to make `renderer` the current viewport), 4 (to set viewport dimensions)
-    or 5 values as documented below.
+    (to make `renderer` the current viewport), 4 (to set viewport dimensions
+    of the current renderer) or 5 values as documented below.
 
     Parameters
     ----------
@@ -285,9 +286,10 @@ def delete(*actors, renderer=None):
     Parameters
     ----------
     *actors
-        Sequence of actors to be removed.
+        Arbitrary number of actors derived from :class:`Prop` or instances
+        of vtkActor to be removed.
     renderer : vtkRenderer, optional
-        Remove actors only from this renderer.
+        If not :obj:`None`, actors are only removed from this renderer.
 
     Notes
     -----
@@ -430,8 +432,8 @@ def rgba(name, char=False):
 
     Returns
     -------
-    rgb : list
-        A three element list holding RGB color components.
+    rgba : list
+        A four element list holding RGBA color components.
     """
     if char:
         return vtk.vtkNamedColors().GetColor4ub(name)
@@ -476,7 +478,7 @@ def show(width=1200, height=600, title=None, info=False, *, lmbdown=None,
 
     A callback function's signature has to be defined in the following way:
 
-    .. py:function:: callback(iren, x: int, y, **kwargs)
+    .. py:function:: callback(iren, x: int, y: int, **kwargs)
 
         :param iren: Render window interactor.
         :type iren: vtkRenderWindowInteractor
@@ -678,8 +680,8 @@ def update(*args, **kwargs):
     """ Update viewports.
 
     Some changes to actors require an explicit render requests. Use this
-    function if your changes are not diplayed properly. Changes applied
-    to external data structures that are sourced by VTK objects have to be
+    function if changes are not displayed properly. Changes applied to
+    external data structures that are sourced by VTK objects have to be
     communicated by invoking the corresponding :meth:`modified` method.
 
     Parameters
@@ -807,7 +809,7 @@ def colorbar(object, x=0.1, y=0.1, horizontal=False):
     """ Display colorbar.
 
     Display visual representation of the lookup table associated with
-    `object`.
+    a render object.
 
     Parameters
     ----------
@@ -1713,10 +1715,6 @@ def cones(points, vectors, angle=None, radius=None, height=None,
 
     add(cones)
     return cones
-
-
-def _plot(points):
-    pass
 
 
 def plot(P, width=2.0, size=6.0, style='-', color=(0.25, 0.25, 0.25)):
@@ -3041,15 +3039,6 @@ class PropertyMixin:
         else:
             self._vtk_prop.GetProperty().SetRepresentationToSurface()
 
-    # Render and interpolation styles... needs more work!
-    # @property
-    # def flat(self):
-    #     return self._vtk_prop.GetProperty().GetOpacity()
-
-    # @opacity.setter
-    # def flat(self, value):
-    #     self._vtk_prop.GetProperty().SetOpacity(value)
-
 
 class MapperMixin:
     # Assumes that self._vtk_prop is derived from a class that provides
@@ -3059,45 +3048,25 @@ class MapperMixin:
                     size=None, **kwargs):
         """ Modify lookup table properties.
 
-        An objects' lookup tables determines how entries of the scalar array
-        are translated to color values. Smooth color gradients are defined
-        by the color schemes 'hot', 'cool', 'jet', and 'grey'. The color
-        schemes 'spectral', 'diverging', 'blue', 'orange', and 'purple'
-        define a discrete color series.
+        An objects' lookup tables determines how entries of a scalar array
+        are translated to color values. Lookup tables have no effect when
+        directly mapping RGB color values.
 
         Parameters
         ----------
-        range : (float, float)
-            Accpeted range of scalar values, default [0, 1].
-        gradient : str
-            Color scheme identifier.
-        logscale : bool
+        range : (float, float), optional
+            Accpeted range of scalar values, defaults to [0, 1].
+        gradient : str, optional
+            Color scheme identifier. Smooth color gradients are defined
+            by the color schemes 'hot', 'cool', 'jet', and 'grey'. Discrete
+            color series are defined in the :class:`vtkColorSeries` class.
+        logscale : bool, optional
             Switch between linear and logarithmic scale.
-        size : int
+        size : int, optional
             Size of lookup table.
-
-        Note
-        ----
-        Lookup tables have no effect when directly mapping RGB color values.
-
-
-        If the corresponding keyword arguments are provied, out of range
-        values are marked with the `below`, `above`, and `nan` colors. Note
-        that those colors also have an alpha value to control opacity.
-
-        Keyword arguments
-        -----------------
-        below : array_like, shape (4, )
-            Color for scalars below range.
-        above: array_like, shape (4, )
-            Color for scalars above range.
-        nan : array_like, shape (4, )
-            Special color for NaN scalar values.
-
-        Note
-        ----
-        Any arguments not provided have no affect on the corresponding lookup
-        table property.
+        below, above, nan : array_like
+            Color for scalars out of range and NaN scalars. Colors can be
+            specified vy RGB of RGBA values.
         """
         # The current lookup table. Properties are modified according to the
         # given parameters. None values preserve the corresponding property.
@@ -3105,6 +3074,10 @@ class MapperMixin:
         _tweak_lut(lut, range, gradient, logscale, size, **kwargs)
 
     def categorical(self, values, labels=None, colors=None, **kwargs):
+        """ Modify lookup table properties.
+
+
+        """
         lut = self._vtk_prop.GetMapper().GetLookupTable()
         _tweak_categorical_lut(lut, values, labels, colors, **kwargs)
 
@@ -3116,8 +3089,6 @@ class GlyphMixin:
         """ Size property.
 
         Set and get global size for all glyphs.
-
-        :type: float
         """
         # Global scale factor that is multiplied by scalars values if
         # used to set per point scale factors.
@@ -3135,8 +3106,8 @@ class GlyphMixin:
         values : array_like
             Per point scale factors.
 
-        Note
-        ----
+        Notes
+        -----
         Scale factors and :attr:`size` are multiplied to obtain the final
         size of a glyph.
         """
@@ -3192,8 +3163,8 @@ class GlyphMixin:
         Should be called when the contents of a shared data buffer are
         modified.
 
-        Note
-        ----
+        Notes
+        -----
         Changing the **shape** of a shared data buffer is likely to
         result in a segmentation fault or other undefined behavior.
         """
@@ -3361,8 +3332,6 @@ class _ConeField():
 
 
 class _VectorField():
-    """
-    """
 
     def __init__(self, data, scale=1.0, color=colors.green_pale,
                  shaft_radius=0.025, tip_radius=0.05, tip_length=0.5,
@@ -3476,32 +3445,29 @@ class _VectorField():
         self._vtk_polydata.GetPointData().Modified()
 
 
-
-
-
 class OrientedGlyphs(Prop, PropertyMixin, MapperMixin, GlyphMixin):
-    """ Glyph base class.
+    # """ Glyph base class.
 
-    Base class for all simple oriented glyphs. Displays a scaled and
-    oriented `source` shape at all point locations.
+    # Base class for all simple oriented glyphs. Displays a scaled and
+    # oriented `source` shape at all point locations.
 
-    Parameters
-    ----------
-    points : array_like
-        Point coordinates.
-    vectors : array_like
-        Orientation defining vectors.
-    source
-        Source object.
-    src_xform : vtkTransform
-        Source transformation.
+    # Parameters
+    # ----------
+    # points : array_like
+    #     Point coordinates.
+    # vectors : array_like
+    #     Orientation defining vectors.
+    # source
+    #     Source object.
+    # src_xform : vtkTransform
+    #     Source transformation.
 
-    Note
-    ----
-    If `array_like` parameters are of type :class:`~numpy.ndarray` their
-    data buffer is shared with VTK's data objects (use copies to decouple
-    storage).
-    """
+    # Note
+    # ----
+    # If `array_like` parameters are of type :class:`~numpy.ndarray` their
+    # data buffer is shared with VTK's data objects (use copies to decouple
+    # storage).
+    # """
 
     def __init__(self, points, vectors, source, src_xform):
         if isinstance(points, Prop):
@@ -3569,7 +3535,7 @@ class OrientedGlyphs(Prop, PropertyMixin, MapperMixin, GlyphMixin):
 
 
 class Spheres(Prop, PropertyMixin, MapperMixin, GlyphMixin):
-    """ Point cloud."""
+    # Point cloud
 
     def __init__(self, points):
         self._points = np.asarray(points)
@@ -4227,15 +4193,14 @@ class PolyData(PropertyMixin, MapperMixin, Prop):
 
         Colorize by assinging vertex colors or face colors. Vertex colors
         are interpolated across faces. Colors can be specified directly as
-        RGB intensity triples or by mapping scalar values to colors (see
-        :meth:`lookuptable` for details on the mapping).
+        RGB intensity triples or by mapping scalar values to colors.
 
         Parameters
         ----------
         scalars : array_like
             Scalar values.
-        items : str
-            Either 'verts' or 'cells'.
+        items : {'verts', 'cells'}
+            Apply color to either vertices or faces.
         interpolate_scalars : bool, optional
             By default, values obtained from the lookup table are blended
             across a triangle. Set to :obj:`True` to interpolate scalars
@@ -4244,11 +4209,15 @@ class PolyData(PropertyMixin, MapperMixin, Prop):
         order : str, optional
             Flattening order when `scalars` is multi-dimensional.
 
+        See Also
+        --------
+        lookuptable : ordinal lookuptable
+        categorical : categorical lookuptable
+
         Notes
         -----
         Use the :func:`colorbar` function to display a visual representation
         of the lookup table used for color mapping.
-
 
         Examples
         --------
@@ -4257,7 +4226,6 @@ class PolyData(PropertyMixin, MapperMixin, Prop):
         as RGB color specification.
 
         .. code-block:: python
-           :linenos:
 
            import m3sh.vis as vis
 
@@ -4268,11 +4236,10 @@ class PolyData(PropertyMixin, MapperMixin, Prop):
            vis.show()
 
 
-        Color the cube by :math:`z`-coordinate value. Not the difference
+        Color the cube by :math:`z`-coordinate value. Note the difference
         when interpolating scalars before mapping them to colors.
 
         .. code-block:: python
-           :linenos:
 
            import m3sh.vis as vis
 
@@ -4289,7 +4256,6 @@ class PolyData(PropertyMixin, MapperMixin, Prop):
         has no effect when mapping colors to faces.
 
         .. code-block:: python
-           :linenos:
 
            import m3sh.vis as vis
 
@@ -4530,11 +4496,6 @@ class __PolyData():
         Not supported yet.
     faces : list, optional
         Combinatorial face definitions.
-
-    Note
-    ----
-    The `verts`, `lines`, and `faces` arguments are ignored when
-    `data` is a :class:`vtkPolyData` instance.
     """
 
     def __init__(self, data, *, verts=None, lines=None, faces=None):
@@ -4603,8 +4564,6 @@ class __PolyData():
         The contents of this array may be changed in place. Calling
         :meth:`modified` will update the visual representation on the
         next render pass.
-
-        :type: ~numpy.ndarray
         """
         return self._points
 
@@ -4613,8 +4572,6 @@ class __PolyData():
         """ Data access.
 
         Access VTK's polygonal shape definition.
-
-        :type: vtkPolyData
         """
         return self._polydata
         # return self._prop.GetMapper().GetInput()
@@ -4625,8 +4582,6 @@ class __PolyData():
 
         Setting the global color attribute disables coloring using previously
         set scalars with :meth:`colorize`.
-
-        :type: array_like, shape (3, )
         """
         return self._prop.GetProperty().GetColor()
 
@@ -4640,8 +4595,6 @@ class __PolyData():
         """ Scalar access.
 
         Access scalar data set by the :meth:`colorize` method.
-
-        :type: ~numpy.ndarray
         """
         self.modified()
         return self._scalars
@@ -4679,20 +4632,6 @@ class __PolyData():
             Toggle logarithmic scaling.
         size : int, optional
             Size of lookup table.
-
-
-        Mapping scalars to colors uses a lookup table managed by the
-        :attr:`mapper` instance of an actor. The `range`, `gradient`, and
-        `logscale` arguments directly influence the lookup table. Lookup
-        tables can be further customized via the :meth:`lookuptable` method.
-
-        Use the :func:`colorbar` function to display a visual representation
-        of a lookup table.
-
-        Note
-        ----
-        When specifying colors directly by RGB triples, all arguments
-        except `scalars` and `items` are ignored.
         """
         if scalars is not None:
             if items == 'points':
@@ -4719,17 +4658,6 @@ class __PolyData():
             Size in pixels.
         color : array_like, shape (3, ), optional
             Vertex color.
-
-        Note
-        ----
-        Parameters with a :obj:`None` value do not affect the corresponding
-        vertex display property.
-
-        Important
-        ---------
-        On some rendering backends vertex display only works when edges
-        are displayed. This might get fixed in future VTK releases. For
-        now use :func:`scatter` as a work-around.
         """
         if style == 'points':
             self._prop.GetProperty().SetRenderPointsAsSpheres(False)
@@ -4761,11 +4689,6 @@ class __PolyData():
             Edge width in pixels.
         color : array_like, shape (3, ), optional
             Edge color.
-
-        Note
-        ----
-        Parameters with a :obj:`None` value do not affect the corresponding
-        edge display property.
         """
         if style == 'lines':
             self._prop.GetProperty().SetRenderLinesAsTubes(False)
@@ -4795,11 +4718,6 @@ class __PolyData():
             Edge width in pixels.
         color : array_like, shape (3, ), optional
             Edge color.
-
-        Note
-        ----
-        Parameters with a :obj:`None` value do not affect the corresponding
-        silhouette display property.
         """
         if not hasattr(self, '_silhouette'):
             self._silhouette = None
@@ -4851,8 +4769,8 @@ class __PolyData():
         Should be called when the contents of a shared data buffer are
         modified.
 
-        Note
-        ----
+        Notes
+        -----
         Changing the **shape** of a shared data buffer is likely to
         result in a segmentation fault or other undefined behavior.
         """
@@ -5010,7 +4928,7 @@ class PolyMesh(PolyData):
         if isinstance(mesh, vtk.vtkPolyData):
             super().__init__(mesh)
 
-            # There is not halfedge mesh instance when initializing from
+            # There is no halfedge mesh instance when initializing from
             # a vtkPolyData instance.
             self._mesh = None
             self._normals = None
@@ -5050,15 +4968,13 @@ class PolyMesh(PolyData):
 
     @normals.setter
     def normals(self, value):
-        data = self._vtk_polydata.GetPointData()
-
         if value is not None:
             self._normals = np.asarray(value)
             value = numpy_to_vtk(self._normals)
         else:
             self._normals = None
 
-        data.SetNormals(value)
+        self._vtk_polydata.GetPointData().SetNormals(value)
 
     def verts(self, style=None, size=None, color=None):
         """ Vertex display.
@@ -5639,8 +5555,8 @@ class _MouseInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
     mousemove : list[callable]
         Mouse move callbacks.
 
-    Note
-    ----
+    Notes
+    -----
     Multiple callbacks for the same type of event are invoked in the
     specified order. See :py:func:`show` for an example on how to define
     and use callback functions.
@@ -5953,6 +5869,7 @@ class _MouseInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
 
 
 class _VertexDragger:
+
     def initiate(self, iren, x, y):
         ren = iren.FindPokedRenderer(x, y)
 
