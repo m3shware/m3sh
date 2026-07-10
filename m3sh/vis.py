@@ -24,12 +24,12 @@ Wrapper functions for `VTK <https://vtk.org/doc/nightly/html>`_ functionality.
 This is not meant as a full featured set of visualization routines but should
 serve as a quick and convenient way to achieve basic visualization tasks.
 
-This module can be used as a stand-alone .obj viewer:
+This module can be used as a stand-alone OBJ file viewer:
 
->>> python vis.py file.obj --edges
+>>> python vis.py file.obj --edges --aabb --silhouette
 
-opens a graphics window and displays the contents of `file.obj`. Omitting the
-`--edges` argument will not render mesh edges.
+opens a graphics window and displays the contents of `file.obj`. Omitting all
+arguments except the input file results in basic mesh rendering.
 """
 
 from pathlib import Path
@@ -315,45 +315,43 @@ def delete(*actors, renderer=None):
 def pick(x, y, items, *, iren=None):
     """ Perform pick action.
 
-    Performs a pick operation at certain display coordinates. Cell and point
-    picking is supported.
-
-    This function returns three values when picking points and four values
-    when picking cells.
+    Performs a pick operation at given display coordinates. Cell and point
+    picking is supported. This function returns three values when picking
+    points and four values when picking cells.
 
     Parameters
     ----------
-    x : int
+    x, y : int
         Pick position in display coordinates.
-    y : int
-        Pick position in display coordinates.
-    type : str, optional
-        Either 'cell' or 'point'.
+    items : {'verts', 'cells'}
+        Defines the pick style, either point picking or cell picking.
 
     Returns
     -------
     actor : vtkActor
-        Results in :obj:`None` if nothing was picked.
-    cell_id : int
-        Cell identifier, -1 if no cell was picked.
-    point_id : int
+        Results in :obj:`None` if nothing was picked. To find the
+        corresponding :class:`Prop` instance (if any) compare `actor` with
+        the :attr:`Prop.prop` instance attribute.
+    id : int
         Point identifier, -1 if no point was picked.
-    point : ndarray
-        World coordinates of the picked point.
+    point : ndarray, shape (3,)
+        World coordinates of the picked point. Invalid if `id` is negative.
+    cell_id : int
+        Cell identifier, -1 if no cell was picked. Only returned during
+        cell picking.
 
     Notes
-    ----
+    -----
     By default all render objects created by functions in this module are
-    not pickable. To make an actor available for picking, modify its
-    :attr:`~Actor.pickable` attribute.
+    not pickable. To make an object available for picking, modify its
+    :attr:`~Prop.pickable` attribute.
 
     A successful pick operation returns the picked actor and information about
-    the picked cell or point, respectively.
-
-    When picking cells the coordinates of the intersection of the pick ray
-    and the picked cell is returned in `point`. In addition to the index
-    `cell_id` of the picked cell, the index of the closest vertex of the
-    picked cells to this location is returned as `point_id`.
+    the picked cell or point, respectively. When picking cells the coordinates
+    of the intersection of the pick ray and the picked cell is returned in
+    `point`. In addition to the index `cell_id` of the picked cell, the index
+    of the closest vertex of the picked cells to this location is returned as
+    `id`.
     """
     # Get the viewport that corresponds to the given location. What happens
     # if window coordinates are out of bounds?
@@ -370,14 +368,14 @@ def pick(x, y, items, *, iren=None):
         picker = vtk.vtkPointPicker()
         picker.Pick(x, y, 0, renderer)
 
-        return (picker.GetActor(),
-                picker.GetPointId(), np.array(picker.GetPickPosition()))
+        return (picker.GetActor(), picker.GetPointId(),
+                np.array(picker.GetPickPosition()))
     elif items == 'cells':
         picker = vtk.vtkCellPicker()
         picker.Pick(x, y, 0, renderer)
 
-        return (picker.GetActor(), picker.GetCellId(),
-                picker.GetPointId(), np.array(picker.GetPickPosition()))
+        return (picker.GetActor(), picker.GetPointId(),
+                np.array(picker.GetPickPosition()), picker.GetCellId())
     else:
         raise ValueError(f"invalid pick style '{items}'")
 
@@ -2869,7 +2867,7 @@ def _show_id(iren, x, y, **kwargs):
     if iren.GetControlKey():
         # This is meant for meshes. Does not work for pure point clouds
         # since they define no cells.
-        actor, cell_id, id, point = pick(x, y, items='cells', iren=iren)
+        actor, id, point, cell_id = pick(x, y, items='cells', iren=iren)
 
         if actor is not None:
             print(f"picked actor: {BOLD}{actor.GetObjectName()}{ENDC}")
@@ -2882,70 +2880,6 @@ def _show_id(iren, x, y, **kwargs):
                     f"vert #{id}   \n", x=0.5, y=0.2, size=16,
                     color=colors.white, hjust='center', vjust='center',
                     shadow=True, bold=True, timeout=1500)
-
-
-class Texture:
-    """ Texture object.
-
-    Provides static methods to create simple textures.
-    """
-
-    @staticmethod
-    def checker(size=256, stride=128, black=[0, 0, 0], white=[255, 255, 255]):
-        """ Checker board texture.
-        """
-        data = vtk.vtkImageData()
-        data.SetDimensions(size, size, 1)
-        data.AllocateScalars(vtk.VTK_UNSIGNED_CHAR, 3)
-
-        for y in range(size):
-            dy = (y // stride) % 2
-
-            for x in range(size):
-                dx = (x // stride) % 2
-
-                if (dx == 0 and dy == 0) or (dx == 1 and dy == 1):
-                    pixel = black
-                else:
-                    pixel = white
-
-                data.SetScalarComponentFromDouble(x, y, 0, 0, pixel[0])
-                data.SetScalarComponentFromDouble(x, y, 0, 1, pixel[1])
-                data.SetScalarComponentFromDouble(x, y, 0, 2, pixel[2])
-
-        texture = vtk.vtkTexture()
-        texture.SetInputData(data)
-        texture.InterpolateOn()
-
-        return texture
-
-    @staticmethod
-    def grid(size=256, stride=128, u=[255, 0, 0], v=[0, 0, 255],
-             color=[255, 255, 255]):
-        """ Grid texture.
-        """
-        data = vtk.vtkImageData()
-        data.SetDimensions(size, size, 1)
-        data.AllocateScalars(vtk.VTK_UNSIGNED_CHAR, 3)
-
-        for y in range(size):
-            for x in range(size):
-                if y % stride == 0:
-                    pixel = u
-                elif x % stride == 0:
-                    pixel = v
-                else:
-                    pixel = color
-
-                data.SetScalarComponentFromDouble(x, y, 0, 0, pixel[0])
-                data.SetScalarComponentFromDouble(x, y, 0, 1, pixel[1])
-                data.SetScalarComponentFromDouble(x, y, 0, 2, pixel[2])
-
-        texture = vtk.vtkTexture()
-        texture.SetInputData(data)
-        texture.InterpolateOn()
-
-        return texture
 
 
 class Prop:
@@ -5590,6 +5524,70 @@ class LookupTable(Prop):
 #             else:
 #                 self._actor.SetPickable(self._cpts.GetPickable())
 #                 self._cpts.SetPickable(False)
+
+
+class Texture:
+    """ Texture object.
+
+    Provides static methods to create simple textures.
+    """
+
+    @staticmethod
+    def checker(size=256, stride=128, black=[0, 0, 0], white=[255, 255, 255]):
+        """ Checker board texture.
+        """
+        data = vtk.vtkImageData()
+        data.SetDimensions(size, size, 1)
+        data.AllocateScalars(vtk.VTK_UNSIGNED_CHAR, 3)
+
+        for y in range(size):
+            dy = (y // stride) % 2
+
+            for x in range(size):
+                dx = (x // stride) % 2
+
+                if (dx == 0 and dy == 0) or (dx == 1 and dy == 1):
+                    pixel = black
+                else:
+                    pixel = white
+
+                data.SetScalarComponentFromDouble(x, y, 0, 0, pixel[0])
+                data.SetScalarComponentFromDouble(x, y, 0, 1, pixel[1])
+                data.SetScalarComponentFromDouble(x, y, 0, 2, pixel[2])
+
+        texture = vtk.vtkTexture()
+        texture.SetInputData(data)
+        texture.InterpolateOn()
+
+        return texture
+
+    @staticmethod
+    def grid(size=256, stride=128, u=[255, 0, 0], v=[0, 0, 255],
+             color=[255, 255, 255]):
+        """ Grid texture.
+        """
+        data = vtk.vtkImageData()
+        data.SetDimensions(size, size, 1)
+        data.AllocateScalars(vtk.VTK_UNSIGNED_CHAR, 3)
+
+        for y in range(size):
+            for x in range(size):
+                if y % stride == 0:
+                    pixel = u
+                elif x % stride == 0:
+                    pixel = v
+                else:
+                    pixel = color
+
+                data.SetScalarComponentFromDouble(x, y, 0, 0, pixel[0])
+                data.SetScalarComponentFromDouble(x, y, 0, 1, pixel[1])
+                data.SetScalarComponentFromDouble(x, y, 0, 2, pixel[2])
+
+        texture = vtk.vtkTexture()
+        texture.SetInputData(data)
+        texture.InterpolateOn()
+
+        return texture
 
 
 class _MouseInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
