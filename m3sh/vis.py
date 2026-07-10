@@ -56,6 +56,7 @@ _renderer = None
 # background by default. All other renderers at on layer 0 and opaque.
 # This render is created and removed on demand (default key 'h' for help).
 _splash = None
+_help_message = None
 
 # All renderers of the main window. Does not include renderers of secondary
 # windows which are currently limited to a single renderer on layer 0.
@@ -615,7 +616,10 @@ def show(width=1200, height=600, title=None, info=False, *, lmbdown=None,
                 f"Hardware acceleration {_renwin.IsDirect()}",
                 x=0.8, y=.15, opacity=0.0, shadow=True)
 
+        # The above canvas command modify the current viewport. Restore
+        # the one that was active before showing the information.
         _renderer = ren
+        _commands(terminal_only=True)
 
     # Start the window interactor event loop. Closing the windows stops
     # the loop. Alternatively a more expensive polling loop can be used.
@@ -629,6 +633,7 @@ def show(width=1200, height=600, title=None, info=False, *, lmbdown=None,
     _renwin = None
     _renderer = None
     _splash = None
+    _help_message = None
 
 
 def screenshot(filename, scale=1.0, window=None):
@@ -656,18 +661,23 @@ def screenshot(filename, scale=1.0, window=None):
     filter.SetInput(window)
     filter.SetInputBufferTypeToRGBA()
     filter.SetSize(int(scale*width), int(scale*height))
-    filter.Update()
+    # filter.Update()
+
+    print(f"saving screenshot as {BOLD}{filename}{ENDC}", end=' ... ',
+          flush=True)
 
     writer = vtk.vtkPNGWriter()
     writer.SetFileName(filename)
     writer.SetInputConnection(filter.GetOutputPort())
     writer.Write()
 
+    print('done')
+
 
 def update(*args, **kwargs):
     """ Update viewports.
 
-    Some changes to actors require an explicit re-render requests. Use this
+    Some changes to actors require an explicit render requests. Use this
     function if your changes are not diplayed properly. Changes applied
     to external data structures that are sourced by VTK objects have to be
     communicated by invoking the corresponding :meth:`modified` method.
@@ -803,10 +813,8 @@ def colorbar(object, x=0.1, y=0.1, horizontal=False):
     ----------
     object : Prop or vtkActor
         A render object.
-    x : float, optional
-        Horizontal position in normalized window coordinates.
-    y : float, optional
-        Vertical position in normalized window coordinates.
+    x, y : float, optional
+        Horizontal and vertical position in normalized window coordinates.
     horizontal : bool, optional
         Orientation, either vertical (default) or horizontal.
 
@@ -1073,8 +1081,8 @@ def graph(graph, style=None, width=4, color=colors.black):
     PolyGraph
         Polygonal graph instance.
 
-    Note
-    ----
+    Notes
+    -----
     Conversion from a dense matrix repesentation can be achieved
     via the :func:`~scipy.sparse.csgraph.csgraph_from_dense` utility
     function.
@@ -2463,27 +2471,40 @@ def _caption(pos, text, size=2.0, opacity=0.0, color=(1.0, 1.0, 1.0)):
     return textActor
 
 
-def _commands():
+def _commands(terminal_only=False):
     """ Toggle splash screen.
     """
-    global _renderer, _splash
+    global _renderer, _splash, _help_message
 
-    message = ('----- Viewer commands -----\n' +
-                ' q|e   close window\n' +
-                '   r   reset camera\n' +
-                '   h   toggle this message\n' +
-                ' tab   toggle overlay')
+    message = ('\n' +
+        '  ----- Viewer commands -----  \n' +
+        '   q,e   close window\n' +
+        '     r   reset camera\n' +
+        '     h   toggle this message\n' +
+        '   tab   toggle overlay\n')
 
-    if _splash is None:
-        ren = _renderer
-        _splash = canvas(layer=1, interactive=False)
+    if terminal_only:
+        print(message)
+        return
 
-        display(message, y=0.9, shadow=True)
+    if _help_message is None:
+        renderer = _renderer
 
-        _renderer = ren
+        if _splash is None:
+            _splash = canvas(layer=1, interactive=False)
+        else:
+            canvas(_splash)
+
+        # Do not use a timeout to automatically remove the help display.
+        # This would leave _help_message in an inconsitent state!
+        _help_message = display(message, y=0.9, shadow=True)
+        _renderer = renderer
     else:
+        delete(_help_message)
+
         _renwin.RemoveRenderer(_splash)
         _splash = None
+        _help_message = None
 
 
 def _show(width=1200, height=600, title=None, position=(0, 0), *, info=False,
@@ -2856,9 +2877,14 @@ def _main():
         if args.silhouette:
             silhouette(mesh, width=4, color=colors.black)
 
+    def capture(iren, *args, **kwargs):
+        if iren.GetControlKey() and iren.GetKeySym().lower() == 's':
+            screenshot('screenshot.png')
+
     # Window title holds the name of the first file even if multiple files
     # were given.
-    show(title=Path(args.file[0]).name, info=True, lmbdown=[_show_id])
+    show(title=Path(args.file[0]).name, info=True, lmbdown=[_show_id],
+         keydown=[capture])
 
 
 def _show_id(iren, x, y, **kwargs):
@@ -4974,10 +5000,10 @@ class PolyMesh(PolyData):
     mesh : Mesh or tuple
         Polygonal mesh representation.
 
-    Note
-    ----
-    The generated :class:`PolyMesh` instance and `mesh` share their
-    vertex coordinate data buffers.
+    Notes
+    -----
+    The generated :class:`PolyMesh` instance and `mesh` share their vertex
+    coordinate data buffers.
     """
 
     def __init__(self, mesh):
