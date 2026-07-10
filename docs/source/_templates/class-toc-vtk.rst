@@ -9,8 +9,6 @@
 .. currentmodule:: {{ module }}
  
 .. autoclass:: {{ objname }}
-   :show-inheritance:
-   :no-inherited-members:
     
    {% block attributes %}
    {% if attributes %}
