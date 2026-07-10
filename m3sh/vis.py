@@ -74,71 +74,56 @@ ENDC = '\33[0m'
 def canvas(*args, color=None, top_color=None, camera=None, transparent=None,
            interactive=None, layer=None, shadows=None, hidden_line=None,
            FXAA=None):
-    r""" Create or modify viewport.
+    """ Create or modify viewport.
 
-    Change properties of an existing viewport or create a new one inside
-    the main render window. A viewport's size and position is defined
-    relative to the size of the render window in normalized coordinates.
+    Change properties of an existing renderer or create a new one inside the
+    main render window.
 
-    The variable length argument list `*args` may hold 0 (to create new
-    viewport), 1 (to make `renderer` current), 4 (to set viewport dimensions)
+    The variable length argument list `args` may hold 0 (to create a new
+    viewport with default settings that spans the whole render window), 1
+    (to make `renderer` the current viewport), 4 (to set viewport dimensions)
     or 5 values as documented below.
 
     Parameters
     ----------
     renderer : vtkRenderer, optional
-        Viewport identifier.
-    xmin : float, optional
-        Smaller x-coordinate of the viewport.
-    xmax : float, optional
-        Larger x-coordinate of the viewport.
-    ymin : float, optional
-        Smaller y-coordinate of the viewport.
-    ymax : float, optional
-        Larger y-coordinate of the viewport.
+        Viewport identifier. Specify to change properties of a previously
+        created viewport or make `renderer` the current viewport.
+    xmin, xmax : float, optional
+        The x-coordinate range of the viewport in the interval [0, 1].
+    ymin, ymax : float, optional
+        The y-coordinate range of the viewport in the interval [0, 1].
+    color : array_like, shape (3,), optional
+        Background color, defaults to a white background.
+    top_color : array_like, shape (3, ), optional
+        Top color for gradient backgrounds. Disabled by default.
+    camera : vtkRenderer or vtkCamera, optional
+        Shared camera. By default each renderer has its own camera.
+    transparent : bool, optional
+        Toggle transparent background. Renderers are opaque by default.
+    interactive : bool, optional
+        Toggle event notification. Setting `interactive` to :obj:`False`
+        will prevent a viewport from receiving events. Widgets placed in
+        such a non-interactive renderer still receive interaction events.
+    layer : int, optional
+        Layer index. Only for internal use.
+    shadows : bool, optional
+        Render shadows, experimental. Shadows are not computed correctly
+        in non-square viewports! Disabled by default.
+    hidden_line : bool, optional
+        Hidden line removal in wireframe mode. Disabled by default.
+    FXAA : bool, optional
+        Toggle anti-aliasing. Disabled by default.
 
     Returns
     -------
     vtkRenderer
-        Active viewport. All subsequent plotting happen in this viewport.
+        Active viewport. All subsequent plotting happens in this viewport.
 
-    Note
-    ----
-    Passing a renderer as first positional argument makes it the current
-    viewport. All :obj:`None` keyword arguments do not modify the
-    corresponding property of the current viewport.
-
-    Keyword Arguments
-    -----------------
-    color : array_like, shape (3, ), optional
-        Background color.
-    top_color : array_like, shape (3, ), optional
-        Top color for gradient background
-    camera : vtkRenderer or vtkCamera, optional
-        Shared camera.
-    transparent : bool, optional
-        Toggle transparent background.
-    interactive : bool, optional
-        Toggle event notification.
-    layer : int, optional
-        Layer index. Only for internal use.
-    shadows : bool, optional
-        Render shadows, experimental.
-    hidden_line : bool, optional
-        Hidden line removal in wireframe mode.
-    FXAA : bool, optional
-        Toggle anti-aliasing.
-
-    Note
-    ----
-    Setting `interactive` to :obj:`False` will prevent a viewport from
-    receiving events. Note that widgets placed in such a non-interactive
-    renderer still receive interaction events.
-
-    Warning
-    -------
-    Shadows are not computed correctly in non-square viewports! This is
-    a known VTK bug.
+    Notes
+    -----
+    All keyword arguments that hold :obj:`None` do not modify properties of
+    a viewport.
     """
     # The active renderer is a global state variable that is modified
     # inside this function.
@@ -160,7 +145,6 @@ def canvas(*args, color=None, top_color=None, camera=None, transparent=None,
         _renderer.SetUseDepthPeeling(1)
         _renderer.SetOcclusionRatio(0.1)
         _renderer.SetMaximumNumberOfPeels(50)
-        # _renderer.SetUseFXAA(1)
 
         lightkit = vtk.vtkLightKit()
         lightkit.AddLightsToRenderer(_renderer)
@@ -369,18 +353,20 @@ def _window(width=1200, height=600, title=None, color=colors.white,
 
 
 def add(obj, renderer=None):
-    """ Queue object for display.
+    """ Display object.
 
-    The `renderer` argument should be a value returned by :func:`canvas`.
-    If not specified, the current viewport is used or a new one is created
-    if this is the first object to be displayed.
+    Queue `obj` for display. The `renderer` argument should be a value
+    returned by :func:`canvas`. The rendering loop starts after calling
+    :func:`show`.
 
     Parameters
     ----------
     obj : Prop or vtkActor
         Instance of a render object.
     renderer : vtkRenderer or vtkRenderWindow, optional
-        The viewport or window to display the object.
+        The viewport to display the object. If :obj:`None`, the current
+        viewport is used or a new one is created if this is the first
+        object to be displayed.
 
     Returns
     -------
@@ -389,8 +375,8 @@ def add(obj, renderer=None):
 
     Notes
     -----
-    It is almost never necessary to use this function directly. It is used
-    by all drawing and plotting commands automatically.
+    It is almost never necessary to use this function directly. It is
+    used by all drawing and plotting commands automatically.
     """
     if renderer is not None:
         if isinstance(renderer, vtk.vtkRenderWindow):
@@ -420,32 +406,29 @@ def add(obj, renderer=None):
 
 
 def aabb(points, opacity=0.15, edges=True, labels='dim', color=colors.snow):
-    r""" Axis aligned bounding box.
+    """ Axis aligned bounding box.
 
     Display axis aligned bounding box of `points` with annotation.
 
     Parameters
     ----------
     points : Prop or array_like, shape (..., 3)
-        An array of points in 3-space.
+        A collection of points in 3-space.
     opacity : float, optional
         Opacity of bounding box.
     edges : bool, optional
         Toggle edges of the bounding box.
     labels : str, optional
-        Either :obj:`None`, 'dim', 'minmax', or 'both'.
-    color : array_like, shape (3, ), optional
+        Bounding box annotation. Either :obj:`None`, 'dim', 'minmax',
+        or 'both'.
+    color : array_like, shape (3,), optional
         Bounding box color.
 
     Returns
     -------
     PolyMesh
-        Bounding box shape.
-
-    Notes
-    -----
-    Visual properties of the bounding box can be further customized via the
-    returned :class:`PolyMesh` instance.
+        Bounding box shape. Visual properties of the bounding box can be
+        further customized via this instance object.
     """
     if isinstance(points, Prop):
         a, b = points.bounds
@@ -461,7 +444,7 @@ def aabb(points, opacity=0.15, edges=True, labels='dim', color=colors.snow):
 
     if labels == 'both' or labels == 'dim':
         scale = 0.075 * np.min(b-a)
-        dx, dy, dz = b-a
+        dx, dy, dz = b - a
 
         _put([b[0], b[1], a[2]], dx, f'{dx:.2f}', scale, axis='-x')
         _put([b[0], a[1], a[2]], dy, f'{dy:.2f}', scale, axis='y')
@@ -485,8 +468,8 @@ def aabb(points, opacity=0.15, edges=True, labels='dim', color=colors.snow):
 
 
 def _aabb_grid(points):
-    """ Axis aligned bounding box.
-    """
+    # Axis aligned bounding box with grid in coordinate planes... needs
+    # more work!
     if isinstance(points, Prop):
         a, b = points.bounds
     else:
@@ -1786,35 +1769,26 @@ def plot(P, width=2.0, size=6.0, style='-', color=(0.25, 0.25, 0.25)):
 
 
 def box(a, b, opacity=1.0, edges=True, wireframe=False, color=colors.snow):
-    r""" Box shape.
-
-    Display the cuboid
-    :math:`Q = [a_x, b_x] \times [a_y, b_y] \times [a_z, b_z]`.
+    """ Display box shape.
 
     Parameters
     ----------
-    a : array_like, shape (3, )
-        Lower bounds of the box.
-    b : array_like, shape (3, )
-        Upper bounds of the box.
+    a, b : array_like, shape (3,)
+        Lower and upper bounds of the box.
     opacity : float, optional
         Box opacity.
     edges : bool, optional
         Toggle edges of the box.
     wireframe : bool, optional
         Toggle wireframe display.
-    color : array_like, shape (3, ), optional
+    color : array_like, shape (3,), optional
         RGB color triplet.
 
     Returns
     -------
     PolyMesh
-        The corresponding polygonal shape representation.
-
-    Note
-    ----
-    Visual properties of the box edges can be further customized via
-    the returned :class:`PolyMesh` instance.
+        The corresponding polygonal shape representation. Visual properties
+        of the box can be further customized via this instance object.
     """
     cube = vtk.vtkCubeSource()
     cube.SetBounds(a[0], b[0],
@@ -1825,12 +1799,10 @@ def box(a, b, opacity=1.0, edges=True, wireframe=False, color=colors.snow):
     box = PolyMesh(cube.GetOutput())
     box.color = color
     box.opacity = opacity
+    box.wireframe = wireframe
 
-    if wireframe:
-        box.actor.GetProperty().SetRepresentationToWireframe()
-    else:
-        if edges:
-            box.edges('lines')
+    if edges:
+        box.edges('lines')
 
     add(box)
     return box
@@ -2225,7 +2197,7 @@ def _put(pos, dim, text, scale=1.0, opacity=0.75, axis='x', follow=False,
 
     Parameters
     ----------
-    pos : array_like, shape (3, )
+    pos : array_like, shape (3,)
         Text location.
     dim : float
         Text dimension.
@@ -2239,13 +2211,13 @@ def _put(pos, dim, text, scale=1.0, opacity=0.75, axis='x', follow=False,
         Text orientation, no effect when `follow` evaluates to :obj:`True`.
     follow : bool, optional
         :obj:`True` orients the text such that is always faces the camera.
-    color : array_like, shape (3, ), optional
+    color : array_like, shape (3,), optional
         RGB triplet of color intensities.
 
     Returns
     -------
-    Actor
-        The created :class:`Actor` instance.
+    Prop
+        The created :class:`Prop` instance.
     """
     vector_text = vtk.vtkVectorText()
     vector_text.SetText(text)
@@ -2300,8 +2272,7 @@ def _put(pos, dim, text, scale=1.0, opacity=0.75, axis='x', follow=False,
 
 
 def _caption(pos, text, size=2.0, opacity=0.0, color=(1.0, 1.0, 1.0)):
-    """
-    """
+    # This method appears to be unused... remove in future release!
     textActor = vtk.vtkCaptionActor2D()
     textActor.SetAttachmentPoint(pos)
     textActor.SetCaption(text)
@@ -2324,13 +2295,13 @@ def _caption(pos, text, size=2.0, opacity=0.0, color=(1.0, 1.0, 1.0)):
 
 
 def label(pos, text, size=12, opacity=1.0, color=colors.white):
-    """ Billboard text labels.
+    """ Display billboard text label.
 
-    Label that always faces the camera.
+    Text label that always faces the camera.
 
     Parameters
     ----------
-    pos : array_like, shape (3, )
+    pos : array_like, shape (3,)
         Label position in space.
     text : str
         Text to be displayed.
@@ -2338,7 +2309,7 @@ def label(pos, text, size=12, opacity=1.0, color=colors.white):
         Font size.
     opacity : float, optional
         Label opacity.
-    color : array_like, shape (3, ), optional
+    color : array_like, shape (3,), optional
         Label color.
 
     Returns
@@ -2383,99 +2354,73 @@ def _commands():
         _splash = None
 
 
-def show(width=1200, height=600, title=None, info=False, shadows=False, *,
-         lmbdown=None, lmbup=None, rmbdown=None, rmbup=None, keydown=None,
-         keyup=None, mousemove=None):
+def show(width=1200, height=600, title=None, info=False, *, lmbdown=None,
+         lmbup=None, rmbdown=None, rmbup=None, keydown=None, keyup=None,
+         mousemove=None):
     """ Start the VTK event loop.
 
-    Open window for rendering and start the VTK event loop.
+    Open window for rendering and start the VTK render and event loop.
+    This is a blocking function, code execution will not advance beyond it
+    until the event loop stops. Interaction with displayed objects has to
+    be triggered by mouse and keyboard events and corresponding event
+    handlers, i.e., callback functions.
 
     Parameters
     ----------
-    width : int, optional
-        Window width in pixels.
-    height : int, optional
-        Window height in pixels.
+    width, height : int, optional
+        Window width and height in pixels.
     title : str, optional
         Window title.
     info : bool, optional
         Show rendering backend information.
-    shadows : bool, optional
-        Render shadows, experimental.
-
-
-    This is a blocking function, a script will not advance beyond it until
-    the event loop stops. Interaction with displayed objects has to be
-    triggered by mouse and keyboard events and corresponding event handlers,
-    see below.
-
-    Keyword Arguments
-    -----------------
-    lmbdown : list[callable]
-        Left button press callbacks.
-    lmbup : list[callable]
-        Left button release callbacks.
-    rmbdown : list[callable]
-        Right button press callbacks.
-    rmbup : list[callable]
-        Right button release callbacks.
-    keydown : list[callable]
-        Key press callbacks.
-    keyup : list[callable]
-        Key release callbacks.
-    mousemove : list[callable]
+    lmbdown, lmbup : list[callable], optional
+        Left mouse button press and release callbacks.
+    rmbdown, rmbup : list[callable], optional
+        Right mouse button press and release callbacks.
+    keydown, keyup : list[callable], optional
+        Key press and release callbacks.
+    mousemove : list[callable], optional
         Mouse move callbacks.
 
-
-    .. rubric:: Mouse and keyboard events
-
-    Button and keyboard press and release events as well as mouse move
-    events are recognized. Assign a list of callbacks to the corresponding
-    keyword argument to register callback functions.
-
-    Note
-    ----
-    If more than one callback is registered to an event, callbacks are
-    executed in the given order.
-
-
-    .. rubric:: Callback functions
+    Notes
+    -----
+    Mouse button and keyboard events as well as mouse move events can be
+    intercepted. Assign a list of callbacks to the corresponding keyword
+    argument to register callback functions. If more than one callback is
+    registered to an event, callbacks are executed in the given order.
 
     A callback function's signature has to be defined in the following way:
 
-        .. py:function:: callback(iren, x, y, **kwargs)
+    .. py:function:: callback(iren, x: int, y, **kwargs)
 
-           :param iren: Render window interactor.
-           :type iren: vtkRenderWindowInteractor
-           :param x: Display coordinates of the mouse cursor.
-           :type x: int
-           :param y: Display coordinates of the mouse cursor.
-           :type y: int
+        :param iren: Render window interactor.
+        :type iren: vtkRenderWindowInteractor
+        :param x: Display coordinates of the mouse cursor.
+        :type x: int
+        :param y: Display coordinates of the mouse cursor.
+        :type y: int
 
 
     When activated the callback receives a handle to the affected render
     window via the corresponding render window interactor `iren` as well
     as the mouse cursor position inside this windows in pixels.
 
-    The `iren` argument can also be used to query the status of modifier
-    keys via its :meth:`GetShiftKey()`, :meth:`GetAltKey()`, and
-    :meth:`GetControlKey()` methods.
+    The `iren` argument can be used to query the status of modifier keys
+    via its :meth:`GetShiftKey`, :meth:`GetControlKey`, and
+    :meth:`GetAltKey`. In case of keyboard events, the pressed key can
+    be queried by :meth:`GetKeySym`.
 
-    Note
-    ----
     An object itself can be used as callback when it implements the
     :meth:`__call__` method.
 
-
-    .. rubric:: Example
-
+    Examples
+    --------
     Display a cube. Pressing the space bar will make a screenshot of the
     current window. Since we do not care about the cursor position when
     the space bar was pressed the positional arguments `x` and `y` are
-    collected in the `*args` argument and ignored.
+    collected in the `*args` argument and are ignored.
 
     .. code-block:: python
-       :linenos:
 
        import m3sh.vis as vis
 
@@ -2509,12 +2454,6 @@ def show(width=1200, height=600, title=None, info=False, shadows=False, *,
         # viewport to the renderers of the _renwin render window.
         canvas()
 
-    # This has been moved to canvas(). Each newly created renderer must
-    # be treated this way. Leaving it here affects only the final one
-    # created before calling show().
-    # lightkit = vtk.vtkLightKit()
-    # lightkit.AddLightsToRenderer(_renderer)
-
     # Attach renderers to window. Each renderer is responsible for a
     # viewport inside the main render window.
     while _renderers:
@@ -2525,17 +2464,6 @@ def show(width=1200, height=600, title=None, info=False, shadows=False, *,
 
         renderer.ResetCamera() #-10.0, 10.0, -10.0, 10.0, -10.0, 10.0)
         renderer.ResetCameraClippingRange()
-
-        # Changing the render pipeline to include shadows (see above)
-        # can also be obtained by this command. Note that shadows are
-        # wrong when rendering to non-square windows (known bug). This
-        # respects per viewport shadow settings when False.
-        if shadows:
-            renderer.SetUseShadows(True)
-
-            # Set fixed aspect ratio 1:1 to circumvent the shadow bug.
-            # size = min(width, height)
-            # _renwin.SetSize(size, size)
 
     # Set up the render window interactor with its customized trackball
     # interactor style.
@@ -2919,7 +2847,7 @@ def _main():
             quiver(mesh, None, mesh._avg_edge_length()[0])
 
         if args.aabb:
-            aabb(mesh)
+            aabb(mesh, labels='both')
 
         if args.flat:
             mesh.prop.GetProperty().SetInterpolationToFlat()
@@ -3135,6 +3063,23 @@ class PropertyMixin:
             property.SetColor(self.color)
 
         property.SetOpacity(value)
+
+    @property
+    def wireframe(self):
+        """ Wireframe display property.
+        """
+        # Taken from vtkProperty.h file: VTK_POINTS 0, VTK_WIREFRAME 1, and
+        # VTK_SURFACE 2.
+        return self._vtk_prop.GetProperty().GetRepresentation() == 1
+
+    @wireframe.setter
+    def wireframe(self, value):
+        # There is a third representation: SetRepresentationToPoints() which
+        # is currently not exposed in the Prop class.
+        if value:
+            self._vtk_prop.GetProperty().SetRepresentationToWireframe()
+        else:
+            self._vtk_prop.GetProperty().SetRepresentationToSurface()
 
     # Render and interpolation styles... needs more work!
     # @property
