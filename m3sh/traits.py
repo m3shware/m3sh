@@ -1229,9 +1229,11 @@ def plane_equation(face):
 
     vec = face_normal(face)
     ofs = vec.dot(face.halfedge.origin.point)
-    eqn = np.array([*vec, -ofs])
 
-    return eqn
+    return vec, ofs
+    # eqn = np.array([*vec, -ofs])
+
+    # return eqn
 
 
 def laplace_matrix(mesh, weights=None, normalize=False):

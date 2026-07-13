@@ -3025,6 +3025,8 @@ class PropertyMixin:
     @property
     def wireframe(self):
         """ Wireframe display property.
+
+        Toggle between wireframe and surface (solid) rendering.
         """
         # Taken from vtkProperty.h file: VTK_POINTS 0, VTK_WIREFRAME 1, and
         # VTK_SURFACE 2.
@@ -3038,6 +3040,26 @@ class PropertyMixin:
             self._vtk_prop.GetProperty().SetRepresentationToWireframe()
         else:
             self._vtk_prop.GetProperty().SetRepresentationToSurface()
+
+    @property
+    def interpolation(self):
+        """ Shading algorithm.
+
+        Set shading to either `flat`, `gouraud', or `phong` interpolation.
+        Except for `flat` shading, all shading algorithms require surface
+        normal information.
+        """
+        return self._vtk_prop.GetProperty().GetInterpolationAsString()
+
+    @interpolation.setter
+    def interpolation(self, value):
+        match value.lower():
+            case 'flat':
+                self._vtk_prop.GetProperty().SetInterpolationToFlat()
+            case 'gouraud':
+                self._vtk_prop.GetProperty().SetInterpolationToGouraud()
+            case 'phong':
+                self._vtk_prop.GetProperty().SetInterpolationToPhong()
 
 
 class MapperMixin:
@@ -3085,21 +3107,21 @@ class MapperMixin:
 class GlyphMixin:
 
     @property
-    def size(self):
-        """ Size property.
+    def scale(self):
+        """ Scale property.
 
-        Set and get global size for all glyphs.
+        Set and get global scale factor for all glyphs.
         """
         # Global scale factor that is multiplied by scalars values if
         # used to set per point scale factors.
         return self._vtk_glyph.GetScaleFactor()
 
-    @size.setter
-    def size(self, value):
+    @scale.setter
+    def scale(self, value):
         self._vtk_glyph.SetScaleFactor(value)
 
-    def scale(self, values):
-        """ Scale glyph geometry.
+    def scalars(self, values):
+        """ Scale glyph geometry by scalars.
 
         Parameters
         ----------
@@ -3108,11 +3130,16 @@ class GlyphMixin:
 
         Notes
         -----
-        Scale factors and :attr:`size` are multiplied to obtain the final
+        Scale factors and :attr:`scale` are multiplied to obtain the final
         size of a glyph.
         """
-        self._scalars = np.asarray(values)
-        self._vtk_polydata.GetPointData().SetScalars(numpy_to_vtk(self._scalars))
+        values = np.asarray(values)
+
+        pointdata = self._vtk_polydata.GetPointData()
+        pointdata.SetScalars(numpy_to_vtk(values))
+
+        self._scalars = values
+
         self._vtk_glyph.SetScaling(True)
         self._vtk_glyph.SetScaleModeToScaleByScalar()
 
@@ -3446,85 +3473,96 @@ class _VectorField():
 
 
 class OrientedGlyphs(Prop, PropertyMixin, MapperMixin, GlyphMixin):
-    # """ Glyph base class.
+    """ Glyph base class.
 
-    # Base class for all simple oriented glyphs. Displays a scaled and
-    # oriented `source` shape at all point locations.
+    Base class for all simple oriented glyphs. Displays a scaled and
+    oriented `source` shape at all point locations.
 
-    # Parameters
-    # ----------
-    # points : array_like
-    #     Point coordinates.
-    # vectors : array_like
-    #     Orientation defining vectors.
-    # source
-    #     Source object.
-    # src_xform : vtkTransform
-    #     Source transformation.
+    Parameters
+    ----------
+    points : array_like, vtkPolyData, or vtkPolyDataAlgorithm
+        Point coordinates can be specified as an array_like data
+        representation or as the point set of a polydata instance.
+    vectors : array_like, optional
+        Orientation defining vectors. Required if `points` is an
+        array_like representation of a point set. Can be omitted if
+        normals are specified as point data of a polydata instance.
+    source
+        Glyph source object.
+    xform : vtkTransform
+        Source transformation.
 
-    # Note
-    # ----
-    # If `array_like` parameters are of type :class:`~numpy.ndarray` their
-    # data buffer is shared with VTK's data objects (use copies to decouple
-    # storage).
-    # """
+    Note
+    ----
+    If `array_like` parameters are of type :class:`~numpy.ndarray` their
+    data buffer is shared with VTK's data objects (use copies to decouple
+    storage).
+    """
 
     def __init__(self, points, vectors, source, src_xform):
         if isinstance(points, Prop):
             points = points._vtk_polydata
 
-        if isinstance(points, vtk.vtkPolyData):
-            self._points = vtk_to_numpy(points.GetPoints().GetData())
+        self._points = None
+        self._vectors = None
 
-            # Normals should either be stored with the polydata instance
-            # (vectors should be None in this case) or specified by the
-            # vectors parameter (in this case the polydata should not
-            # define normals).
-            if ((normals := points.GetPointData().GetNormals()) is not None
-                    and vectors is not None):
-                raise ValueError('ambiguous normal specification')
-
-            if normals is not None:
-                self._vectors = vtk_to_numpy(normals)
-            elif vectors is not None:
-                self._vector = np.asarray(vectors)
-                points.GetPointData().SetNormals(numpy_to_vtk(self._vector))
-            else:
-                raise ValueError('no normals specified')
-
-            self._vtk_points = points.GetPoints()
-            self._vtk_polydata = points
-        else:
-            self._points = np.asarray(points)
+        if isinstance(points, vtk.vtkPolyDataAlgorithm):
             self._vectors = np.asarray(vectors)
 
-            self._vtk_points = vtk.vtkPoints()
-            self._vtk_points.SetData(numpy_to_vtk(self._points))
+            self._vtk_glyph = vtk.vtkGlyph3D()
+            self._vtk_glyph.SetInputConnection(points.GetOutputPort())
+            self._vtk_glyph.SetSourceConnection(source.GetOutputPort())
+            self._vtk_glyph.OrientOn()
+            self._vtk_glyph.SetVectorModeToUseVector()
 
-            self._vtk_polydata = vtk.vtkPolyData()
-            self._vtk_polydata.SetPoints(self._vtk_points)
+            # This allows scaling by the global scale factor but does not
+            # use local scale factors associated with individual points.
+            self._vtk_glyph.SetScaleModeToDataScalingOff()
 
-            pointdata = self._vtk_polydata.GetPointData()
-            pointdata.SetNormals(numpy_to_vtk(self._vectors))
+            self._vtk_glyph.SetScaling(True)
+            self._vtk_glyph.SetScaleModeToScaleByVector()
 
-        self._vtk_source = source
+            if src_xform is not None:
+                self._vtk_glyph.SetSourceTransform(src_xform)
+        else:
+            if isinstance(points, vtk.vtkPolyData):
+                vectors = np.asarray(vectors)
+                points.GetPointData().SetVectors(numpy_to_vtk(vectors))
 
-        self._vtk_glyph = vtk.vtkGlyph3D()
-        self._vtk_glyph.SetInputData(self._vtk_polydata)
-        self._vtk_glyph.SetSourceConnection(source.GetOutputPort())
-        self._vtk_glyph.OrientOn()
-        self._vtk_glyph.SetVectorModeToUseNormal()
+                self._vectors = vectors
+                self._vtk_polydata = points
+            else:
+                self._points = np.asarray(points)
+                self._vectors = np.asarray(vectors)
 
-        # This allows scaling by the global scale factor but does not
-        # use local scale factors associated with individual points.
-        self._vtk_glyph.SetScaleModeToDataScalingOff()
+                points = vtk.vtkPoints()
+                points.SetData(numpy_to_vtk(self._points))
 
-        if src_xform is not None:
-            self._vtk_glyph.SetSourceTransform(src_xform)
+                self._vtk_polydata = vtk.vtkPolyData()
+                self._vtk_polydata.SetPoints(points)
+
+                pointdata = self._vtk_polydata.GetPointData()
+                pointdata.SetVectors(numpy_to_vtk(self._vectors))
+
+            self._vtk_glyph = vtk.vtkGlyph3D()
+            self._vtk_glyph.SetInputData(self._vtk_polydata)
+            self._vtk_glyph.SetSourceConnection(source.GetOutputPort())
+            self._vtk_glyph.OrientOn()
+            self._vtk_glyph.SetVectorModeToUseVector()
+
+            # This allows scaling by the global scale factor but does not
+            # use local scale factors associated with individual points.
+            self._vtk_glyph.SetScaleModeToDataScalingOff()
+
+            self._vtk_glyph.SetScaling(True)
+            self._vtk_glyph.SetScaleModeToScaleByVector()
+
+            if src_xform is not None:
+                self._vtk_glyph.SetSourceTransform(src_xform)
 
         mapper = vtk.vtkPolyDataMapper()
         mapper.SetInputConnection(self._vtk_glyph.GetOutputPort())
-        mapper.SetLookupTable(_generic_lut(gradient='spectral'))
+        mapper.SetLookupTable(_generic_lut())
         mapper.SetUseLookupTableScalarRange(True)
         mapper.SetScalarVisibility(False)
 
@@ -3599,10 +3637,8 @@ class Arrows(OrientedGlyphs):
 
     def __init__(self, points, vectors, shaft_radius=0.025, tip_radius=0.05,
                  tip_length=0.5, resolution=6):
-        super().__init__(points, vectors, *self._arrow(shaft_radius,
-                                                       tip_radius,
-                                                       tip_length,
-                                                       resolution))
+        source = self._arrow(shaft_radius, tip_radius, tip_length, resolution)
+        super().__init__(points, vectors, *source)
 
     @staticmethod
     def _arrow(shaft_radius=0.025, tip_radius=0.05, tip_length=0.5,
@@ -3622,7 +3658,7 @@ class Arrows(OrientedGlyphs):
 class Circles(OrientedGlyphs):
 
     def __init__(self, points, vectors, radius):
-        super().__init__(points, vectors, self._arc())
+        super().__init__(points, vectors, *self._arc())
 
         self.scale(radius)
 
@@ -4931,10 +4967,10 @@ class PolyMesh(PolyData):
             # There is no halfedge mesh instance when initializing from
             # a vtkPolyData instance.
             self._mesh = None
-            self._normals = None
+            # self._normals = None
 
-            if (normals := mesh.GetPointData().GetNormals()) is not None:
-                self._normals = vtk_to_numpy(normals)
+            # if (normals := mesh.GetPointData().GetNormals()) is not None:
+            #     self._normals = vtk_to_numpy(normals)
         else:
             # We rely on the __getitem__ method of the Mesh class to get
             # the array of point coordintaes and an iterable that can be
@@ -4949,7 +4985,9 @@ class PolyMesh(PolyData):
             # Initialize private instance attributes. Can be accessed as
             # properties of the same name.
             self._mesh = mesh
-            self._normals = None
+            # self._normals = None
+
+        self.interpolation = 'flat'
 
     @property
     def mesh(self):
@@ -4957,24 +4995,83 @@ class PolyMesh(PolyData):
         """
         return self._mesh
 
-    @property
-    def normals(self):
-        """ Vertex normals.
+    def normals(self, normals):
+        """ Set vertex normals.
 
-        Vertex normals are merely a visualization hint and result in smooth
-        shading of the mesh.
+        Vertex normals influence shading calculations. In order to visualize
+        normals use :meth:`vectors` instead.
+
+        Parameters
+        ----------
+        normals : array_like
+            Vertex normals.
+
+        See Also
+        --------
+        interpolation
         """
-        return self._normals
+        pass
 
-    @normals.setter
-    def normals(self, value):
-        if value is not None:
-            self._normals = np.asarray(value)
-            value = numpy_to_vtk(self._normals)
+    def vectors(self, items, vectors, scale=1.0, color=colors.cornflower):
+        """ Set and visualize vectors.
+
+        Vectors can be assigned to vertices or faces of a mesh. In the
+        latter case vectors are attached to cell centers.
+
+        Parameters
+        ----------
+        items : {'verts', 'cells'}
+        vectors : array_like
+        scale : float, optional
+            Global scale factor.
+        color : array_like, shape (3,), optional
+            RGB color intensities.
+        """
+        mesh = self._mesh
+        vectors = np.asarray(vectors)
+        polydata = self._vtk_polydata
+
+        if items == 'verts':
+            if vectors.shape != (len(mesh.vertices), 3):
+                raise ValueError()
+
+            polydata.GetPointData().SetVectors(numpy_to_vtk(vectors))
+            points = polydata
+        elif items == 'cells':
+            if vectors.shape != (len(mesh.faces), 3):
+                raise ValueError()
+
+            polydata.GetCellData().SetVectors(numpy_to_vtk(vectors))
+            points = vtk.vtkCellCenters()
+            points.SetInputData(polydata)
         else:
-            self._normals = None
+            raise ValueError()
 
-        self._vtk_polydata.GetPointData().SetNormals(value)
+        arrows = Arrows(points, vectors)
+        arrows.scale = scale
+        arrows.color = color
+
+        add(arrows)
+        return arrows
+
+    # @property
+    # def normals(self):
+    #     """ Vertex normals.
+
+    #     Vertex normals are merely a visualization hint and result in smooth
+    #     shading of the mesh.
+    #     """
+    #     return self._normals
+
+    # @normals.setter
+    # def normals(self, value):
+    #     if value is not None:
+    #         self._normals = np.asarray(value)
+    #         value = numpy_to_vtk(self._normals)
+    #     else:
+    #         self._normals = None
+
+    #     self._vtk_polydata.GetPointData().SetNormals(value)
 
     def verts(self, style=None, size=None, color=None):
         """ Vertex display.
