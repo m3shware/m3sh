@@ -2834,10 +2834,10 @@ def _window(width=1200, height=600, title=None, color=colors.white,
 
 def _main():
     parser = ArgumentParser()
+
     parser.add_argument('file', nargs='*', type=str, help='OBJ input file')
     parser.add_argument('--aabb', action='store_true', help='show AABB')
     parser.add_argument('--edges', action='store_true', help='show edges')
-    parser.add_argument('--flat', action='store_true', help='flat shading')
     parser.add_argument('--silhouette', action='store_true')
 
     args = parser.parse_args()
@@ -2848,26 +2848,23 @@ def _main():
         reader.SetFileName(file)
         reader.Update()
 
+        # Instances of vtkOBJReader produce vtkPolyData instances. This
+        # includes normal vector if stored in the file (can be accessed
+        # via .GetPointData().GetNormals())
         add(mesh := PolyMesh(reader.GetOutput()))
-
         mesh.name = Path(file).name
         mesh.pickable = True
 
         # Only for testing, remove later...
         height = mesh.points[:, 2]
-        mesh.colorize(height, items='verts', interpolate_scalars=True)
+        mesh.colorize('verts', height, interpolate_scalars=True)
         mesh.lookuptable(range=(min(height), max(height)))
+        mesh.contour(height, width=4) #, color='scalars')
 
         colorbar(mesh)
 
-        if mesh.normals is not None:
-            quiver(mesh, None, mesh._avg_edge_length()[0])
-
         if args.aabb:
             aabb(mesh, labels='both')
-
-        if args.flat:
-            mesh.prop.GetProperty().SetInterpolationToFlat()
 
         if args.edges:
             mesh.edges(width=1, color=colors.ivory_black)
@@ -2914,7 +2911,7 @@ class Prop:
     Parameters
     ----------
     prop : vtkProp
-        Instance of a VTK prop.
+        Instance of the vtkProp class.
     """
 
     def __init__(self, prop):
@@ -2949,8 +2946,8 @@ class Prop:
     def bounds(self):
         """ Axis aligned bounding box.
 
-        Pair holding the min and max values along each of the three
-        coordinate dimensions.
+        A pair ``(min, max)`` of points holding the min and max values along
+        each of the three coordinate dimensions.
         """
         # Results in a list of intervals for each space dimension. Get
         # the lower bounds as every second entry starting from 0 and the
@@ -2960,7 +2957,7 @@ class Prop:
 
     @property
     def visible(self):
-        """ Visibility property.
+        """ Object visibility.
 
         Query and toggle object visibility.
         """
@@ -2991,75 +2988,76 @@ class PropertyMixin:
 
     @property
     def opacity(self):
-        """ Opacity property.
+        """ Object opacity.
 
-        Set and get opacity value.
+        Set and get opacity value between 0.0 (fully transparent) and
+        1.0 (fully opaque).
         """
-        return self._vtk_prop.GetProperty().GetOpacity()
+        return self.prop.GetProperty().GetOpacity()
 
     @opacity.setter
     def opacity(self, value):
-        self._vtk_prop.GetProperty().SetOpacity(value)
+        self.prop.GetProperty().SetOpacity(value)
 
     @property
     def backface_opacity(self):
-        """ Backface opacity property.
+        """ Backface opacity.
 
         Set and get backface opacity value.
         """
-        if (property := self._vtk_prop.GetBackfaceProperty()) is not None:
+        if (property := self.prop.GetBackfaceProperty()) is not None:
             return property.GetOpacity()
 
         return self.opacity
 
     @backface_opacity.setter
     def backface_opacity(self, value):
-        actor = self._vtk_prop
-
-        if (property := actor.GetBackfaceProperty()) is None:
-            actor.SetBackfaceProperty(property := vtk.vtkProperty())
+        # If no backface property is defined, create a new one and set
+        # backface  color to object color.
+        if (property := self.prop.GetBackfaceProperty()) is None:
+            self.prop.SetBackfaceProperty(property := vtk.vtkProperty())
             property.SetColor(self.color)
 
         property.SetOpacity(value)
 
     @property
     def wireframe(self):
-        """ Wireframe display property.
+        """ Wireframe display.
 
         Toggle between wireframe and surface (solid) rendering.
         """
         # Taken from vtkProperty.h file: VTK_POINTS 0, VTK_WIREFRAME 1, and
         # VTK_SURFACE 2.
-        return self._vtk_prop.GetProperty().GetRepresentation() == 1
+        return self.prop.GetProperty().GetRepresentation() == 1
 
     @wireframe.setter
     def wireframe(self, value):
         # There is a third representation: SetRepresentationToPoints() which
         # is currently not exposed in the Prop class.
         if value:
-            self._vtk_prop.GetProperty().SetRepresentationToWireframe()
+            self.prop.GetProperty().SetRepresentationToWireframe()
         else:
-            self._vtk_prop.GetProperty().SetRepresentationToSurface()
+            self.prop.GetProperty().SetRepresentationToSurface()
 
     @property
     def interpolation(self):
         """ Shading algorithm.
 
-        Set shading to either `flat`, `gouraud', or `phong` interpolation.
-        Except for `flat` shading, all shading algorithms require surface
+        Set shading to either 'flat', 'gouraud', or 'phong' interpolation.
+        Except for flat shading, all shading algorithms require surface
         normal information.
         """
-        return self._vtk_prop.GetProperty().GetInterpolationAsString()
+        return self.prop.GetProperty().GetInterpolationAsString()
 
     @interpolation.setter
     def interpolation(self, value):
         match value.lower():
             case 'flat':
-                self._vtk_prop.GetProperty().SetInterpolationToFlat()
+                self.prop.GetProperty().SetInterpolationToFlat()
             case 'gouraud':
-                self._vtk_prop.GetProperty().SetInterpolationToGouraud()
+                self.prop.GetProperty().SetInterpolationToGouraud()
             case 'phong':
-                self._vtk_prop.GetProperty().SetInterpolationToPhong()
+                self.prop.GetProperty().SetInterpolationToPhong()
 
 
 class MapperMixin:
@@ -4016,16 +4014,17 @@ class __VectorField():
 class PolyData(PropertyMixin, MapperMixin, Prop):
     """ Polygonal shape wrapper.
 
-    Manages most of the visual properties of a polygonal shape. If none of
-    the keyword arguments are specified the created object represents a point
+    Manages most of the visual properties of a polygonal shape. Polygonal
+    shapes are modeled upon a point set. If none of the keyword arguments
+    are specified the created object represents this point set as a point
     cloud.
 
     Parameters
     ----------
-    data : array_like or vtkPolyData
-        Point data. If `data` is an array_like representation of a point
+    points : array_like or vtkPolyData
+        Point data. If this is an array_like representation of a point
         set, it is converted to an equivalent :class:`~numpy.ndarray`
-        instance. This array is accessible via the :attr:`points` attribute.
+        instance.
     verts : list, optional
         Combinatorial vertex definitions.
     lines : list, optional
@@ -4039,12 +4038,12 @@ class PolyData(PropertyMixin, MapperMixin, Prop):
     a :class:`vtkPolyData` instance.
     """
 
-    def __init__(self, data, *, verts=None, lines=None, polys=None):
-        if isinstance(data, vtk.vtkPolyData):
-            self._points = vtk_to_numpy(data.GetPoints().GetData())
-            self._vtk_polydata = data
+    def __init__(self, points, *, verts=None, lines=None, polys=None):
+        if isinstance(points, vtk.vtkPolyData):
+            self._points = vtk_to_numpy(points.GetPoints().GetData())
+            self._vtk_polydata = points
         else:
-            self._points = np.asarray(data)
+            self._points = np.asarray(points)
             self._vtk_polydata = vtk.vtkPolyData()
 
             points = vtk.vtkPoints()
@@ -4108,39 +4107,37 @@ class PolyData(PropertyMixin, MapperMixin, Prop):
 
     @property
     def color(self):
-        """ Color property.
+        """ Object color.
 
         Setting the global color attribute disables coloring using previously
         set scalars with :meth:`colorize`.
         """
-        return self._vtk_prop.GetProperty().GetColor()
+        return self.prop.GetProperty().GetColor()
 
     @color.setter
     def color(self, value):
-        self._vtk_prop.GetMapper().SetScalarVisibility(False)
-        self._vtk_prop.GetProperty().SetColor(value)
+        self.prop.GetMapper().SetScalarVisibility(False)
+        self.prop.GetProperty().SetColor(value)
 
     @property
     def backface_color(self):
         """ Backface color.
         """
-        if (property := self.actor.GetBackfaceProperty()) is not None:
+        if (property := self.prop.GetBackfaceProperty()) is not None:
             return property.GetColor()
 
         return self.color
 
     @backface_color.setter
     def backface_color(self, value):
-        actor = self.prop
-
-        if (property := actor.GetBackfaceProperty()) is None:
-            actor.SetBackfaceProperty(property := vtk.vtkProperty())
+        if (property := self.prop.GetBackfaceProperty()) is None:
+            self.prop.SetBackfaceProperty(property := vtk.vtkProperty())
             property.SetOpacity(self.opacity)
 
         property.SetColor(value)
 
-    def label(self, items, size=14, color=colors.white, *, renderer=None,
-              tolerance=0.0001):
+    def labels(self, items, size=14, color=colors.white, *, renderer=None,
+               tolerance=0.0001):
         """ Data item labels.
 
         .. version-added:: 1.1.0
@@ -4160,6 +4157,11 @@ class PolyData(PropertyMixin, MapperMixin, Prop):
             Renderer instance.
         tolerance : float, optional
             Tolerance value used the determine occlusion.
+
+        Returns
+        -------
+        Prop
+            Corresponding wrapper instance.
         """
         # Not using the visible points filter will display all labels. But
         # using this filter without generating ids will not consistently
@@ -4197,6 +4199,7 @@ class PolyData(PropertyMixin, MapperMixin, Prop):
             actor.SetMapper(mapper)
 
             add(actor)
+            return Prop(actor)
 
         if items == 'cells':
             # First create cell (bary)centers. Using the commented Update()
@@ -4223,8 +4226,9 @@ class PolyData(PropertyMixin, MapperMixin, Prop):
             actor.SetMapper(mapper)
 
             add(actor)
+            return Prop(actor)
 
-    def colorize(self, scalars, items, interpolate_scalars=False, order='C'):
+    def colorize(self, items, scalars, interpolate_scalars=False, order='C'):
         r""" Colorize polygonal data.
 
         Colorize by assinging vertex colors or face colors. Vertex colors
@@ -4233,17 +4237,18 @@ class PolyData(PropertyMixin, MapperMixin, Prop):
 
         Parameters
         ----------
-        scalars : array_like
-            Scalar values.
         items : {'verts', 'cells'}
             Apply color to either vertices or faces.
+        scalars : array_like
+            Scalar values or RGB color intensities.
         interpolate_scalars : bool, optional
             By default, values obtained from the lookup table are blended
             across a triangle. Set to :obj:`True` to interpolate scalars
             before lookup table access. Only applies when scalars are
             assigned to vertices.
         order : str, optional
-            Flattening order when `scalars` is multi-dimensional.
+            Flattening order when `scalars` is multi-dimensional. Currently
+            not used.
 
         See Also
         --------
@@ -4310,9 +4315,9 @@ class PolyData(PropertyMixin, MapperMixin, Prop):
         elif items == 'cells':
             self._set_cell_scalars(scalars)
         else:
-            raise ValueError(f"invalid item argument '{items}'")
+            raise ValueError(f"invalid items argument '{items}'")
 
-        self._vtk_prop.GetMapper().SetInterpolateScalarsBeforeMapping(
+        self.prop.GetMapper().SetInterpolateScalarsBeforeMapping(
             interpolate_scalars)
 
     # def contour(self, scalars=None, *, levels=None, range=(None, None),
@@ -4455,48 +4460,52 @@ class PolyData(PropertyMixin, MapperMixin, Prop):
 
         Note
         ----
-        Changing the **shape** of a shared data buffer is likely to
-        result in a segmentation fault or other undefined behavior.
+        Changing the **shape** of a shared data buffer is likely to result
+        in segmentation faults or other undefined behavior.
         """
         self._vtk_polydata.GetPoints().Modified()
         self._vtk_polydata.GetPointData().Modified()
         self._vtk_polydata.GetCellData().Modified()
 
-    def _set_point_scalars(self, value):
+    def _set_point_scalars(self, value, visible=True):
         polydata = self._vtk_polydata
         polydata.GetCellData().SetScalars(None)
 
         self._set_scalars(polydata.GetPointData(),
-                          polydata.GetNumberOfPoints(), value)
+                          polydata.GetNumberOfPoints(), value, visible)
 
-        self._vtk_prop.GetMapper().SetScalarModeToUsePointData()
+        if visible:
+            self._vtk_prop.GetMapper().SetScalarModeToUsePointData()
 
-    def _set_cell_scalars(self, value):
+    def _set_cell_scalars(self, value, visible=True):
         polydata = self._vtk_polydata
         polydata.GetPointData().SetScalars(None)
 
         self._set_scalars(polydata.GetCellData(),
-                          polydata.GetNumberOfCells(), value)
+                          polydata.GetNumberOfCells(), value, visible)
 
-        self._vtk_prop.GetMapper().SetScalarModeToUseCellData()
+        if visible:
+            self._vtk_prop.GetMapper().SetScalarModeToUseCellData()
 
-    def _set_scalars(self, data, size, value):
-        mapper = self._vtk_prop.GetMapper()
+    def _set_scalars(self, data, size, value, visible):
+        mapper = self.prop.GetMapper()
 
-        if value.shape == (size, ):
+        if value.shape == (size,):
             self._scalars = value
+            data.SetScalars(numpy_to_vtk(value))
 
-            data.SetScalars(numpy_to_vtk(self._scalars))
-            mapper.SetColorModeToMapScalars()
-            mapper.SetScalarVisibility(True)
+            if visible:
+                mapper.SetColorModeToMapScalars()
+                mapper.SetScalarVisibility(True)
         elif value.shape == (size, 3):
             self._scalars = value
+            data.SetScalars(numpy_to_vtk(value))
 
-            data.SetScalars(numpy_to_vtk(self._scalars))
-            mapper.SetColorModeToDirectScalars()
-            mapper.SetScalarVisibility(True)
+            if visible:
+                mapper.SetColorModeToDirectScalars()
+                mapper.SetScalarVisibility(True)
         else:
-            raise ValueError('wrong size of scalar array')
+            raise ValueError(f"wrong size of scalar array, {value.shape}")
 
     # def _reset_scalars(self):
     #     polydata = self._prop.GetMapper().GetInput()
@@ -4951,7 +4960,7 @@ class PolyMesh(PolyData):
 
     Parameters
     ----------
-    mesh : Mesh or tuple
+    mesh : Mesh or tuple or vtkPolyData
         Polygonal mesh representation.
 
     Notes
@@ -4967,10 +4976,10 @@ class PolyMesh(PolyData):
             # There is no halfedge mesh instance when initializing from
             # a vtkPolyData instance.
             self._mesh = None
-            # self._normals = None
+            self._normals = None
 
-            # if (normals := mesh.GetPointData().GetNormals()) is not None:
-            #     self._normals = vtk_to_numpy(normals)
+            if (normals := mesh.GetPointData().GetNormals()) is not None:
+                self._normals = vtk_to_numpy(normals)
         else:
             # We rely on the __getitem__ method of the Mesh class to get
             # the array of point coordintaes and an iterable that can be
@@ -4985,13 +4994,15 @@ class PolyMesh(PolyData):
             # Initialize private instance attributes. Can be accessed as
             # properties of the same name.
             self._mesh = mesh
-            # self._normals = None
+            self._normals = None
 
         self.interpolation = 'flat'
 
     @property
     def mesh(self):
         """ Mesh access.
+
+        A reference to the :class:`Mesh` instance used for initialization.
         """
         return self._mesh
 
@@ -5010,22 +5021,41 @@ class PolyMesh(PolyData):
         --------
         interpolation
         """
-        pass
+        if normals is None:
+            # This should remove normals from the data set... the correct
+            # way seems to be to remove the data array with name 'Normals'.
+            # Using SetNormals(None) seem to have the same effect...
+            return
+        else:
+            normals = np.asarray(normals)
+
+        self._normals = normals
+        self._vtk_polydata.GetPointData().SetNormals(numpy_to_vtk(normals))
 
     def vectors(self, items, vectors, scale=1.0, color=colors.cornflower):
-        """ Set and visualize vectors.
+        """ Visualize vectors.
 
         Vectors can be assigned to vertices or faces of a mesh. In the
-        latter case vectors are attached to cell centers.
+        latter case vectors are attached to face centers.
 
         Parameters
         ----------
         items : {'verts', 'cells'}
-        vectors : array_like
+            Attach vectors to verics or cell centers.
+        vectors : array_like, shape (..., 3)
+            Vector field specification. The number of vectors has to match
+            the number of vertices or the number of faces depending on the
+            value of `items`.
         scale : float, optional
-            Global scale factor.
+            Global scale factor. This factor only affects vector display,
+            the `vectors` array is not changed in any way.
         color : array_like, shape (3,), optional
-            RGB color intensities.
+            RGB color triplet.
+
+        Returns
+        -------
+        Arrows
+            The corresponding wrapper instance.
         """
         mesh = self._mesh
         vectors = np.asarray(vectors)
@@ -5175,42 +5205,28 @@ class PolyMesh(PolyData):
 
             self._vtk_prop.SetTexture(texture)
 
-    def contour(self, scalars, *, levels=None, range=(None, None),
-                width=None, style=None, color=None):
+    def contour(self, scalars, levels=10, range=(None, None), width=2,
+                style='lines', color=colors.black):
         """
         """
-        self._set_point_scalars(np.asarray(scalars))
+        # The visible=False option prevents _set_points_scalars() from
+        # modifying the mapper of self!
+        self._set_point_scalars(np.asarray(scalars), visible=False)
 
-        # if not hasattr(self, '_contour'):
-        #     self._contour = None
+        lo = self._scalars.min() if range[0] is None else range[0]
+        hi = self._scalars.max() if range[1] is None else range[1]
 
-        # if style == '':
-        #     delete(self._contour)
-        #     self._contour = None
-        #     return
+        curves = vtk.vtkContourFilter()
+        curves.SetInputData(self._vtk_polydata)
+        curves.GenerateValues(levels, lo, hi)
 
-        if self._contour is None:
-            lo = self._scalars.min() if range[0] is None else range[0]
-            hi = self._scalars.max() if range[1] is None else range[1]
+        mapper = vtk.vtkPolyDataMapper()
+        mapper.SetInputConnection(curves.GetOutputPort())
+        mapper.SetResolveCoincidentTopologyToPolygonOffset()
 
-            curves = vtk.vtkContourFilter()
-            curves.SetInputData(self._vtk_polydata)
-            curves.GenerateValues(levels, lo, hi)
-
-            mapper = vtk.vtkPolyDataMapper()
-            mapper.SetInputConnection(curves.GetOutputPort())
-
-            actor = vtk.vtkActor()
-            actor.SetMapper(mapper)
-            actor.SetPickable(False)
-
-            add(actor)
-            self._contour = actor
-        else:
-            actor = self._contour
-
-        if width is not None:
-            actor.GetProperty().SetLineWidth(width)
+        actor = vtk.vtkActor()
+        actor.SetMapper(mapper)
+        actor.GetProperty().SetLineWidth(width)
 
         if style == 'lines':
             actor.GetProperty().SetRenderLinesAsTubes(False)
@@ -5219,40 +5235,43 @@ class PolyMesh(PolyData):
 
         if color == 'scalars':
             mapper.SetColorModeToMapScalars()
-            mapper.SetLookupTable(self.mapper.GetLookupTable())
+            mapper.SetLookupTable(self.prop.GetMapper().GetLookupTable())
             mapper.SetUseLookupTableScalarRange(True)
             mapper.SetScalarVisibility(True)
-        elif color is not None:
+        else:
             mapper.SetScalarVisibility(False)
             actor.GetProperty().SetColor(color)
 
-    def _avg_edge_length(self):
-        # The edge extraction filter only works when there are polygonal
-        # cells defined! This cannot be used to compute the average edge
-        # length of a PolyGraph instance!
-        filter = vtk.vtkExtractEdges()
-        filter.SetInputData(self._vtk_polydata)
-        filter.Update()
+        add(actor)
+        return Prop(actor)
 
-        points = vtk_to_numpy(filter.GetOutput().GetPoints().GetData())
-        edges = filter.GetOutput().GetLines()
-        edge_iter = edges.NewIterator()
+    # def _avg_edge_length(self):
+    #     # The edge extraction filter only works when there are polygonal
+    #     # cells defined! This cannot be used to compute the average edge
+    #     # length of a PolyGraph instance!
+    #     filter = vtk.vtkExtractEdges()
+    #     filter.SetInputData(self._vtk_polydata)
+    #     filter.Update()
 
-        min, max, sum = np.inf, 0.0, 0.0
+    #     points = vtk_to_numpy(filter.GetOutput().GetPoints().GetData())
+    #     edges = filter.GetOutput().GetLines()
+    #     edge_iter = edges.NewIterator()
 
-        while not edge_iter.IsDoneWithTraversal():
-            edge = edge_iter.GetCurrentCell()
-            i, j = edge.GetId(0), edge.GetId(1)
+    #     min, max, sum = np.inf, 0.0, 0.0
 
-            length = np.linalg.norm(points[i, :] - points[j, :])
-            sum += length
+    #     while not edge_iter.IsDoneWithTraversal():
+    #         edge = edge_iter.GetCurrentCell()
+    #         i, j = edge.GetId(0), edge.GetId(1)
 
-            min = length if length < min else min
-            max = length if length > max else max
+    #         length = np.linalg.norm(points[i, :] - points[j, :])
+    #         sum += length
 
-            edge_iter.GoToNextCell()
+    #         min = length if length < min else min
+    #         max = length if length > max else max
 
-        return sum / edges.GetNumberOfCells(), min, max
+    #         edge_iter.GoToNextCell()
+
+    #     return sum / edges.GetNumberOfCells(), min, max
 
 
 class PolyGraph(PolyData):
