@@ -549,7 +549,7 @@ def show(width=1200, height=600, title=None, info=False, *, lmbdown=None,
         if not _renwin.HasRenderer(renderer):
             _renwin.AddRenderer(renderer)
 
-        renderer.ResetCamera() #-10.0, 10.0, -10.0, 10.0, -10.0, 10.0)
+        renderer.ResetCamera()
         renderer.ResetCameraClippingRange()
 
     # Set up the render window interactor with its customized trackball
@@ -1482,7 +1482,7 @@ def contour(mesh, scalars, levels=10, width=2.0, style='-',
     return actor
 
 
-def silhouette(mesh, style=None, width=4, color=colors.black):
+def silhouette(object, style=None, width=1, color=colors.black):
     """
     """
     # # Point and face array setup. Vertex coordinates and face definitions are
@@ -1541,7 +1541,16 @@ def silhouette(mesh, style=None, width=4, color=colors.black):
     # polyData.SetPolys(face_array)
 
     silhouette = vtk.vtkPolyDataSilhouette()
-    silhouette.SetInputData(mesh._vtk_polydata)
+
+    if isinstance(object, Prop):
+        object = object._vtk_polydata
+
+    if isinstance(object, vtk.vtkPolyData):
+        silhouette.SetInputData(object)
+    else:
+        # Create input polydata...
+        pass
+
     silhouette.SetCamera(_renderer.GetActiveCamera())
     silhouette.SetEnableFeatureAngle(False)
     silhouette.SetBorderEdges(True)
@@ -1910,7 +1919,7 @@ def sphere(center, radius, opacity=1.0, resolution=24, color=colors.snow):
     sphere.SetPhiResolution(resolution)
     sphere.Update()
 
-    ball = PolyData(sphere.GetOutput())
+    ball = PolyMesh(sphere.GetOutput())
     ball.color = color
     ball.opacity = opacity
 
@@ -3098,6 +3107,8 @@ class MapperMixin:
 
 
         """
+        print(values)
+
         lut = self._vtk_prop.GetMapper().GetLookupTable()
         _tweak_categorical_lut(lut, values, labels, colors, **kwargs)
 
@@ -4078,6 +4089,7 @@ class PolyData(PropertyMixin, MapperMixin, Prop):
 
         mapper = vtk.vtkPolyDataMapper()
         mapper.SetInputData(self._vtk_polydata)
+        # mapper.SetResolveCoincidentTopologyToPolygonOffset()
 
         # Create standard lookup table and how this table is used by
         # the mapper.
