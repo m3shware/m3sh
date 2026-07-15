@@ -44,7 +44,8 @@ import numpy as np
 
 import m3sh.obj as obj
 import m3sh.off as off
-import m3sh.flags as flags
+
+# import m3sh.flags as flags
 
 # from . import obj
 # from . import flags
@@ -3088,7 +3089,8 @@ class Vertex:
 
         # Initialize internal state attributes.
         self._deleted = False
-        self._flags = flags.VertexFlag(0)
+
+        # self._flags = flags.VertexFlag(0)
 
     def __repr__(self):
         return f'Vertex({self._idx})'
@@ -3099,8 +3101,8 @@ class Vertex:
         except AttributeError:
             point = '[None]'
 
-        if self._flags:
-            return f'v {self._idx} {point} {self._flags}'
+        # if self._flags:
+        #     return f'v {self._idx} {point} {self._flags}'
 
         return f'v {self._idx} {point}'
 
@@ -3204,19 +3206,19 @@ class Vertex:
     def point(self, value):
         self._mesh._points[self._idx, ...] = value
 
-    @property
-    def flags(self):
-        """ Vertex flags.
+    # @property
+    # def flags(self):
+    #     """ Vertex flags.
 
-        Read and write access to vertex flags.
+    #     Read and write access to vertex flags.
 
-        :type: VertexFlag
-        """
-        return self._flags
+    #     :type: VertexFlag
+    #     """
+    #     return self._flags
 
-    @flags.setter
-    def flags(self, value):
-        self._flags = value
+    # @flags.setter
+    # def flags(self, value):
+    #     self._flags = value
 
     @property
     def halfedge(self):
@@ -3488,15 +3490,16 @@ class Halfedge:
         self._face = None
 
         self._deleted = False
-        self._flags = flags.HalfedgeFlag(0)
+
+        # self._flags = flags.HalfedgeFlag(0)
 
     def __repr__(self):
         return f'Halfedge({repr(self._origin)}, {repr(self._target)})'
 
     def __str__(self):
-        if self._flags:
-            return (f'h ({self._origin._idx}, {self._target._idx})' +
-                    f' {self._flags}')
+        # if self._flags:
+        #     return (f'h ({self._origin._idx}, {self._target._idx})' +
+        #             f' {self._flags}')
 
         return f'h ({self._origin._idx}, {self._target._idx})'
 
@@ -3676,19 +3679,19 @@ class Halfedge:
         assert not self._deleted
         return self._face
 
-    @property
-    def flags(self):
-        """ Halfedge flags.
+    # @property
+    # def flags(self):
+    #     """ Halfedge flags.
 
-        Read and write access to halfedge flags.
+    #     Read and write access to halfedge flags.
 
-        :type: HalfedgeFlag
-        """
-        return self._flags
+    #     :type: HalfedgeFlag
+    #     """
+    #     return self._flags
 
-    @flags.setter
-    def flags(self, value):
-        self._flags = value
+    # @flags.setter
+    # def flags(self, value):
+    #     self._flags = value
 
     @property
     def deleted(self):
@@ -4112,7 +4115,8 @@ class Face:
 
         # Initialize internal state attributes.
         self._deleted = False
-        self._flags = flags.FaceFlag(0)
+
+        # self._flags = flags.FaceFlag(0)
 
     def __repr__(self):
         return f'Face({self._idx})'
@@ -4120,8 +4124,8 @@ class Face:
     def __str__(self):
         face = '[None]' if self._deleted else str([int(v) for v in self])
 
-        if self._flags:
-            return f'f {self._idx} {face} {self._flags}'
+        # if self._flags:
+        #     return f'f {self._idx} {face} {self._flags}'
 
         return f'f {self._idx} {face}'
 
@@ -4284,19 +4288,19 @@ class Face:
         """
         return self._idx
 
-    @property
-    def flags(self):
-        """ Face flags.
+    # @property
+    # def flags(self):
+    #     """ Face flags.
 
-        Read and write access to face flags.
+    #     Read and write access to face flags.
 
-        :type: FaceFlag
-        """
-        return self._flags
+    #     :type: FaceFlag
+    #     """
+    #     return self._flags
 
-    @flags.setter
-    def flags(self, value):
-        self._flags = value
+    # @flags.setter
+    # def flags(self, value):
+    #     self._flags = value
 
     @property
     def halfedge(self):
