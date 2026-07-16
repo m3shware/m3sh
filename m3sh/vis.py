@@ -1260,7 +1260,7 @@ def scatter(points, style='spheres', size=1.0, color=colors.dim_grey):
     return pc
 
 
-def splat(points, vectors, size=1.0, color=colors.snow):
+def splat(points, vectors, scale=1.0, color=colors.snow):
     """ Point splatting.
 
     Display disk at locations orthogonal to given directions.
@@ -1276,16 +1276,18 @@ def splat(points, vectors, size=1.0, color=colors.snow):
     color : array_like, shape (3, ), optional
         Color specification.
     """
-    splats = Disks(points, vectors)
+    points = np.atleast_2d(points).reshape(-1, 3, copy=False)
+    vectors = np.atleast_2d(vectors).reshape(-1, 3, copy=False)
 
-    splats.size = size
+    splats = Disks(points, vectors)
+    splats.scale = scale
     splats.color = color
 
     add(splats)
     return splats
 
 
-def quiver(points, vectors, size=1.0, radius=0.025, resolution=6,
+def quiver(points, vectors, scale=1.0, radius=0.025, resolution=6,
            arrows=True, color=colors.cornflower):
     """ Quiver plot.
 
@@ -1328,7 +1330,7 @@ def quiver(points, vectors, size=1.0, radius=0.025, resolution=6,
 
     if arrows:
         vf = Arrows(points, vectors, radius, 2*radius, resolution=resolution)
-        vf.size = size
+        vf.scale = scale
         vf.color = color
 
         add(vf)
@@ -3107,8 +3109,6 @@ class MapperMixin:
 
 
         """
-        print(values)
-
         lut = self._vtk_prop.GetMapper().GetLookupTable()
         _tweak_categorical_lut(lut, values, labels, colors, **kwargs)
 
@@ -3929,7 +3929,8 @@ class Cones(Prop, PropertyMixin):
 class Disks(OrientedGlyphs):
 
     def __init__(self, points, vectors):
-        super().__init__(points, vectors, *self._disk())
+        source = self._disk()
+        super().__init__(points, vectors, *source)
 
     @staticmethod
     def _disk(resolution=60):
