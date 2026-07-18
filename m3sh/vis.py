@@ -3580,6 +3580,32 @@ class OrientedGlyphs(Prop, PropertyMixin, MapperMixin, GlyphMixin):
 
         super().__init__(actor)
 
+    def silhouette(self, style=None, width=1, color=colors.black):
+        """
+        """
+        silhouette = vtk.vtkPolyDataSilhouette()
+        silhouette.SetInputConnection(self._vtk_glyph.GetOutputPort())
+        silhouette.SetCamera(_renderer.GetActiveCamera())
+        silhouette.SetEnableFeatureAngle(False)
+        silhouette.SetBorderEdges(True)
+
+        mapper = vtk.vtkPolyDataMapper()
+        mapper.SetInputConnection(silhouette.GetOutputPort())
+        mapper.SetResolveCoincidentTopologyToPolygonOffset()
+
+        actor = vtk.vtkActor()
+        actor.SetMapper(mapper)
+        actor.GetProperty().SetColor(color)
+        actor.GetProperty().SetLineWidth(width)
+
+        if style == 'lines':
+            actor.GetProperty().SetRenderLinesAsTubes(False)
+        elif style == 'tubes':
+            actor.GetProperty().SetRenderLinesAsTubes(True)
+
+        add(actor)
+        return Prop(actor)
+
 
 class Spheres(Prop, PropertyMixin, MapperMixin, GlyphMixin):
     # Point cloud
