@@ -3127,30 +3127,43 @@ class GlyphMixin:
 
     @scale.setter
     def scale(self, value):
-        self._vtk_glyph.SetScaleFactor(value)
+        value = np.atleast_1d(value)
 
-    def scalars(self, values):
-        """ Scale glyph geometry by scalars.
+        if len(value) == 1:
+            self._vtk_glyph.SetScaleFactor(value[0])
+        else:
+            pointdata = self._vtk_polydata.GetPointData()
+            pointdata.SetScalars(numpy_to_vtk(value))
 
-        Parameters
-        ----------
-        values : array_like
-            Per point scale factors.
+            self._scalars = value
 
-        Notes
-        -----
-        Scale factors and :attr:`scale` are multiplied to obtain the final
-        size of a glyph.
-        """
-        values = np.asarray(values)
+            self._vtk_glyph.SetScaling(True)
+            self._vtk_glyph.SetScaleModeToScaleByScalar()
 
-        pointdata = self._vtk_polydata.GetPointData()
-        pointdata.SetScalars(numpy_to_vtk(values))
+    # def scalars(self, values):
+    #     """ Scale glyph geometry by scalars.
 
-        self._scalars = values
+    #     Parameters
+    #     ----------
+    #     values : array_like
+    #         Per point scale factors.
 
-        self._vtk_glyph.SetScaling(True)
-        self._vtk_glyph.SetScaleModeToScaleByScalar()
+    #     Notes
+    #     -----
+    #     Scale factors and :attr:`scale` are multiplied to obtain the final
+    #     size of a glyph.
+    #     """
+    #     values = np.asarray(values)
+
+    #     print(values)
+
+    #     pointdata = self._vtk_polydata.GetPointData()
+    #     pointdata.SetScalars(numpy_to_vtk(values))
+
+    #     self._scalars = values
+
+    #     self._vtk_glyph.SetScaling(True)
+    #     self._vtk_glyph.SetScaleModeToScaleByScalar()
 
     @property
     def color(self):
@@ -3481,7 +3494,7 @@ class _VectorField():
         self._vtk_polydata.GetPointData().Modified()
 
 
-class OrientedGlyphs(Prop, PropertyMixin, MapperMixin, GlyphMixin):
+class OrientedGlyphs(PropertyMixin, MapperMixin, GlyphMixin, Prop):
     """ Glyph base class.
 
     Base class for all simple oriented glyphs. Displays a scaled and
