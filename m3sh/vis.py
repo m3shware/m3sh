@@ -1216,7 +1216,7 @@ def _test():
     show()
 
 
-def scatter(points, style='spheres', size=1.0, color=colors.dim_grey):
+def scatter(points, scale=1.0, style='spheres', color=colors.dim_grey):
     """ Scatter plot.
 
     Point cloud visualization. Each point is represented as a sphere or cube
@@ -1229,10 +1229,10 @@ def scatter(points, style='spheres', size=1.0, color=colors.dim_grey):
     ----------
     points : array_like, shape (..., 3)
         Stack of point coordinates in 3-space.
+    scale : float, optional
+        Glyph size in object space.
     style : str, optional
         Either 'spheres' or 'cubes'.
-    size : float, optional
-        Glyph size in object space.
     color : array_like, shape (3, ), optional
         Color intensity triplet.
 
@@ -1252,8 +1252,8 @@ def scatter(points, style='spheres', size=1.0, color=colors.dim_grey):
     points = np.atleast_2d(points).reshape(-1, 3, copy=False)
 
     pc = Spheres(points)
+    pc.scale = scale
     pc.style = style
-    pc.size = size
     pc.color = color
 
     add(pc)
@@ -1484,7 +1484,7 @@ def contour(mesh, scalars, levels=10, width=2.0, style='-',
     return actor
 
 
-def silhouette(object, style=None, width=1, color=colors.black):
+def silhouette(object, width=1, style=None, color=colors.black):
     """
     """
     # # Point and face array setup. Vertex coordinates and face definitions are
@@ -3129,16 +3129,20 @@ class GlyphMixin:
     def scale(self, value):
         value = np.atleast_1d(value)
 
+        # Should scaling of the other type be impcitly disabled when data
+        # of the other type is provided? Currently both scale factors are
+        # multiplied.
         if len(value) == 1:
+            self._vtk_glyph.SetScaling(True)
             self._vtk_glyph.SetScaleFactor(value[0])
         else:
             pointdata = self._vtk_polydata.GetPointData()
             pointdata.SetScalars(numpy_to_vtk(value))
 
-            self._scalars = value
-
-            self._vtk_glyph.SetScaling(True)
+            # There is no SetScaleModeToDataScalingOn(), just set the
+            # scale mode to scalar or vector to enable it!
             self._vtk_glyph.SetScaleModeToScaleByScalar()
+            self._scalars = value
 
     # def scalars(self, values):
     #     """ Scale glyph geometry by scalars.
@@ -3183,15 +3187,17 @@ class GlyphMixin:
 
     def colorize(self, scalars):
         numpts = self._vtk_polydata.GetNumberOfPoints()
-        shape = np.shape(scalars)
+        colors = np.asarray(scalars)
 
-        if shape == (numpts, ) or shape == (numpts, 3):
-            self._colors = np.asarray(scalars)
+        if colors.shape == (numpts, ) or colors.shape == (numpts, 3):
+            self._colors = colors
 
             colors = numpy_to_vtk(self._colors)
             colors.SetName('color')
 
-            # This will replaces an array of the same name if present.
+            # This will replaces an array of the same name if present. We
+            # use field data because point data scalars are already used
+            # to scale the glyph!
             self._vtk_polydata.GetPointData().AddArray(colors)
 
             mapper = self._vtk_prop.GetMapper()
@@ -3199,12 +3205,40 @@ class GlyphMixin:
             mapper.SelectColorArray('color')
             mapper.SetScalarVisibility(True)
 
-            # Direct colors is the array has 3 components, otherwise
+            # Direct colors if the array has 3 components, otherwise
             # map the scalars through the lookup table.
-            if shape == (numpts, ):
+            if self._colors.ndim  == 1:
                 mapper.SetColorModeToMapScalars()
             else:
                 mapper.SetColorModeToDirectScalars()
+        else:
+            raise ValueError()
+
+    def silhouette(self, width=1, style=None, color=colors.black):
+        """
+        """
+        silhouette = vtk.vtkPolyDataSilhouette()
+        silhouette.SetInputConnection(self._vtk_glyph.GetOutputPort())
+        silhouette.SetCamera(_renderer.GetActiveCamera())
+        silhouette.SetEnableFeatureAngle(False)
+        silhouette.SetBorderEdges(True)
+
+        mapper = vtk.vtkPolyDataMapper()
+        mapper.SetInputConnection(silhouette.GetOutputPort())
+        mapper.SetResolveCoincidentTopologyToPolygonOffset()
+
+        actor = vtk.vtkActor()
+        actor.SetMapper(mapper)
+        actor.GetProperty().SetColor(color)
+        actor.GetProperty().SetLineWidth(width)
+
+        if style == 'lines':
+            actor.GetProperty().SetRenderLinesAsTubes(False)
+        elif style == 'tubes':
+            actor.GetProperty().SetRenderLinesAsTubes(True)
+
+        add(actor)
+        return Prop(actor)
 
     def modified(self):
         """ Update notification.
@@ -3539,7 +3573,7 @@ class OrientedGlyphs(PropertyMixin, MapperMixin, GlyphMixin, Prop):
 
             # This allows scaling by the global scale factor but does not
             # use local scale factors associated with individual points.
-            self._vtk_glyph.SetScaleModeToDataScalingOff()
+            # self._vtk_glyph.SetScaleModeToDataScalingOff()
 
             self._vtk_glyph.SetScaling(True)
             self._vtk_glyph.SetScaleModeToScaleByVector()
@@ -3574,7 +3608,7 @@ class OrientedGlyphs(PropertyMixin, MapperMixin, GlyphMixin, Prop):
 
             # This allows scaling by the global scale factor but does not
             # use local scale factors associated with individual points.
-            self._vtk_glyph.SetScaleModeToDataScalingOff()
+            # self._vtk_glyph.SetScaleModeToDataScalingOff()
 
             self._vtk_glyph.SetScaling(True)
             self._vtk_glyph.SetScaleModeToScaleByVector()
@@ -3593,55 +3627,63 @@ class OrientedGlyphs(PropertyMixin, MapperMixin, GlyphMixin, Prop):
 
         super().__init__(actor)
 
-    def silhouette(self, style=None, width=1, color=colors.black):
-        """
-        """
-        silhouette = vtk.vtkPolyDataSilhouette()
-        silhouette.SetInputConnection(self._vtk_glyph.GetOutputPort())
-        silhouette.SetCamera(_renderer.GetActiveCamera())
-        silhouette.SetEnableFeatureAngle(False)
-        silhouette.SetBorderEdges(True)
+    # def silhouette(self, width=1, style=None, color=colors.black):
+    #     """
+    #     """
+    #     silhouette = vtk.vtkPolyDataSilhouette()
+    #     silhouette.SetInputConnection(self._vtk_glyph.GetOutputPort())
+    #     silhouette.SetCamera(_renderer.GetActiveCamera())
+    #     silhouette.SetEnableFeatureAngle(False)
+    #     silhouette.SetBorderEdges(True)
 
-        mapper = vtk.vtkPolyDataMapper()
-        mapper.SetInputConnection(silhouette.GetOutputPort())
-        mapper.SetResolveCoincidentTopologyToPolygonOffset()
+    #     mapper = vtk.vtkPolyDataMapper()
+    #     mapper.SetInputConnection(silhouette.GetOutputPort())
+    #     mapper.SetResolveCoincidentTopologyToPolygonOffset()
 
-        actor = vtk.vtkActor()
-        actor.SetMapper(mapper)
-        actor.GetProperty().SetColor(color)
-        actor.GetProperty().SetLineWidth(width)
+    #     actor = vtk.vtkActor()
+    #     actor.SetMapper(mapper)
+    #     actor.GetProperty().SetColor(color)
+    #     actor.GetProperty().SetLineWidth(width)
 
-        if style == 'lines':
-            actor.GetProperty().SetRenderLinesAsTubes(False)
-        elif style == 'tubes':
-            actor.GetProperty().SetRenderLinesAsTubes(True)
+    #     if style == 'lines':
+    #         actor.GetProperty().SetRenderLinesAsTubes(False)
+    #     elif style == 'tubes':
+    #         actor.GetProperty().SetRenderLinesAsTubes(True)
 
-        add(actor)
-        return Prop(actor)
+    #     add(actor)
+    #     return Prop(actor)
 
 
-class Spheres(Prop, PropertyMixin, MapperMixin, GlyphMixin):
-    # Point cloud
+class Spheres(PropertyMixin, MapperMixin, GlyphMixin, Prop):
 
     def __init__(self, points):
         self._points = np.asarray(points)
 
-        self._vtk_points = vtk.vtkPoints()
-        self._vtk_points.SetData(numpy_to_vtk(self._points))
+        points = vtk.vtkPoints()
+        points.SetData(numpy_to_vtk(self._points))
 
         self._vtk_polydata = vtk.vtkPolyData()
-        self._vtk_polydata.SetPoints(self._vtk_points)
+        self._vtk_polydata.SetPoints(points)
 
-        self._source = self._sphere()
+        source = self._sphere()
 
         self._vtk_glyph = vtk.vtkGlyph3D()
         self._vtk_glyph.SetInputData(self._vtk_polydata)
-        self._vtk_glyph.SetSourceConnection(self._source.GetOutputPort())
-        self._vtk_glyph.SetScaleModeToScaleByScalar()
+        self._vtk_glyph.SetSourceConnection(source.GetOutputPort())
+
+        # Enable scaling via the SetScaleFactor() method. Setting this to
+        # False will ignore a scale factor set by SetScaleFactor() method.
+        # The default scale factor (if not set explicitly) is 1.
+        self._vtk_glyph.SetScaling(False)
+
+        # Disable scaling by per point scale factors. Scaling can be by
+        # scalar values or vector magnitude. If scaling and data scaling
+        # are both active, scale factor are multiplied.
+        self._vtk_glyph.SetScaleModeToDataScalingOff()
 
         mapper = vtk.vtkPolyDataMapper()
         mapper.SetInputConnection(self._vtk_glyph.GetOutputPort())
-        mapper.SetLookupTable(_generic_lut(gradient='spectral'))
+        mapper.SetLookupTable(_generic_lut())
         mapper.SetScalarVisibility(False)
 
         actor = vtk.vtkActor()
@@ -3662,23 +3704,23 @@ class Spheres(Prop, PropertyMixin, MapperMixin, GlyphMixin):
     def _cube():
         return vtk.vtkCubeSource()
 
-    @property
-    def style(self):
-        if isinstance(self._source, vtk.vtkCubeSource):
-            return 'cubes'
-        elif isinstance(self._source, vtk.vtkSphereSource):
-            return 'spheres'
+    # @property
+    # def style(self):
+    #     if isinstance(self._source, vtk.vtkCubeSource):
+    #         return 'cubes'
+    #     elif isinstance(self._source, vtk.vtkSphereSource):
+    #         return 'spheres'
 
-        return 'undefined'
+    #     return 'undefined'
 
-    @style.setter
-    def style(self, value):
-        if value == 'cubes':
-            self._source = self._cube()
-        elif value == 'spheres':
-            self._source = self._sphere()
+    # @style.setter
+    # def style(self, value):
+    #     if value == 'cubes':
+    #         self._source = self._cube()
+    #     elif value == 'spheres':
+    #         self._source = self._sphere()
 
-        self._vtk_glyph.SetSourceConnection(self._source.GetOutputPort())
+    #     self._vtk_glyph.SetSourceConnection(self._source.GetOutputPort())
 
 
 class Arrows(OrientedGlyphs):
@@ -5568,6 +5610,22 @@ class LookupTable(Prop):
     def position(self, value):
         self.prop.SetPosition(value)
         # self.prop.Modified()
+
+    @property
+    def width(self):
+        return self.prop.GetWidth()
+
+    @width.setter
+    def width(self, value):
+        self.prop.SetWidth(value)
+
+    @property
+    def height(self):
+        return self.prop.GetHeight()
+
+    @height.setter
+    def height(self, value):
+        self.prop.SetHeight(value)
 
     # def _modified(self, object=None):
     #     """ Update representation.
