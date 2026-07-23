@@ -3695,6 +3695,8 @@ class Spheres(PropertyMixin, MapperMixin, GlyphMixin, Prop):
     def _sphere(resolution=16):
         sphere = vtk.vtkSphereSource()
 
+        sphere.SetCenter(0.0, 0.0, 0.0)
+        sphere.SetRadius(1.0)
         sphere.SetPhiResolution(resolution)
         sphere.SetThetaResolution(resolution)
 
