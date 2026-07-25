@@ -3600,8 +3600,11 @@ class OrientedGlyphs(PropertyMixin, MapperMixin, GlyphMixin, Prop):
                 pointdata = self._vtk_polydata.GetPointData()
                 pointdata.SetVectors(numpy_to_vtk(self._vectors))
 
+            # Note: put glyphs on the GPU by using vtkGlyph3DMapper. This
+            # requires changes further down the pipeline...
             self._vtk_glyph = vtk.vtkGlyph3D()
             self._vtk_glyph.SetInputData(self._vtk_polydata)
+            self._vtk_glyph.SetGeneratePointIds(True)
             self._vtk_glyph.SetSourceConnection(source.GetOutputPort())
             self._vtk_glyph.OrientOn()
             self._vtk_glyph.SetVectorModeToUseVector()
@@ -4016,7 +4019,7 @@ class Disks(OrientedGlyphs):
         super().__init__(points, vectors, *source)
 
     @staticmethod
-    def _disk(resolution=60):
+    def _disk(resolution=36):
         disk = vtk.vtkDiskSource()
 
         disk.SetInnerRadius(0.0)
