@@ -443,7 +443,7 @@ def rgba(name, char=False):
 
 def show(width=1200, height=600, title=None, info=False, *, lmbdown=None,
          lmbup=None, rmbdown=None, rmbup=None, keydown=None, keyup=None,
-         mousemove=None):
+         mousemove=None, setup=None):
     """ Start the VTK event loop.
 
     Open window for rendering and start the VTK render and event loop.
@@ -622,6 +622,9 @@ def show(width=1200, height=600, title=None, info=False, *, lmbdown=None,
         # the one that was active before showing the information.
         _renderer = ren
         _commands(terminal_only=True)
+
+    for func in setup or []:
+        func()
 
     # Start the window interactor event loop. Closing the windows stops
     # the loop. Alternatively a more expensive polling loop can be used.
@@ -3115,6 +3118,24 @@ class MapperMixin:
 
 class GlyphMixin:
 
+    def index(self, id):
+        """ Glyph index.
+
+        Parameters
+        ----------
+        id : int
+            Point identifier.
+
+        Returns
+        -------
+        int
+            Original point identifier.
+        """
+        data = self.prop.GetMapper().GetInput().GetPointData()
+        inds = data.GetArray('InputPointIds')
+
+        return inds.GetValue(id)
+
     @property
     def scale(self):
         """ Scale property.
@@ -3567,6 +3588,7 @@ class OrientedGlyphs(PropertyMixin, MapperMixin, GlyphMixin, Prop):
 
             self._vtk_glyph = vtk.vtkGlyph3D()
             self._vtk_glyph.SetInputConnection(points.GetOutputPort())
+            self._vtk_glyph.SetGeneratePointIds(True)
             self._vtk_glyph.SetSourceConnection(source.GetOutputPort())
             self._vtk_glyph.OrientOn()
             self._vtk_glyph.SetVectorModeToUseVector()
@@ -3672,6 +3694,7 @@ class Spheres(PropertyMixin, MapperMixin, GlyphMixin, Prop):
 
         self._vtk_glyph = vtk.vtkGlyph3D()
         self._vtk_glyph.SetInputData(self._vtk_polydata)
+        self._vtk_glyph.SetGeneratePointIds(True)
         self._vtk_glyph.SetSourceConnection(source.GetOutputPort())
 
         # Enable scaling via the SetScaleFactor() method. Setting this to
