@@ -441,15 +441,15 @@ def rgba(name, char=False):
     return vtk.vtkNamedColors().GetColor4d(name)
 
 
-def show(width=1200, height=600, title=None, info=False, *, lmbdown=None,
-         lmbup=None, rmbdown=None, rmbup=None, keydown=None, keyup=None,
-         mousemove=None, setup=None):
+def show(width=1200, height=600, title=None, info=False, *, setup=None,
+         lmbdown=None, lmbup=None, rmbdown=None, rmbup=None, keydown=None,
+         keyup=None, mousemove=None, ):
     """ Start the VTK event loop.
 
     Open window for rendering and start the VTK render and event loop.
-    This is a blocking function, code execution will not advance beyond it
-    until the event loop stops. Interaction with displayed objects has to
-    be triggered by mouse and keyboard events and corresponding event
+    This is a blocking function, code execution will not advance beyond
+    it until the event loop stops. Interaction with displayed objects has
+    to be triggered by mouse and keyboard events and corresponding event
     handlers, i.e., callback functions.
 
     Parameters
@@ -460,6 +460,10 @@ def show(width=1200, height=600, title=None, info=False, *, lmbdown=None,
         Window title.
     info : bool, optional
         Show rendering backend information.
+    setup : list[callable], optional
+        Functions for user interface setup that require access to the
+        render window interactor, i.e., when adding widgets. Functions
+        in this list are only executed once.
     lmbdown, lmbup : list[callable], optional
         Left mouse button press and release callbacks.
     rmbdown, rmbup : list[callable], optional
@@ -490,12 +494,12 @@ def show(width=1200, height=600, title=None, info=False, *, lmbdown=None,
 
     When activated the callback receives a handle to the affected render
     window via the corresponding render window interactor `iren` as well
-    as the mouse cursor position inside this windows in pixels.
+    as the mouse cursor position inside this window in pixels.
 
     The `iren` argument can be used to query the status of modifier keys
     via its :meth:`GetShiftKey`, :meth:`GetControlKey`, and
-    :meth:`GetAltKey`. In case of keyboard events, the pressed key can
-    be queried by :meth:`GetKeySym`.
+    :meth:`GetAltKey` methods. In case of keyboard events, the pressed key
+    can be queried by :meth:`GetKeySym`.
 
     An object itself can be used as callback when it implements the
     :meth:`__call__` method.
@@ -623,8 +627,10 @@ def show(width=1200, height=600, title=None, info=False, *, lmbdown=None,
         _renderer = ren
         _commands(terminal_only=True)
 
-    for func in setup or []:
-        func()
+    # User interface setup that requires the render window interactor.
+    # Those are not callbacks in the strict sense, only executed once.
+    for func in (setup or []):
+        func(iren)
 
     # Start the window interactor event loop. Closing the windows stops
     # the loop. Alternatively a more expensive polling loop can be used.
@@ -3121,6 +3127,11 @@ class GlyphMixin:
     def index(self, id):
         """ Glyph index.
 
+        Glyphs and points of the original point set (the `points` argument
+        provided at construction time) are in correspondence. This method
+        translates between points on the glyphs to points of the underlying
+        point set.
+
         Parameters
         ----------
         id : int
@@ -3130,7 +3141,15 @@ class GlyphMixin:
         -------
         int
             Original point identifier.
+
+        Notes
+        -----
+        If all glyphs have the same number of points, say k, then the
+        index of the original point can be obtained as n div k, where n
+        denotes the index of a point on one of the displayed glyphs.
         """
+        # The 'InputPointIds' array is added by the SetGeneratePointIds()
+        # method of vtkGlyph3D.
         data = self.prop.GetMapper().GetInput().GetPointData()
         inds = data.GetArray('InputPointIds')
 
