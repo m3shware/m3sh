@@ -5256,17 +5256,17 @@ class PolyMesh(PolyData):
 
     #     self._vtk_polydata.GetPointData().SetNormals(value)
 
-    def verts(self, style=None, size=None, color=None):
+    def verts(self, size=None, style=None, color=None):
         """ Vertex display.
 
         Set visual properties of vertices.
 
         Parameters
         ----------
-        style : str, optional
-            Either 'points' or 'spheres', :obj:`False` to disable.
         size : int, optional
             Size in pixels.
+        style : str, optional
+            Either 'points' or 'spheres', :obj:`False` to disable.
         color : array_like, shape (3, ), optional
             Vertex color.
 
@@ -5297,17 +5297,17 @@ class PolyMesh(PolyData):
         if color is not None:
             self._vtk_prop.GetProperty().SetVertexColor(color)
 
-    def edges(self, style=None, width=None, color=None):
+    def edges(self, width=None, style=None, color=None):
         """ Edge display.
 
         Set visual properties of edges.
 
         Parameters
         ----------
-        style : str, optional
-            Either 'lines' or 'tubes', :obj:`False` to disable.
         width : int, optional
             Edge width in pixels.
+        style : str, optional
+            Either 'lines' or 'tubes', :obj:`False` to disable.
         color : array_like, shape (3, ), optional
             Edge color.
 
