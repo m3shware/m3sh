@@ -2941,6 +2941,10 @@ class Prop:
         self._vtk_prop = prop
         self._vtk_prop.SetPickable(False)
 
+        # Render objects may spawn children. Silhouettes and contours are
+        # the primary examples.
+        self._spawn = []
+
     @property
     def prop(self):
         """ Wrapped VTK instance.
@@ -2986,6 +2990,12 @@ class Prop:
     @visible.setter
     def visible(self, value):
         self._vtk_prop.SetVisibility(bool(value))
+
+        try:
+            for prop in self._spawn:
+                prop._vtk_prop.SetVisibility(bool(value))
+        except AttributeError:
+            pass
 
     @property
     def pickable(self):
@@ -3277,8 +3287,10 @@ class GlyphMixin:
         elif style == 'tubes':
             actor.GetProperty().SetRenderLinesAsTubes(True)
 
-        add(actor)
-        return Prop(actor)
+        self._spawn.append(prop := Prop(actor))
+
+        add(prop)
+        return prop
 
     def modified(self):
         """ Update notification.
