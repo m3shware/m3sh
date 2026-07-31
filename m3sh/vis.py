@@ -326,8 +326,8 @@ def pick(x, y, items, *, iren=None):
     ----------
     x, y : int
         Pick position in display coordinates.
-    items : {'verts', 'cells'}
-        Defines the pick style, either point picking or cell picking.
+    items : {'verts', 'cells', 'props'}
+        Defines the pick style. Pick points, cells, or props.
 
     Returns
     -------
@@ -335,10 +335,11 @@ def pick(x, y, items, *, iren=None):
         Results in :obj:`None` if nothing was picked. To find the
         corresponding :class:`Prop` instance (if any) compare `actor` with
         the :attr:`Prop.prop` instance attribute.
-    id : int
-        Point identifier, -1 if no point was picked.
     point : ndarray, shape (3,)
-        World coordinates of the picked point. Invalid if `id` is negative.
+        World coordinates of the picked point.
+    point_id : int
+        Point identifier, -1 if no point was picked. Only returned during
+        point picking and cell picking.
     cell_id : int
         Cell identifier, -1 if no cell was picked. Only returned during
         cell picking.
@@ -354,7 +355,7 @@ def pick(x, y, items, *, iren=None):
     of the intersection of the pick ray and the picked cell is returned in
     `point`. In addition to the index `cell_id` of the picked cell, the index
     of the closest vertex of the picked cells to this location is returned as
-    `id`.
+    `point_id`.
     """
     # Get the viewport that corresponds to the given location. What happens
     # if window coordinates are out of bounds?
@@ -365,22 +366,69 @@ def pick(x, y, items, *, iren=None):
 
     # The pick was successful, i.e., an actor was intersected with the pick
     # ray if the actor returned by the picker is not None.
-    if items == 'verts':
+    if items == 'props':
+        picker = vtk.vtkPropPicker()
+        picker.Pick(x, y, 0, renderer)
+
+        return picker.GetProp3D(), np.array(picker.GetPickPosition())
+    elif items == 'verts':
         # A point picker ignores occlusion of points by faces of a mesh. Use
         # a cell picker instead. Use a point picker only for point clouds!
         picker = vtk.vtkPointPicker()
         picker.Pick(x, y, 0, renderer)
 
-        return (picker.GetActor(), picker.GetPointId(),
-                np.array(picker.GetPickPosition()))
+        return (picker.GetActor(), np.array(picker.GetPickPosition()),
+                picker.GetPointId())
     elif items == 'cells':
+        # A cell picker does not work for polygonal data with non-planar
+        # polygons!
         picker = vtk.vtkCellPicker()
         picker.Pick(x, y, 0, renderer)
 
-        return (picker.GetActor(), picker.GetPointId(),
-                np.array(picker.GetPickPosition()), picker.GetCellId())
+        return (picker.GetActor(), np.array(picker.GetPickPosition()),
+                picker.GetPointId(), picker.GetCellId())
     else:
         raise ValueError(f"invalid pick style '{items}'")
+
+
+# Currently this is a workaround and proof of concept of how to pick only
+# the visible points of polygonal data. This should probably be a method of
+# PolyData at some point.
+
+def _pick(x, y, prop, *, iren=None):
+    # Get the viewport that corresponds to the given location. What happens
+    # if window coordinates are out of bounds?
+    if iren is None:
+        iren = _renwin.GetInteractor()
+
+    renderer = iren.FindPokedRenderer(x, y)
+
+    ids = vtk.vtkGenerateIds()
+    ids.SetInputData(prop._vtk_polydata)
+    ids.SetPointIds(True)
+    ids.SetPointIdsArrayName('InputPointIds')
+    ids.Update()
+
+    vis = vtk.vtkSelectVisiblePoints()
+    vis.SetRenderer(renderer)
+    vis.SetInputData(ids.GetOutput())
+    vis.Update()
+
+    map = vtk.vtkPolyDataMapper()
+    map.SetInputData(vis.GetOutput())
+
+    act = vtk.vtkActor()
+    act.SetMapper(map)
+
+    picker = vtk.vtkPointPicker()
+    picker.AddPickList(act)
+    picker.SetPickFromList(True)
+    picker.Pick(x, y, 0, renderer)
+
+    ids = map.GetInput().GetPointData().GetArray('InputPointIds')
+    id = ids.GetValue(picker.GetPointId())
+
+    return id
 
 
 def rgb(*spec, char=False):
@@ -3306,6 +3354,7 @@ class GlyphMixin:
         self._vtk_polydata.GetPoints().Modified()
         self._vtk_polydata.GetPointData().Modified()
         self._vtk_polydata.GetCellData().Modified()
+        self._vtk_polydata.Modified()
 
 
 # class BoxArray(Actor):
@@ -4619,6 +4668,7 @@ class PolyData(PropertyMixin, MapperMixin, Prop):
         self._vtk_polydata.GetPoints().Modified()
         self._vtk_polydata.GetPointData().Modified()
         self._vtk_polydata.GetCellData().Modified()
+        self._vtk_polydata.Modified()
 
     def _set_point_scalars(self, value, visible=True):
         polydata = self._vtk_polydata
