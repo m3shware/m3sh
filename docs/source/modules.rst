@@ -1,6 +1,8 @@
 API reference
 =============
 
+**Version:** |release|
+
 .. currentmodule:: m3sh
 
 
@@ -14,7 +16,6 @@ Core modules
    hds
    traits
    itertools
-   flags
    
    
 Auxiliary
