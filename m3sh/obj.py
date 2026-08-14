@@ -66,8 +66,8 @@ class CSType:
     ValueError
         If invalid values for ``cstype`` are given.
 
-    Note
-    ----
+    Notes
+    -----
     Control points of rational curves and surface are of the form
     :math:`(x, y, z, w)` where :math:`(x, y, z)` are Euclidian coordinates
     and :math:`w` acts as a weight. The Wavefront OBJ specification
@@ -170,9 +170,8 @@ class CSType:
         CSType
             Corresponding Bézier curve/surface representation.
 
-
-        ----
-
+        Examples
+        --------
         **Curves.** Let :math:`n \geq 0`. Control points :math:`\mathbf{b}_0,
         \dots, \mathbf{b}_{n} \in \mathbb{R}^d` define a Bézier curve
 
@@ -196,8 +195,8 @@ class CSType:
         Control points should be passed as an array ``b`` of shape
         (m+1, n+1, d).
 
-        Note
-        ----
+        Notes
+        -----
         If we are given weights as last component of control points, a
         corresponding rational curve is defined according to
 
@@ -273,8 +272,8 @@ class CSType:
             Corresponding B-spline curve/surface representation.
 
 
-        ----
-
+        Examples
+        --------
         **Curves.** Let :math:`n \geq 0`. Control points :math:`\mathbf{c}_0,
         \dots, \mathbf{c}_{k+n} \in \mathbb{R}^d` and knots :math:`t_0, \dots,
         t_{2k+n+1} \in \mathbb{R}` such that :math:`t_i \leq t_{i+1}` define

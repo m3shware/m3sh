@@ -20,13 +20,18 @@
 
 """ Halfedge data structure.
 
-An orientable 2-manifold mesh (with or without boundary) is described by
-three containers that are managed by the :class:`Mesh` class:
+An orientable 2-manifold mesh (with or without boundary) is represented by
+a halfedge data structure, see, e.g., [1]_. To this end the :class:`Mesh`
+class manages three containers:
 
 - a list :attr:`~Mesh.vertices` of :class:`Vertex` instances,
 - a list :attr:`~Mesh.faces` of :class:`Face` instances,
 - and a dictionary :attr:`~Mesh.halfedges` that maps vertex pairs to
   corresponding :class:`Halfedge` instances.
+
+While surfaces are mainly described as triangle meshes, the halfedge data
+structure is not limited to triangular faces.
+
 
 References
 ----------
@@ -45,11 +50,6 @@ import numpy as np
 import m3sh.obj as obj
 import m3sh.off as off
 
-# import m3sh.flags as flags
-
-# from . import obj
-# from . import flags
-
 
 class Mesh:
     """ Mesh kernel.
@@ -61,16 +61,17 @@ class Mesh:
     Parameters
     ----------
     points : array_like, optional
-        Vertex coordinates. Converted to :obj:`~numpy.ndarray` if not
-        already of this type. In the latter case the created mesh uses
-        the `points` array directly without making a copy.
+        Vertex coordinates. Converted to equivalent :obj:`~numpy.ndarray`
+        instance if not already of this type. In the latter case the mesh
+        uses the `points` array directly without making a copy.
     faces : list[list[int]], optional
-        Face definitions, 0-based vertex indexing. The `faces` list is
-        not stored or modified but converted to an equivalent list of
-        :obj:`Face` instances that is accessibly via the :attr:`faces`
+        Face definitions, 0-based vertex indexing. The `faces` list itself
+        is not stored or modified but converted to an equivalent list of
+        :obj:`Face` instances that is accessible via the :attr:`faces`
         attribute of a mesh.
     name : str, optional
-        Name tag. Defaults to the string 'None' if not specified.
+        Name tag. Defaults to the string 'None' if not specified. Can be
+        queried later using the :attr:`name` property.
 
     Raises
     ------
@@ -80,6 +81,7 @@ class Mesh:
     See Also
     --------
     from_OBJ : read from Wavefront OBJ file
+    from_OFF : read from OFF (Object File Format) file
     from_grid : convert grid data to quadrilateral mesh
     """
 
@@ -241,17 +243,17 @@ class Mesh:
         size of the coordinate array is likely to break the halfedge data
         structure.
 
-        :type: ~numpy.ndarray
-
-        Note
-        ----
+        Warnings
+        --------
         The vertex coordinate array contains coordinate entries of deleted
-        vertices. Calling :meth:`clean` removes those entries.
+        vertices. Garbage collection is performed by calling :meth:`clean`.
         """
         return self._points
 
     @points.setter
     def points(self, value):
+        # This is inconsistent. In __init__ we use atleast_2d to convert
+        # array_like data to ndarray.
         self._points = np.asarray(value)
 
     @property
@@ -260,14 +262,6 @@ class Mesh:
 
         Read access to the vertex list. This list should not be modified
         directly.
-
-        :type: list[Vertex]
-
-        Note
-        ----
-        The vertex list may contain deleted vertices. Call
-        :meth:`~Mesh.clean` to remove deleted vertices from the vertex
-        container.
         """
         return self._verts
 
@@ -278,18 +272,13 @@ class Mesh:
         Read access to the face list. This list should not be modified
         directly.
 
-        :type: list[Face]
-
-        This is **not** the list passed as argument `faces` during mesh
-        construction but it can be generated easly with a list
-        comprehension:
+        Notes
+        -----
+        This is not the list passed as argument `faces` during mesh
+        construction but an equivalent list can be generated easily if
+        needed:
 
         >>> faces = [[int(v) for v in f] for f in mesh]
-
-        Note
-        ----
-        The face list may contain deleted faces. A call to
-        :meth:`~Mesh.clean` will remove such entries.
         """
         return self._faces
 
@@ -298,17 +287,18 @@ class Mesh:
         """ Halfedge dictionary.
 
         Dictionary that maps pairs of :class:`Vertex` objects to
-        :class:`Halfedge` instances. Hence, to visit :class:`Halfedge`
-        instances one can use
+        :class:`Halfedge` instances.
+
+        Examples
+        --------
+        To visit all :class:`Halfedge` instances of a mesh one can use
 
         .. code-block:: python
 
             for h in mesh.halfedges.values():
-                v = h.origin
-                w = h.target
                 ...
 
-        to directly visit halfedges as :class:`Vertex` instance pairs use
+        To directly visit halfedges as :class:`Vertex` instance pairs use
 
         .. code-block:: python
 
@@ -331,17 +321,15 @@ class Mesh:
     def size(self):
         """ Mesh size.
 
-        Mesh size **not** accounting for deleted vertices and faces. The
-        attribute value :math:`(v, e, f)` holds the number of vertices,
-        the number of edges, and the number of faces.
+        A 3-tuple :math:`(|V|, |E|, |F|)` of integers holding the number
+        of vertices, the number of edges, and the number of faces.
 
-        :type: (int, int, int)
-
-        Note
-        ----
-        In the presence of **deleted** items the value ``len(mesh.vertices)``
-        (resp. ``len(mesh.faces)``) and the corresponding value of
-        ``mesh.size`` are different.
+        Notes
+        -----
+        The numbers do not account for deleted vertices and faces. In the
+        presence of deleted items the value ``len(mesh.vertices)`` (resp.
+        ``len(mesh.faces)``) and the corresponding value of ``mesh.size``
+        are different.
         """
         assert len(self._halfs) % 2 == 0
 
@@ -382,8 +370,8 @@ class Mesh:
         Mesh
             Mesh instance.
 
-        Note
-        ----
+        Notes
+        -----
         Currently no `array_like` arguments are accepted.
         """
         assert False, 'deprecated, use from_grid() instead'
@@ -487,11 +475,11 @@ class Mesh:
         if 'o' in args:
             raise ValueError("'o' cannot be used as argument")
 
-        CBOLD = '\33[1m'
-        CEND = '\33[0m'
+        BOLD = '\33[1m'
+        ENDC = '\33[0m'
 
         if not quiet:
-            print(f'reading {CBOLD}{Path(filename).name}{CEND}', end=' ...',
+            print(f'reading {BOLD}{Path(filename).name}{ENDC}', end=' ...',
                   flush=True)
 
         start = perf_counter()
@@ -554,7 +542,7 @@ class Mesh:
 
             if not quiet:
                 print(f'rebuilding normal data block of ', end='')
-                print(f'{CBOLD}{Path(filename).name}{CEND}')
+                print(f'{BOLD}{Path(filename).name}{ENDC}')
                 print(f'\t\u251c\u2500 {len(data["vn"])} normals read')
 
             # Fix the normals data block such that there are as many
@@ -797,10 +785,10 @@ class Mesh:
         Vertex
             The newly created :class:`Vertex` instance.
 
-        Note
-        ----
+        Notes
+        -----
         When adding a new vertex all vertex data blocks are extended by
-        a correponding value:
+        a corresponding value:
 
             - either by using the `default` value specified when
               the data block was added,
@@ -881,8 +869,8 @@ class Mesh:
                 print(v.vec == vecs[v])
 
 
-        Note
-        ----
+        Notes
+        -----
         A mutable `default` value has the same drawbacks as mutable
         default function arguments.
         """
@@ -958,8 +946,8 @@ class Mesh:
         Face
             The newly created :class:`Face` instance.
 
-        Note
-        ----
+        Notes
+        -----
         See :meth:`~Mesh.add_vertex` for a detailed discussion of `kwargs`.
         """
         # Number of vertices of the face, same as the number of edges
@@ -1106,8 +1094,8 @@ class Mesh:
         ValueError
             If a data block of the same name already exists.
 
-        Note
-        ----
+        Notes
+        -----
         See :meth:`~Mesh.add_vertex_data` for an example.
         """
 
@@ -1177,8 +1165,8 @@ class Mesh:
             If a data block of same name already exists or the
             data block is not a dictionary instance.
 
-        Note
-        ----
+        Notes
+        -----
         See :meth:`~Mesh.add_vertex_data` for an example.
         """
         if not isinstance(data, dict):
@@ -1293,8 +1281,8 @@ class Mesh:
         The memory occupied by the coordinate array is garbage collected
         once no further references or views of it remain.
 
-        Note
-        ----
+        Notes
+        -----
         Data blocks are cleared by calling the data block's own
         :func:`~object.clear` method.
         """
@@ -1322,8 +1310,8 @@ class Mesh:
         Removes all deleted mesh items from the respective containers.
         Previously obtained vertex and face indices may become invalid.
 
-        Note
-        ----
+        Notes
+        -----
         Use sparingly.
         """
         assert len(self._points) == len(self._verts)
@@ -1485,8 +1473,8 @@ class Mesh:
         Mesh
             Copy of the mesh.
 
-        Note
-        ----
+        Notes
+        -----
         User defined vertex, face, and halfedge instance attributes are
         copied using :func:`copy.copy`.
         """
@@ -1572,8 +1560,8 @@ class Mesh:
         del_isolated_verts : bool, optional
             Mark isolated vertices for deletion.
 
-        Note
-        ----
+        Notes
+        -----
         The deleted face is not removed from the mesh's face container
         immediately. It is marked as deleted and removed from the face
         container when calling :meth:`clean`.
@@ -1623,8 +1611,8 @@ class Mesh:
             boundary. For interior `halfedge`, this is equal to the
             face to its right.
 
-        Note
-        ----
+        Notes
+        -----
         This operation may create *dangling (half)edges*, i.e., halfedges
         where ``h.pair`` equals ``h.next``.
         """
@@ -1762,8 +1750,8 @@ class Mesh:
             :obj:`None` in case of failure (the latter behavior requires
             ``check=True``).
 
-        Note
-        ----
+        Notes
+        -----
         It is assumed that the applicability of an edge collapse has been
         checked for explicitly via :attr:`~Halfedge.collapsible` when
         skipping the test.
@@ -2218,8 +2206,8 @@ class Mesh:
             The halfedge resulting from the edge flip or :obj:`None` in
             case of failure (the latter behavior requires ``check=True``).
 
-        Note
-        ----
+        Notes
+        -----
         It is assumed that the applicability of an edge flip has been checked
         explicitly via :attr:`~Halfedge.flippable` when skipping the test.
         Unchecked edge flipping results in undefined behavior.
@@ -2298,8 +2286,8 @@ class Mesh:
             The newly inserted halfedge. The face to its left is equal
             to `face`.
 
-        Note
-        ----
+        Notes
+        -----
         This method cannot be used to split off parts of a mesh's
         boundary. Use :meth:`~Mesh.add_face` for that.
         """
@@ -2626,8 +2614,8 @@ class Mesh:
         Halfedge
             Halfedge pointing from `v` to `w`.
 
-        Note
-        ----
+        Notes
+        -----
         If the opposite halfedge is already mapped, its :attr:`~Halfedge.pair`
         attribute is set accordingly. This is an internal helper function for
         face creation.
@@ -3074,8 +3062,8 @@ class Vertex:
     parent : Mesh, optional
         The parent mesh object.
 
-    Note
-    ----
+    Notes
+    -----
     In addition to :attr:`index`, implementations of the special functions
     :meth:`~object.__int__` and :meth:`~object.__index__` are provided.
     The latter makes it possible to use vertex instances as list indices.
@@ -3165,8 +3153,8 @@ class Vertex:
         ~numpy.ndarray
             Array of vertex coordinates.
 
-        Note
-        ----
+        Notes
+        -----
         If no copy is requested (or implied by data type conversion) the
         returned value is a view of the mesh's vertex coordinate array.
         """
@@ -3193,8 +3181,8 @@ class Vertex:
 
         :type: ~numpy.ndarray
 
-        Note
-        ----
+        Notes
+        -----
         This attribute can be set from any :term:`array_like` vertex
         coordinate representation. Coordinates are assigned to the
         corresponding row of the parent mesh's coordinate array. In
@@ -3256,8 +3244,8 @@ class Vertex:
 
         :type: bool
 
-        Note
-        ----
+        Notes
+        -----
         Calling :meth:`~Mesh.clean` removes all deleted vertices from the
         vertex container of a mesh.
         """
@@ -3286,8 +3274,8 @@ class Vertex:
 
         :type: bool
 
-        Note
-        ----
+        Notes
+        -----
         Isolated vertices are treated as **manifold** vertices. Their
         presence does not influence the halfedge data structure
         functionality negatively.
@@ -3363,8 +3351,8 @@ class Vertex:
         int
             Vertex degree.
 
-        Note
-        ----
+        Notes
+        -----
         This is an internal function only used for debugging. To access
         the vertex degree always use :attr:`degree`.
         """
@@ -3473,8 +3461,8 @@ class Halfedge:
     target : Vertex
         Target vertex of the halfedge.
 
-    Note
-    ----
+    Notes
+    -----
     As halfedges are stored in a dictionary and not in a list, they do not
     have a canonical index value but a key that is formed by the pair of
     origin and target vertex.
@@ -3703,8 +3691,8 @@ class Halfedge:
 
         :type: bool
 
-        Note
-        ----
+        Notes
+        -----
         The halfedge dictionary :attr:`~Mesh.halfedges` of a mesh will
         never contain deleted halfedges.
         """
@@ -3734,8 +3722,8 @@ class Halfedge:
 
         :type: bool
 
-        Note
-        ----
+        Notes
+        -----
         For technical reasons, **boundary halfedges** are always classified
         as non-collapsible.
         """
@@ -4100,8 +4088,8 @@ class Face:
         for v in f:
             print(v)
 
-    Note
-    ----
+    Notes
+    -----
     The latter is much more efficient and preferred.
     """
 
@@ -4333,8 +4321,8 @@ class Face:
 
         :type: bool
 
-        Note
-        ----
+        Notes
+        -----
         Calling :meth:`~Mesh.clean` removes all deleted faces from the
         face container of a mesh.
         """
@@ -4350,8 +4338,8 @@ class Face:
 
         :type: bool
 
-        Note
-        ----
+        Notes
+        -----
         A face only incident with boundary vertices is **not** classified
         as a boundary face.
         """

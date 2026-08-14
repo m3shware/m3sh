@@ -21,7 +21,7 @@
 """ Geometric mesh traits.
 
 Convenience functions to compute common and often used geometric mesh
-traits like normals (see e.g. [1]_) and curvature (see [2]_).
+traits like normals (see, e.g., [1]_) and curvature (see [2]_).
 
 References
 ----------
