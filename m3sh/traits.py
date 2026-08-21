@@ -240,6 +240,28 @@ def cotan_weights(mesh, boundary=np.nan, clamp=False):
             for h in mesh.halfedges.values()}
 
 
+def diameter(points):
+    """ Diameter of a point set.
+
+    Parameters
+    ----------
+    points : array_like, shape (m, n)
+        Point coordinates in n-space.
+
+    Returns
+    -------
+    float
+        Point set diameter.
+
+    See Also
+    --------
+    scipy.spatial.distance : SciPy module for distance computations
+    """
+    # As an intermediate result a matrix of size O(m^2) is computed. Is
+    # this a good idea for large data sets?
+    return sp.spatial.distance.pdist(np.asarray(points)).max()
+
+
 def dihedral_angle(halfedge, degrees=False):
     """ Dihedral angle.
 
