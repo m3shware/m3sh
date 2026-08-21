@@ -1408,7 +1408,7 @@ def quiver(points, vectors, scale=1.0, radius=0.025, resolution=6,
 
 
 def vectors(points, vectors, size=1.0, resolution=6, color=colors.black):
-    """
+    """ Alternative quiver plot.
     """
     try:
         points = [f.barycenter for f in points]
