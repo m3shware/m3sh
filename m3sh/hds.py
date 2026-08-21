@@ -1099,30 +1099,32 @@ class Mesh:
         See :meth:`~Mesh.add_vertex_data` for an example.
         """
 
-        def get(self):
-            # self refers to a face instance
-            return getattr(self._halfedge._origin._mesh, private_name)[self]
+        def get(face):
+            return getattr(face.halfedge.origin._mesh, private_name)[face]
 
-        def get_data(self):
-            # self refers to a mesh instance
-            return getattr(self, private_name)
+            # except AttributeError:
+            #     return getattr(face, private_attr)
 
-        def set(self, value):
-            getattr(self._halfedge._origin._mesh, private_name)[self] = value
+        def set(face, value):
+            getattr(face.halfedge.origin._mesh, private_name)[face] = value
 
-        def set_data(self, value):
-            setattr(self, private_name, value)
+        def get_data(mesh):
+            return getattr(mesh, private_name)
 
-        def del_data(self):
-            for i, (data_name, _, _) in enumerate(self._fattr):
+        def set_data(mesh, value):
+            setattr(mesh, private_name, value)
+
+        def del_data(mesh):
+            for i, (data_name, _, _) in enumerate(mesh._fattr):
                 if data_name == private_name:
-                    del self._fattr[i]
+                    del mesh._fattr[i]
 
-            delattr(self, private_name)
+            delattr(mesh, private_name)
 
         # The hidden name for direct access of the attribute data block.
         # Make sure to not unintentionally overwrite existing data.
         private_name = '_' + name
+        # private_attr = '_' + attr
 
         if hasattr(self, private_name):
             raise ValueError(f"data block '{name}' already exists")
@@ -4354,6 +4356,27 @@ class Face:
         :type: ~numpy.ndarray
         """
         return sum(v.point for v in self) / len(self)
+
+    # @property
+    # def normal(self):
+    #     """ Face normal vector.
+    #     """
+    #     return self._normal
+
+    # @property
+    # def _normal(self):
+    #     # Accessing the halfedge property will check whether the
+    #     # face is marked as deleted.
+    #     halfedge = self.halfedge
+
+    #     u0, u1, u2 = halfedge.vector
+    #     v0, v1, v2 = halfedge.next.vector
+
+    #     print('func prop called')
+
+    #     return np.array([u1*v2 - u2*v1,
+    #                      u2*v0 - u0*v2,
+    #                      u0*v1 - u1*v0])
 
     def _compute_valence(self):
         """
