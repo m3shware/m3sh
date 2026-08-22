@@ -318,9 +318,8 @@ def delete(*actors, renderer=None):
 def pick(x, y, items, *, iren=None):
     """ Perform pick action.
 
-    Performs a pick operation at given display coordinates. Cell and point
-    picking is supported. This function returns three values when picking
-    points and four values when picking cells.
+    Performs a pick operation at given display coordinates. Cell, point, and
+    prop picking is supported.
 
     Parameters
     ----------
@@ -328,21 +327,24 @@ def pick(x, y, items, *, iren=None):
         Pick position in display coordinates.
     items : {'verts', 'cells', 'props'}
         Defines the pick style. Pick points, cells, or props.
+    iren : vtkRenderWindowInteractor, optional
+        Affected render window interactor.
 
     Returns
     -------
     actor : vtkActor
         Results in :obj:`None` if nothing was picked. To find the
-        corresponding :class:`Prop` instance (if any) compare `actor` with
-        the :attr:`Prop.prop` instance attribute.
+        corresponding :class:`Prop` instance (if any) match this value
+        against the :attr:`Prop.prop` instance attribute.
     point : ndarray, shape (3,)
-        World coordinates of the picked point.
+        World coordinates of the picked point. Always returned but invalid
+        if nothing was picked.
     point_id : int
-        Point identifier, -1 if no point was picked. Only returned during
-        point picking and cell picking.
+        Point identifier, :obj:`None` if no point was picked. Only returned
+        during point picking and cell picking.
     cell_id : int
-        Cell identifier, -1 if no cell was picked. Only returned during
-        cell picking.
+        Cell identifier, :obj:`None` if no cell was picked. Only returned
+        during cell picking.
 
     Notes
     -----
@@ -350,12 +352,12 @@ def pick(x, y, items, *, iren=None):
     not pickable. To make an object available for picking, modify its
     :attr:`~Prop.pickable` attribute.
 
-    A successful pick operation returns the picked actor and information about
-    the picked cell or point, respectively. When picking cells the coordinates
-    of the intersection of the pick ray and the picked cell is returned in
-    `point`. In addition to the index `cell_id` of the picked cell, the index
-    of the closest vertex of the picked cells to this location is returned as
-    `point_id`.
+    A successful pick operation returns the picked actor and information
+    about the picked cell or point, respectively. When picking cells the
+    coordinates of the intersection of the pick ray and the picked cell is
+    returned in `point`. In addition to the index `cell_id` of the picked,
+    the index of the closest vertex of the picked cells to this location is
+    returned as `point_id`.
     """
     # Get the viewport that corresponds to the given location. What happens
     # if window coordinates are out of bounds?
@@ -377,16 +379,24 @@ def pick(x, y, items, *, iren=None):
         picker = vtk.vtkPointPicker()
         picker.Pick(x, y, 0, renderer)
 
-        return (picker.GetActor(), np.array(picker.GetPickPosition()),
-                picker.GetPointId())
+        if (pid := picker.GetPointId()) < 0:
+            pid = None
+
+        return picker.GetActor(), np.array(picker.GetPickPosition()), pid
     elif items == 'cells':
         # A cell picker does not work for polygonal data with non-planar
         # polygons!
         picker = vtk.vtkCellPicker()
         picker.Pick(x, y, 0, renderer)
 
+        if (pid := picker.GetPointId()) < 0:
+            pid = None
+
+        if (cid := picker.GetCellId()) < 0:
+            cid = None
+
         return (picker.GetActor(), np.array(picker.GetPickPosition()),
-                picker.GetPointId(), picker.GetCellId())
+                pid, cid)
     else:
         raise ValueError(f"invalid pick style '{items}'")
 
