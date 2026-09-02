@@ -20,16 +20,23 @@
 
 """ Visualization using VTK.
 
-Wrapper functions for `VTK <https://vtk.org/doc/nightly/html>`_ functionality.
-This is not meant as a full featured set of visualization routines but should
-serve as a quick and convenient way to achieve basic visualization tasks.
+Wrapper functions for `VTK <https://vtk.org/doc/nightly/html>`_ functionality,
+see e.g. [1]_ for an introduction. This is not meant as a full featured set of
+visualization routines but should serve as a quick and convenient way to
+achieve basic visualization tasks.
 
+Example
+-------
 This module can be used as a stand-alone OBJ file viewer:
 
 >>> python vis.py file.obj --edges --aabb --silhouette
 
 opens a graphics window and displays the contents of `file.obj`. Omitting all
 arguments except the input file results in basic mesh rendering.
+
+References
+----------
+.. [1] VTK Book
 """
 
 from pathlib import Path
@@ -3283,8 +3290,6 @@ class GlyphMixin:
 
         Setting the color attribute disables coloring using previously
         set scalars with :meth:`colorize`.
-
-        :type: array_like, shape (3, )
         """
         return self._vtk_prop.GetProperty().GetColor()
 
@@ -3422,8 +3427,8 @@ class _ConeField():
     resolution : int
         The number of vertices along the base circle.
 
-    Note
-    ----
+    Notes
+    -----
     One of `angle`, `height`, `radius` has to be explicitly set the
     :obj:`None` during initialization. Note that `angle` refers to half the
     opening angle of a cone.
@@ -3659,8 +3664,8 @@ class OrientedGlyphs(PropertyMixin, MapperMixin, GlyphMixin, Prop):
     xform : vtkTransform
         Source transformation.
 
-    Note
-    ----
+    Notes
+    -----
     If `array_like` parameters are of type :class:`~numpy.ndarray` their
     data buffer is shared with VTK's data objects (use copies to decouple
     storage).
@@ -4044,14 +4049,9 @@ class Cones(Prop, PropertyMixin):
             Switch between linear and logarithmic scale.
         size : int
             Size of lookup table.
-
-        Keyword arguments
-        -----------------
-        below : array_like, shape (4, )
-            Color for scalars below the specified range.
-        above: array_like, shape (4, )
-            Color for scalars above the specified range.
-        nan : array_like, shape (4, )
+        above, below : array_like, shape (4, ), optional
+            Color for scalars above/below the specified range.
+        nan : array_like, shape (4, ), optional
             Special color for NaN scalar values.
 
 
@@ -4064,8 +4064,8 @@ class Cones(Prop, PropertyMixin):
         `above`, and `nan` colors. Not that those colors also have an alpha
         intensity value to control opacity.
 
-        Note
-        ----
+        Notes
+        -----
         Arguments not provided have no affect on the corresponding lookup
         table property.
         """
@@ -4670,8 +4670,8 @@ class PolyData(PropertyMixin, MapperMixin, Prop):
         Should be called when the contents of a shared data buffer are
         modified.
 
-        Note
-        ----
+        Notes
+        -----
         Changing the **shape** of a shared data buffer is likely to result
         in segmentation faults or other undefined behavior.
         """
@@ -5330,13 +5330,11 @@ class PolyMesh(PolyData):
         color : array_like, shape (3, ), optional
             Vertex color.
 
-        Note
-        ----
+        Notes
+        -----
         Parameters with a :obj:`None` value do not affect the corresponding
         vertex display property.
 
-        Important
-        ---------
         On some rendering backends vertex display only works when edges
         are displayed. For now use :func:`scatter` as a work-around.
         """
@@ -5371,8 +5369,8 @@ class PolyMesh(PolyData):
         color : array_like, shape (3, ), optional
             Edge color.
 
-        Note
-        ----
+        Notes
+        -----
         Parameters with a :obj:`None` value do not affect the corresponding
         edge display property.
         """
@@ -5538,13 +5536,11 @@ class PolyGraph(PolyData):
         color : array_like, shape (3, ), optional
             Vertex color.
 
-        Note
-        ----
+        Notes
+        -----
         Parameters with a :obj:`None` value do not affect the corresponding
         vertex display property.
 
-        Important
-        ---------
         On some rendering backends vertex display only works when edges
         are displayed. For now use :func:`scatter` as a work-around.
         """
@@ -5656,8 +5652,8 @@ class _TetrahedralMesh(Prop, PropertyMixin, MapperMixin):
         color : array_like, shape (3, ), optional
             Edge color.
 
-        Note
-        ----
+        Notes
+        -----
         Parameters with a :obj:`None` value do not affect the corresponding
         edge display property.
         """
@@ -5953,8 +5949,8 @@ class _MouseInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
         ndarray
             World coordinates of the mapped point.
 
-        Note
-        ----
+        Notes
+        -----
         Display coordinates are given in pixels and determine a point in the
         active render window.
         """
@@ -6175,8 +6171,8 @@ class _MouseInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
         event : str
             String identifier of the event: 'CharEvent'.
 
-        Note
-        ----
+        Notes
+        -----
         This observer can be used to disable all default interactor
         keyboard commands.
         """
@@ -6202,8 +6198,8 @@ class _MouseInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
         event : str
             String identifier of the event: 'InteractionEvent'.
 
-        Note
-        ----
+        Notes
+        -----
         Interaction events trigger a window rendering pass.
         """
         # Synchronize windows in case some of their renderers share a
