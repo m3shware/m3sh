@@ -23,40 +23,33 @@
 This is an alternative to Pythons :mod:`heapq` module. See [1]_ Chapter
 9.3 for the array (list) based heap implementation used in this module.
 
-Data model
-----------
-
-A tree is **heap-ordered** if the key assigned to each node is smaller
-than or equal to the keys assigned to its children. A **heap** is a list
-of objects with keys arranged in a complete heap-ordered binary tree,
-i.e., ``key[k] <= key[2k+1]`` and ``key[k] <= key[2k+2]``.
-
-Notes
------
-Since Python 3.14 the :mod:`heapq` module provides dedicated methods to
-create max heaps.
-
 References
 ----------
 .. [1] Robert Sedgewick: **Algorithms in C**, *Parts 1--4*. Addison-Wesley
        Professional, 1990.
 """
 
+# A tree is heap-ordered if the key assigned to each node is smaller than
+# or equal to the keys assigned to its children (heap-ordered can also be
+# defined by using the greater than relation). Binary trees can be stored
+# without using pointers in an array. Using 0-based indexing a node at
+# position k has children at positions 2k+1 and 2k+2. A heap is a list of
+# objects with keys arranged in a complete heap-ordered binary tree, i.e.,
+# key[k] <= key[2k+1] and key[k] <= key[2k+2]. The Heap class wraps such
+# a list.
+
 class Heap:
     """ Heap data structure.
 
-    A heap stores `(obj, key)` tuples, called heap items. When no keys are
-    provided heap items reduce to one element `(object, )` tuples. In this
-    case data objects act as keys.
-
-    Heaps use the < operator for key comparison. This results in so called
-    min heaps. Custom classes used as keys have to implement :meth:`__lt__`.
+    A heap stores `(obj, key)` tuples, called heap items. Stored objects
+    have to be :term:`hashable`. Keys are compared using the < operator.
+    Custom classes used as keys have to implement :meth:`__lt__`.
 
     Parameters
     ----------
     items : iterable, optional
-        Heap items. A sequence of `(obj, key)` tuples. To save storage
-        consider using :meth:`~Heap.from_list` if `items` is a list.
+        A sequence of `(obj, key)` tuples. If not provided, an empty
+        heap is created.
 
     Warnings
     --------
@@ -84,6 +77,9 @@ class Heap:
         self._heap = list()
         self._hpos = dict()
 
+        # Initialization from a single item is convoluted: Heap([(obj, key)])
+        # When no keys are provided, heap items reduce to (object,) tuples.
+        # In this case data objects act as keys.
         for item in items or []:
             self._push(item)
 
@@ -104,74 +100,36 @@ class Heap:
 
     def __bool__(self):
         """ Empty heap check.
-
-        Returns
-        -------
-        bool
-            ``True`` if the heap is not empty, ``False`` otherwise.
         """
         return len(self._heap) > 0
 
     def __contains__(self, obj):
         """ Containment check.
 
-        Check if there is a heap item with ``item[0] == obj``.
-
-        Parameters
-        ----------
-        obj : object
-            Data object.
-
-        Returns
-        -------
-        bool
-            ``True`` if an item with data `obj` exists, ``False`` otherwise.
+        Check if there is a (obj, key) tuple.
         """
         return obj in self._hpos
 
     def __delitem__(self, obj):
         """ Delete item.
 
-        Delete the heap item with ``item[0] == obj``, maintains the
-        heap property.
-
-        Parameters
-        ----------
-        obj : object
-            Data object.
-
-        Raises
-        ------
-        KeyError
-            If no heap item with data `obj` exists.
+        Delete the heap item (obj, key) and maintain the heap property.
+        KeyError is raised if no such heap items exists.
         """
         self._remove(self._hpos[obj])
 
     def __len__(self):
         """ Size of heap.
-
-        Returns
-        -------
-        int
-            Number of heap items.
         """
         return len(self._heap)
 
-    def __iter__(self):
-        """ Heap-ordered item iterator.
+    # def __iter__(self):
+    #     """ Heap-ordered item iterator.
+    #     """
+    #     heap = self._heap.copy()
 
-        Does not modify the heap. Heap modification during traversal has
-        no effect on the traversal order.
-
-        Returns
-        -------
-        iterator
-            Heap item iterator.
-        """
-        heap = self._heap.copy()
-
-        while heap:
-            yield pop(heap)
+    #     while heap:
+    #         yield pop(heap)
 
     @classmethod
     def from_list(cls, items):
@@ -199,7 +157,7 @@ class Heap:
         """
         heap = cls()
 
-        heap._heap = heapify(items)
+        heap._heap = _heapify(items)
         heap._hpos = {item[0]: idx for idx, item in enumerate(heap._heap)}
 
         return heap
@@ -223,8 +181,8 @@ class Heap:
 
         Notes
         -----
-        The data object of a heap item is accessible as ``item[0]`` or
-        via tuple unpacking:
+        The data object of a heap item is accessible as ``item[0]`` or via
+        tuple unpacking:
 
         >>> obj, key = heap.top
         """
@@ -427,7 +385,7 @@ class Heap:
         self._hpos[self._heap[j][0]] = j
 
 
-def heapify(items):
+def _heapify(items):
     """ Make heap-ordered binary tree.
 
     Shuffle elements of a list to obtain a heap-ordered binary tree.
@@ -453,7 +411,7 @@ def heapify(items):
     return items
 
 
-def push(heap, item):
+def _push(heap, item):
     """ Add item.
 
     Add `item` to the heap-ordered list `heap`.
@@ -481,7 +439,7 @@ def push(heap, item):
     return heap
 
 
-def pop(heap):
+def _pop(heap):
     """ Remove top item.
 
     Parameters
