@@ -20,7 +20,7 @@
 
 """ Priority queues and heaps.
 
-This is an alternative to Pythons :mod:`heapq` module. See [1]_ Chapter
+This is an alternative to Python's :mod:`heapq` module. See [1]_ Chapter
 9.3 for the array (list) based heap implementation used in this module.
 
 References
@@ -51,16 +51,12 @@ class Heap:
         A sequence of `(obj, key)` tuples. If not provided, an empty
         heap is created.
 
-    Warnings
-    --------
-    The :mod:`heapq` modules uses heap items of the form `(key, obj)`.
-
     See Also
     --------
     :meth:`~Heap.from_list`, :meth:`~Heap.push`
 
-    Notes
-    -----
+    Examples
+    --------
     Given two iterables `objs` and `keys`, one holding objects the other
     holding keys, a heap can be initialized using :func:`zip`:
 
@@ -136,7 +132,7 @@ class Heap:
         """ Initialize heap from list.
 
         Turns `items` into a heap-ordered binary tree and uses it directly
-        as internal storage of a heap.
+        as internal storage.
 
         Parameters
         ----------
@@ -147,7 +143,7 @@ class Heap:
         -------
         heap : Heap
             Heap that uses `items` directly as storage. Subsequent external
-            modification of `items` will most likely destroy the heap.
+            modification of `items` will destroy the heap property.
 
         Notes
         -----
@@ -168,7 +164,7 @@ class Heap:
 
         The top item of a heap is defined to be the item with smallest key
         with respect to the < operator. Inspection of the top item does not
-        change the heap. To remove the top item use :meth:`~Heap.pop`.
+        change the heap.
 
         Raises
         ------
@@ -221,7 +217,8 @@ class Heap:
         obj : object
             Data object. Has to be :term:`hashable`.
         key : object
-            Key object. Has to implement :meth:`__lt__`.
+            Key object, typically a numeric type. Custom classes have to
+            implement :meth:`__lt__`.
 
         Raises
         ------
