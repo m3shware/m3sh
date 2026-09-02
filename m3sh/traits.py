@@ -23,14 +23,6 @@
 Convenience functions to compute common and often used geometric mesh
 traits like normals (see, e.g., [1]_) and curvature (see [2]_).
 
-References
-----------
-.. [1] S. Jin, R. Lewis, and D. West: *A comparison of algorithms for
-       vertex normal computation*, The Visual Computer 21, 2005.
-.. [2] M. Meyer et al.: *Discrete differential-geometry operators for
-       triangulated 2-manifolds*. In: HC. Hege, K. Polthier (eds)
-       *Visualization and Mathematics III*, 2003.
-
 Example
 -------
 Face normals of a mesh can be computed as
@@ -51,6 +43,14 @@ directly as ``mesh.face_normals``. In particular
 
 >>> mesh.face_normals is normals
 True
+
+References
+----------
+.. [1] S. Jin, R. Lewis, and D. West: *A comparison of algorithms for
+       vertex normal computation*, The Visual Computer 21, 2005.
+.. [2] M. Meyer et al.: *Discrete differential-geometry operators for
+       triangulated 2-manifolds*. In: HC. Hege, K. Polthier (eds)
+       *Visualization and Mathematics III*, 2003.
 """
 
 import math
