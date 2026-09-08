@@ -5,6 +5,10 @@ API reference
 
 .. currentmodule:: m3sh
 
+The core halfedge data structure, i.e., the :mod:`~m3sh.hds` module, only 
+depends on the :mod:`~m3sh.obj` and :mod:`~m3sh.off` modules to facilitate 
+input/output operations.
+
 
 Core modules
 ------------
@@ -18,8 +22,8 @@ Core modules
    itertools
    
    
-Auxiliary
----------
+Auxiliary, linear algebra, I/O
+------------------------------
    
 .. autosummary::
    :toctree: api
@@ -28,6 +32,7 @@ Auxiliary
    linalg
    heap
    obj
+   off
    
    
 Visualization

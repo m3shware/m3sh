@@ -30,8 +30,12 @@ class manages three containers:
   corresponding :class:`Halfedge` instances.
 
 While surfaces are mainly described as triangle meshes, the halfedge data
-structure is not limited to triangular faces.
-
+structure is not limited to triangular faces. Vertex coordinates may live
+in n-dimensional space. For the above reasons, the :class:`Mesh` class
+provides only those geometric operations that do not depend on ambient
+space dimension or face valence. In particular there is no default
+implementation to compute face normals as those are only well defined for
+planar faces in 3-space.
 
 References
 ----------
@@ -47,8 +51,14 @@ from copy import copy
 
 import numpy as np
 
-import m3sh.obj as obj
-import m3sh.off as off
+# In case hds.py is used as a stand-alone module we loose the ability to
+# read meshes from files. Calling from_OBJ or from_OFF will still raise
+# an exception.
+try:
+    import m3sh.obj as obj
+    import m3sh.off as off
+except ImportError:
+    pass
 
 
 class Mesh:
@@ -72,11 +82,6 @@ class Mesh:
     name : str, optional
         Name tag. Defaults to the string 'None' if not specified. Can be
         queried later using the :attr:`name` property.
-
-    Raises
-    ------
-    NonManifoldError
-        When trying to initialize a mesh from non-manifold data.
 
     See Also
     --------
@@ -328,8 +333,8 @@ class Mesh:
         -----
         The numbers do not account for deleted vertices and faces. In the
         presence of deleted items the value ``len(mesh.vertices)`` (resp.
-        ``len(mesh.faces)``) and the corresponding value of ``mesh.size``
-        are different.
+        ``len(mesh.faces)``) and the corresponding entries of ``mesh.size``
+        are different!
         """
         assert len(self._halfs) % 2 == 0
 
@@ -771,14 +776,10 @@ class Mesh:
         point : array_like or float
             Vertex coordinates.
         *args
-            Variable number of scalars.
+            Variable number of scalars that are interpreted as vertex
+            coordinates.
         **kwargs
-            Attribute name and value pairs.
-
-        Raises
-        ------
-        ValueError
-            If `point` has the wrong shape.
+            Arbitrary number of attribute name and value pairs.
 
         Returns
         -------
@@ -787,17 +788,11 @@ class Mesh:
 
         Notes
         -----
-        When adding a new vertex all vertex data blocks are extended by
-        a corresponding value:
-
-            - either by using the `default` value specified when
-              the data block was added,
-
-            - or by using a value provided as keyword argument.
-
-        Values specified as keyword arguments that don't fit this pattern
-        are added as :class:`Vertex` instance attributes and only availabe
-        as attributes of this particular instance.
+        When adding a new vertex all vertex data blocks are extended by a
+        corresponding value: either by using the default value specified
+        when the data block was added, or by using a value provided as
+        keyword argument. Values specified as keyword arguments that don't
+        fit this pattern are added as ordinary instance attributes.
         """
         # Append to (or create) the array of all vertex coordinates.
         point = [point, *args] if len(args) else point
@@ -816,7 +811,6 @@ class Mesh:
         for key, value in kwargs.items():
             # This calls the setter method of the property with the
             # name 'key' if it exists.
-            # if key not in (attr for _, attr, _ in self._vattr):
             setattr(v, key, value)
 
         return v
@@ -875,45 +869,45 @@ class Mesh:
         default function arguments.
         """
 
-        def get(self):
-            # self refers to a vertex instance
-            return getattr(self._mesh, private_name)[self]
+        def get(vertex):
+            return getattr(vertex._mesh, private_name)[vertex]
 
-        def get_data(self):
-            # self refers to a mesh instance
-            return getattr(self, private_name)
+        def set(vertex, value):
+            getattr(vertex._mesh, private_name)[vertex] = value
 
-        def set(self, value):
-            getattr(self._mesh, private_name)[self] = value
+        def get_data(mesh):
+            return getattr(mesh, private_name)
 
-        def set_data(self, value):
-            setattr(self, private_name, value)
+        def set_data(mesh, value):
+            setattr(mesh, private_name, value)
 
-        def del_data(self):
-            for i, (data_name, _, _) in enumerate(self._vattr):
+        def del_data(mesh):
+            for i, (data_name, _, _) in enumerate(mesh._vattr):
                 if data_name == private_name:
-                    del self._vattr[i]
+                    del mesh._vattr[i]
 
-            delattr(self, private_name)
+            delattr(mesh, private_name)
 
-        # The hidden name for direct access of the attribute data block.
-        # Make sure not to unintentionally overwrite existing data.
-        private_name = '_' + name
-
-        if hasattr(self, private_name):
-            raise ValueError(f"data block '{name}' already exists")
+        # if hasattr(self, private_name):
+        #     raise ValueError(f"data block '{name}' already exists")
 
         # if hasattr(Vertex, attr):
         #     raise ValueError(f"vertex attribute '{attr}' already in use")
 
-        setattr(self, private_name, data)
+        # The hidden name for direct access of the attribute data block. Do
+        # not unintentionally overwrite existing data.
+        setattr(self, (private_name := '_' + name), data)
 
-        # Store name and type of attribute. Memory management functions
-        # need this information.
-        self._vattr.append((private_name, attr, default))
+        # Store name and type of attribute. Memory management functions need
+        # this information.
+        for i, (data_name, _, _) in enumerate(self._vattr):
+            if data_name == private_name:
+                self._vattr[i] = private_name, attr, default
+        else:
+            self._vattr.append((private_name, attr, default))
 
-        # Attribute access via properties. One global property bound to
-        # the mesh and local properties bound to vertices.
+        # Attribute access via properties. One global property bound to the
+        # mesh and local properties bound to vertices.
         setattr(self.__class__, name, property(get_data, set_data, del_data))
         setattr(Vertex, attr, property(get, set))
 
@@ -928,18 +922,10 @@ class Mesh:
         face : list[int] or list[Vertex]
             Combinatorial face definition.
         *args
-            Variable number of :class:`Vertex` or :class:`int` arguments.
+            Variable number of :class:`Vertex` or :class:`int` arguments
+            that are interpreted as vertex identifiers.
         **kwargs
-            Attribute name and value pairs.
-
-        Raises
-        ------
-        NonManifoldError
-            If topological problems occur.
-        IndexError
-            If the given vertex indices are out of bounds.
-        ValueError
-            If the given arguments do not define a valid face.
+            Arbitrary number of attribute name and value pairs.
 
         Returns
         -------
@@ -1066,7 +1052,6 @@ class Mesh:
             # name 'key' if it exists, i.e., for managed attributes we
             # set the same value as done in the previous loop (could be
             # avoided with an if-condition).
-            # if key not in (attr for _, attr, _ in self._fattr):
             setattr(f, key, value)
 
         return f
@@ -1102,9 +1087,6 @@ class Mesh:
         def get(face):
             return getattr(face.halfedge.origin._mesh, private_name)[face]
 
-            # except AttributeError:
-            #     return getattr(face, private_attr)
-
         def set(face, value):
             getattr(face.halfedge.origin._mesh, private_name)[face] = value
 
@@ -1121,22 +1103,23 @@ class Mesh:
 
             delattr(mesh, private_name)
 
-        # The hidden name for direct access of the attribute data block.
-        # Make sure to not unintentionally overwrite existing data.
-        private_name = '_' + name
-        # private_attr = '_' + attr
-
-        if hasattr(self, private_name):
-            raise ValueError(f"data block '{name}' already exists")
+        # if hasattr(self, private_name):
+        #     raise ValueError(f"data block '{name}' already exists")
 
         # if hasattr(Face, attr):
         #     raise ValueError(f"face attribute '{attr}' already in use")
 
-        setattr(self, private_name, data)
+        # The hidden name for direct access of the attribute data block. Do
+        # not unintentionally overwrite existing data.
+        setattr(self, (private_name := '_' + name), data)
 
-        # Store name and type of attribute. Memory management functions
-        # need this information.
-        self._fattr.append((private_name, attr, default))
+        # Store name and type of attribute. Memory management functions need
+        # this information.
+        for i, (data_name, _, _) in enumerate(self._fattr):
+            if data_name == private_name:
+                self._fattr[i] = private_name, attr, default
+        else:
+            self._fattr.append((private_name, attr, default))
 
         # Attribute access via properties. One global property bound to
         # the mesh and local properties bound to faces.
@@ -1174,42 +1157,42 @@ class Mesh:
         if not isinstance(data, dict):
             raise ValueError("data block has to be of type 'dict'")
 
-        def get(self):
-            # self refers to a halfedge instance
-            return getattr(self._origin._mesh, private_name)[self]
+        def get(halfedge):
+            return getattr(halfedge._origin._mesh, private_name)[halfedge]
 
-        def get_data(self):
-            # self refers to a mesh instance
-            return getattr(self, private_name)
+        def set(halfedge, value):
+            getattr(halfedge._origin._mesh, private_name)[halfedge] = value
 
-        def set(self, value):
-            getattr(self._origin._mesh, private_name)[self] = value
+        def get_data(mesh):
+            return getattr(mesh, private_name)
 
-        def set_data(self, value):
-            setattr(self, private_name, value)
+        def set_data(mesh, value):
+            setattr(mesh, private_name, value)
 
-        def del_data(self):
-            for i, (data_name, _, _) in enumerate(self._hattr):
+        def del_data(mesh):
+            for i, (data_name, _, _) in enumerate(mesh._hattr):
                 if data_name == private_name:
-                    del self._hattr[i]
+                    del mesh._hattr[i]
 
-            delattr(self, private_name)
+            delattr(mesh, private_name)
 
-        # The hidden name for direct access of the attribute data block.
-        # Make sure not to unintentionally overwrite existing data.
-        private_name = '_' + name
-
-        if hasattr(self, private_name):
-            raise ValueError(f"data block '{name}' already exists")
+        # if hasattr(self, private_name):
+        #     raise ValueError(f"data block '{name}' already exists")
 
         # if hasattr(Halfedge, attr):
         #     raise ValueError(f"halfedge attribute '{attr}' already in use")
 
-        setattr(self, private_name, data)
+        # The hidden name for direct access of the attribute data block. Do
+        # not unintentionally overwrite existing data.
+        setattr(self, (private_name := '_' + name), data)
 
-        # Store name and type of attribute. Memory management functions
-        # need this information.
-        self._hattr.append((private_name, attr, default))
+        # Store name and type of attribute. Memory management functions need
+        # this information.
+        for i, (data_name, _, _) in enumerate(self._hattr):
+            if data_name == private_name:
+                self._hattr[i] = private_name, attr, default
+        else:
+            self._hattr.append((private_name, attr, default))
 
         # Attribute access via properties. One global property bound to
         # the mesh and local properties bound to halfedges.
@@ -2471,7 +2454,7 @@ class Mesh:
             mode 'F'.
         name : str, optional
             Name tag. Defaults to the string 'None' if not specified.
-        quite : bool, optional
+        quiet : bool, optional
             Suppress console output if :obj:`True`.
 
         Returns
@@ -2560,16 +2543,16 @@ class Mesh:
 
         return cls(points, [f for f in face(m, n)], name=name)
 
-    def _add_attr_values(self, key, *args, **kwargs):
+    def _add_attr_values(self, item, *args, **kwargs):
         """ Add attribute values.
 
-        Extend data block by a value provided as keyword argument
-        or the by the default value of the data block.
+        Extend data block by a value provided as keyword argument or by
+        the default value of the data block.
 
         Parameters
         ----------
-        key : Vertex or Halfedge or Face
-            The mesh item.
+        item : Vertex or Halfedge or Face
+            Mesh item instance
         *args : list
             List of data block descriptors.
         **kwargs : dict
@@ -2582,9 +2565,12 @@ class Mesh:
             if isinstance(data, list):
                 data.append(value)
             elif isinstance(data, dict):
-                data[key] = value
+                data[item] = value
             elif isinstance(data, np.ndarray):
                 _array_append(data, value)
+            else:
+                raise TypeError(
+                    f"data block has invalid type '{type(data).__name__}'")
 
     def _add_halfedge(self, v, w, **kwargs):
         """ Create and add new halfedge.
@@ -2670,7 +2656,6 @@ class Mesh:
                 # This calls the setter method of a property with the name
                 # 'key' if it exists (guard with if-condition to prevent
                 # setting the value of managed attributes again).
-                # if key not in (attr for _, attr, _ in self._hattr):
                 setattr(h, key, value)
 
         v._deleted = False
@@ -3168,9 +3153,7 @@ class Vertex:
         """ Vertex index.
 
         Position of the vertex in the list :attr:`~Mesh.vertices` of all
-        mesh vertices. Same as ``int(self)``.
-
-        :type: int
+        mesh vertices.
         """
         return self._idx
 
@@ -3178,10 +3161,8 @@ class Vertex:
     def point(self):
         """ Vertex coordinates.
 
-        Read and write access to vertex coordinates. View of the
-        vertex coordinate array. Requires a valid parent mesh.
-
-        :type: ~numpy.ndarray
+        Read and write access to vertex coordinates. This is a view (a
+        row) of the vertex coordinate array. Requires a valid parent mesh.
 
         Notes
         -----
@@ -3216,8 +3197,6 @@ class Vertex:
 
         A halfedge that starts at the vertex or :obj:`None` for isolated
         vertices.
-
-        :type: Halfedge
         """
         assert not self._deleted
         return self._halfedge
@@ -3228,8 +3207,6 @@ class Vertex:
 
         The number of adjacent vertices, equivalent to the number of
         incident edges -- also called the valence of a vertex.
-
-        :type: int
         """
         assert not self._deleted
         assert self._manifold
@@ -3244,8 +3221,6 @@ class Vertex:
         vertices as deleted when they do no longer contribute to a mesh's
         combinatorics.
 
-        :type: bool
-
         Notes
         -----
         Calling :meth:`~Mesh.clean` removes all deleted vertices from the
@@ -3259,8 +3234,6 @@ class Vertex:
 
         A vertex is defined to be a boundary vertex if it is incident to
         a boundary halfedge.
-
-        :type: bool
         """
         assert not self._deleted
         return any(h.boundary for h in self._hiter())
@@ -3274,11 +3247,9 @@ class Vertex:
         not linked to any other mesh items and form their own connected
         component.
 
-        :type: bool
-
         Notes
         -----
-        Isolated vertices are treated as **manifold** vertices. Their
+        Isolated vertices are treated as manifold vertices. Their
         presence does not influence the halfedge data structure
         functionality negatively.
         """
@@ -3302,8 +3273,6 @@ class Vertex:
 
         Isolated vertices are considered manifold vertices as they
         don't break the halfedge structure.
-
-        :type: bool
         """
         assert not self._deleted
 
@@ -3458,10 +3427,8 @@ class Halfedge:
 
     Parameters
     ----------
-    origin : Vertex
-        Origin vertex of the halfedge.
-    target : Vertex
-        Target vertex of the halfedge.
+    origin, target : Vertex
+        Origin and target vertex of the halfedge.
 
     Notes
     -----
@@ -3587,8 +3554,6 @@ class Halfedge:
     @property
     def origin(self):
         """ Halfedge origin vertex.
-
-        :type: Vertex
         """
         assert not self._deleted
         return self._origin
@@ -3596,8 +3561,6 @@ class Halfedge:
     @property
     def target(self):
         """ Halfedge target vertex.
-
-        :type: Vertex
         """
         assert not self._deleted
         return self._target
@@ -3606,9 +3569,7 @@ class Halfedge:
     def vector(self):
         """ Halfedge direction vector.
 
-        The vector ``self.target.point - self.origin.point``.
-
-        :type: ~numpy.ndarray
+        The vector ``target.point - origin.point``.
         """
         assert not self._deleted
         return self._target.point - self._origin.point
@@ -3617,9 +3578,7 @@ class Halfedge:
     def midpoint(self):
         """ Halfedge midpoint.
 
-        The point ``0.5 * (self.origin.point + self.target.point)``.
-
-        :type: ~numpy.ndarray
+        The point ``0.5 * (origin.point + target.point)``.
         """
         assert not self._deleted
         return 0.5 * (self._origin.point + self._target.point)
@@ -3629,8 +3588,6 @@ class Halfedge:
         """ Successor halfedge.
 
         Next halfedge in a face defining halfedge loop.
-
-        :type: Halfedge
         """
         assert not self._deleted
         return self._next
@@ -3640,8 +3597,6 @@ class Halfedge:
         """ Predecessor halfedge.
 
         Previous halfedge in a face defining halfedge loop.
-
-        :type: Halfedge
         """
         assert not self._deleted
         return self._prev
@@ -3651,8 +3606,6 @@ class Halfedge:
         """ Opposite halfedge.
 
         Halfedge pointing in the opposite direction.
-
-        :type: Halfedge
         """
         assert not self._deleted
         return self._pair
@@ -3663,8 +3616,6 @@ class Halfedge:
 
         The face to left of the halfedge or :py:obj:`None` in case of
         a boundary halfedge.
-
-        :type: Face
         """
         assert not self._deleted
         return self._face
@@ -3691,8 +3642,6 @@ class Halfedge:
         render halfedges as deleted when they do no longer contribute
         to a mesh's combinatorics.
 
-        :type: bool
-
         Notes
         -----
         The halfedge dictionary :attr:`~Mesh.halfedges` of a mesh will
@@ -3706,8 +3655,6 @@ class Halfedge:
 
         A halfedge is called a boundary halfedge if its :attr:`face`
         attribute evaluates to :obj:`None`.
-
-        :type: bool
         """
         assert not self._deleted
         return self._face is None
@@ -3716,18 +3663,19 @@ class Halfedge:
     def collapsible(self):
         """ Topological state.
 
-        A edge joining non-boundary vertices of a **triangle mesh** is
-        collapsible if the neighborhoods of :attr:`origin` and :attr:`target`
-        vertex intersect in the two vertices opposite the query edge. The
-        test tries to handle meshes with higher valence faces but may not
-        always give a correct answer.
-
-        :type: bool
+        A edge joining non-boundary vertices of a triangle mesh is
+        collapsible if the 1-ring vertex neighborhoods of :attr:`origin`
+        and :attr:`target` vertex intersect in the two vertices opposite
+        the query edge. The test tries to handle meshes with higher
+        valence faces but may not always give a correct answer.
 
         Notes
         -----
-        For technical reasons, **boundary halfedges** are always classified
+        For technical reasons, boundary halfedges are always classified
         as non-collapsible.
+
+        References
+        ----------
         """
 
         def one_sided_check(h):
@@ -3909,8 +3857,6 @@ class Halfedge:
 
         A non-boundary edge of a triangle mesh can be flipped if the
         vertices opposite the edge are not adjacent.
-
-        :type: bool
         """
         if self._deleted or self._face is None or self._pair._face is None:
             return False
@@ -4027,7 +3973,7 @@ class Halfedge:
             h = h._prev._pair
 
 
-class Edge:
+class _Edge:
 
     def __init__(self, halfedge):
         self._halfedge = halfedge
@@ -4072,12 +4018,12 @@ class Face:
     index : int
         Face index.
 
-
+    Examples
+    --------
     The vertices of a face can be visited in several ways. Using
     :meth:`~m3sh.hds.Face.__len__` and :meth:`~m3sh.hds.Face.__getitem__`
 
     .. code-block:: python
-       :linenos:
 
         for i in range(len(f)):
             print(f[i])
@@ -4085,13 +4031,10 @@ class Face:
     is equivalent to using :meth:`~m3sh.hds.Face.__iter__`
 
     .. code-block:: python
-       :linenos:
 
         for v in f:
             print(v)
 
-    Notes
-    -----
     The latter is much more efficient and preferred.
     """
 
@@ -4272,9 +4215,7 @@ class Face:
         """ Face index.
 
         Position of the face in the list :attr:`~Mesh.faces` of all
-        faces, same as ``int(self)``.
-
-        :type: int
+        faces.
         """
         return self._idx
 
@@ -4297,8 +4238,6 @@ class Face:
         """ Incident halfedge.
 
         One of the incident halfedges.
-
-        :type: Halfedge
         """
         assert not self._deleted
         return self._halfedge
@@ -4307,9 +4246,7 @@ class Face:
     def valence(self):
         """ Face valence.
 
-        Number of incident vertices. Same as ``len(self)``.
-
-        :type: int
+        Number of incident vertices.
         """
         return len(self)
 
@@ -4320,8 +4257,6 @@ class Face:
         Topological mesh modification (e.g., edge conctractions) render
         faces as deleted when they do no longer contribute to a mesh's
         combinatorics.
-
-        :type: bool
 
         Notes
         -----
@@ -4338,11 +4273,9 @@ class Face:
         edges is a boundary edge (an edge is a boundary edge if one of
         its two halfedges has this property).
 
-        :type: bool
-
         Notes
         -----
-        A face only incident with boundary vertices is **not** classified
+        A face only incident with boundary vertices is not classified
         as a boundary face.
         """
         return any(h.pair.boundary for h in self._hiter())
@@ -4352,8 +4285,6 @@ class Face:
         """ Face barycenter.
 
         Arithmetic mean of vertex coordinates.
-
-        :type: ~numpy.ndarray
         """
         return sum(v.point for v in self) / len(self)
 
