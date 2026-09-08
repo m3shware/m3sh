@@ -1704,8 +1704,8 @@ class Mesh:
 
         return face
 
-    def collapse_halfedge(self, halfedge, point=None, del_target=True, *,
-                          check=True):
+    def _collapse_halfedge(self, halfedge, point=None, del_target=True,
+                           *, check=True):
         """ Perform edge collapse.
 
         Collapse `halfedge` into its :attr:`~Halfedge.origin` vertex. By
@@ -1847,12 +1847,13 @@ class Mesh:
 
         return halfedge._origin
 
-    def collapse_halfedge_(self, halfedge, point=None, pull=True):
+    def collapse_halfedge(self, halfedge, point=None, pull=True):
         """ Perform edge collapse.
 
         .. version-added:: 1.1.0
 
-        Collapse `halfedge` into one of its vertices.
+        Collapse `halfedge` into one of its vertices. The other vertex is
+        marked as deleted.
 
         Parameters
         ----------
@@ -2014,8 +2015,8 @@ class Mesh:
         prepare_loop(halfedge)
 
         # If a halfedge starting at vertex v was marked as deleted by
-        # prepare_loop() its origin has to set to u, analogously set u as
-        # target for halfedges ending at v.
+        # prepare_loop(), its origin has to be set to u, analogously set u
+        # as target for halfedges ending at v.
         for vw, wv in halfedges:
             if not vw._deleted:
                 self._set_origin(vw, u)
@@ -2051,7 +2052,7 @@ class Mesh:
 
         return u
 
-    def _collapse_halfedge(self, halfedge, point=None, pull=True):
+    def __collapse_halfedge(self, halfedge, point=None, pull=True):
         """
         """
 
@@ -3660,7 +3661,7 @@ class Halfedge:
         return self._face is None
 
     @property
-    def collapsible(self):
+    def _collapsible(self):
         """ Topological state.
 
         A edge joining non-boundary vertices of a triangle mesh is
@@ -3673,9 +3674,6 @@ class Halfedge:
         -----
         For technical reasons, boundary halfedges are always classified
         as non-collapsible.
-
-        References
-        ----------
         """
 
         def one_sided_check(h):
@@ -3762,9 +3760,29 @@ class Halfedge:
         return False
 
     @property
-    def collapsible_(self):
+    def collapsible(self):
         """ Topological state.
+
+        .. version-added:: 1.1.0
+
+        An edge joining non-boundary vertices of a triangle mesh is
+        collapsible if the 1-ring vertex neighborhoods of :attr:`origin`
+        and :attr:`target` vertex intersect in the two vertices opposite
+        the query edge, see [1]_ for more details.
+
+        Notes
+        -----
+        The test tries to handle meshes with higher valence faces but may
+        not always give a correct answer in this case.
+
+        References
+        ----------
+        .. [1] Tamal K. Dey et al.: *Topology Preserving Edge Contraction*,
+                ????.
         """
+        # New version of _collapsible test that does not automatically
+        # reject boundary edges as non-collapsible but uses the pair for
+        # testing instead.
 
         def one_sided_check(h):
             assert h._face is not None
