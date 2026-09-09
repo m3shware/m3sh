@@ -289,9 +289,6 @@ class CSType:
         an array ``c`` of shape (k+n+2, d) and knots as an array ``t`` of
         shape (2k+n+2,) or as ``list[float]``.
 
-        .. literalinclude:: ../../examples/cstype_io.py
-           :lines: 8-21
-
 
         The curve :math:`\mathbf{c}` is polynomial over each non empty interval
         :math:`[t_j, t_{j+1})` for :math:`j = k, \dots, k+n`. The integer

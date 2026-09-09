@@ -8,7 +8,7 @@ low-level VTK functionality.
 
 
 Scene management
----------------
+----------------
 
 :meth:`canvas`, :meth:`add`, :meth:`delete`, :meth:`update`, :meth:`show`
 
