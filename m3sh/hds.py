@@ -163,10 +163,10 @@ class Mesh:
                 + f"{[[int(v) for v in f] for f in self]})")
 
     def __str__(self):
-        CBOLD = '\33[1m'
+        BOLD = '\33[1m'
         CEND = '\33[0m'
 
-        return (f"mesh instance {CBOLD}{self.name}{CEND}\n"
+        return (f"mesh instance {BOLD}{self.name}{CEND}\n"
                 + f"\t\u251c\u2500 {len(self.vertices)} vertices\n"
                 + f"\t\u251c\u2500 {len(self.faces)} faces\n"
                 + f"\t\u251c\u2500 {self._time:.2f} sec construction time\n"
@@ -175,43 +175,20 @@ class Mesh:
     def __iter__(self):
         """ Face iterator.
 
-        The returned iterator visits all faces of a mesh that are **not**
-        marked as deleted in order of ascending face indices.
+        Visit all faces of a mesh that are not marked as deleted in order
+        of ascending face indices.
 
         Yields
         ------
         Face
             Next face in insertion order traversal.
-
-
-        The loop that visits all faces of a mesh that contribute to its
-        combinatorics
-
-        .. code-block:: python
-           :linenos:
-
-           for f in mesh:
-               # do something with the face
-               ...
-
-        is equivalent to explicitly checking the :attr:`deleted` attribute
-        of a face:
-
-        .. code-block:: python
-           :linenos:
-
-           for f in mesh.faces:
-               if not f.deleted:
-                   # do something with the face
-                   ...
         """
         return (f for f in self._faces if not f._deleted)
 
     def __copy__(self):
         """ Shallow mesh copy.
 
-        Duplicate the mesh combinatorics and vertex coordinates. Equivalent
-        to :meth:`copy` method.
+        Duplicate the mesh combinatorics and vertex coordinates.
 
         Returns
         -------
@@ -222,17 +199,15 @@ class Mesh:
 
     def __deepcopy__(self, *args):
         """ Reserved for future use.
-
-        Use :meth:`copy` to copy a halfedge mesh.
         """
-        raise NotImplementedError('use .copy() instead')
+        raise NotImplementedError('use copy() instead')
 
     def __bool__(self):
         return True
 
     def __getitem__(self, index):
-        # Treat a mesh like a tuple consisting of a list of goemetric
-        # vertices and face definitions.
+        # Treat a mesh like a tuple consisting of a list of points and
+        # face definitions. Both lists contain deleted items!
         if index == 0:
             return self._points
         elif index == 1:
@@ -633,6 +608,120 @@ class Mesh:
         return mesh
 
     @classmethod
+    def from_grid(cls, array, *arrays, triangulate=False, order='C',
+                  name=None, quiet=False):
+        r""" Construct mesh from grid data.
+
+        .. version-added:: 1.1.0
+
+        A quadrilateral mesh with m⋅n faces is generated from k coordinate
+        arrays of shape (m, n). Alternatively a single stacked coordinate
+        array of shape (m, n, k) can be provided.
+
+        Parameters
+        ----------
+        array : ndarray, shape (m, n, k)
+            Stacked coordinate arrays. Points in k-d space are defined by
+            the last axis.
+        *arrays
+            Variable number of coordinate arrays of shape (m, n).
+        triangulate : bool, optional
+            Triangulate quadrilateral faces.
+        order : str, optional
+            Flatten coordinate arrays in row-major mode 'C' or column-major
+            mode 'F'.
+        name : str, optional
+            Name tag. Defaults to the string 'None' if not specified.
+        quiet : bool, optional
+            Suppress console output if :obj:`True`.
+
+        Returns
+        -------
+        Mesh
+            Mesh instance.
+
+        Notes
+        -----
+        As a rule of thumb, use 'C' order when `meshgrid` was used with the
+        'xy' option and 'F' order when `meshgrid` was used with the 'ij'
+        option.
+
+        Examples
+        --------
+        Create a quadrilateral mesh of the graph of :math:`\frac{1}{2}
+        x^2 - y^2` over :math:`[-1, 1] \times [-1, 1]` where the interval
+        in x-direction is sampled at n=10 points and the y-direction at
+        m=20 points:
+
+        >>> x = np.linspace(-1.0, 1.0, 10)
+        >>> y = np.linspace(-1.0, 1.0, 20)
+
+        Prepare the three coordinate arrays using `meshgrid` with the default
+        'xy' indexing (resulting in coordinate arrays of shape (m, n) each)
+        and create the mesh:
+
+        >>> X, Y = np.meshgrid(x, y)
+        >>> Z = 0.5 * X**2 - Y**2
+        >>> mesh = Mesh.from_grid(X, Y, Z)
+
+        The mesh stores rows of the grid contiguously ('C' order is used by
+        default). Hence, all points of the slice ``mesh.points[i*n:(i+1)*n]``
+        of length n have equal y-coordinate ``y[i]``.
+        """
+        if order != 'C' and order != 'F':
+            raise ValueError(f"invalid order argument {order!r}")
+
+        def face(m, n):
+            # Generator function that produces the face definitions of
+            # grid data with given shape (m, n).
+            for major_idx in range(m - 1):
+                ofs = major_idx * n
+
+                for j in range(n - 1):
+                    if triangulate:
+                        yield [ofs + j, ofs + j + 1, ofs + j + n + 1]
+                        yield [ofs + j, ofs + j + n + 1, ofs + j + n]
+                    else:
+                        yield [ofs + j, ofs + j + 1,
+                               ofs + j + n + 1, ofs + j + n]
+
+        BOLD = '\33[1m'
+        CEND = '\33[0m'
+
+        if not quiet:
+            print(f"generating mesh {BOLD}{name}{CEND} from grid data ...")
+
+        if arrays:
+            # The case where all coordinates array are given as individual
+            # arrays. All arrays have the same shape and are assumed to have
+            # 2 axis (because it is grid data).
+            if order == 'C':
+                m, n = array.shape
+            elif order == 'F':
+                n, m = array.shape
+
+            # All arrays have to be flattened. Each flattened array froms
+            # a column of the points coordinate array of the generated mesh.
+            arrays = tuple(arr.reshape(-1, order=order) for arr in arrays)
+            points = np.stack(
+                (array.reshape(-1, order=order), *arrays), axis=-1)
+        else:
+            # All coordinates are already stacked. We only need to flatten it
+            # in the correct order.
+            if order == 'C':
+                m, n, k = array.shape
+            elif order == 'F':
+                n, m, k = array.shape
+
+            points = array.reshape(-1, k, order=order)
+
+        if not quiet:
+            print(f"\t\u251c\u2500 grid shape {(m, n)}")
+            print(f"\t\u2514\u2500 dimension {points.shape[-1]}")
+
+        return cls(points, [f for f in face(m, n)], name=name)
+
+    @classmethod
     def read(cls, filename, *args, quiet=False):
         """ Read mesh from file.
 
@@ -707,7 +796,7 @@ class Mesh:
         To properly orient a mesh when importing it in Blender, use Z as
         `up` and Y as `forward` direction.
         """
-        CBOLD = '\33[1m'                    # bold text, white on black
+        BOLD = '\33[1m'                    # bold text, white on black
         CEND = '\33[0m'
 
         if 'v' in data.keys():
@@ -752,7 +841,7 @@ class Mesh:
         faces = (((int(v) - ofs, tidx(v), nidx(v)) for v in f) for f in self)
 
         if not quiet:
-            print(f'writing {CBOLD}{Path(filename).name}{CEND}', end=' ...',
+            print(f'writing {BOLD}{Path(filename).name}{CEND}', end=' ...',
                   flush=True)
 
         start = perf_counter()
@@ -2430,120 +2519,6 @@ class Mesh:
 
         return v
 
-    @classmethod
-    def from_grid(cls, array, *arrays, triangulate=False, order='C',
-                  name=None, quiet=False):
-        r""" Construct mesh from grid data.
-
-        .. version-added:: 1.1.0
-
-        A quadrilateral mesh with m⋅n faces is generated from k coordinate
-        arrays of shape (m, n). Alternatively a single stacked coordinate
-        array of shape (m, n, k) can be provided.
-
-        Parameters
-        ----------
-        array : ndarray, shape (m, n, k)
-            Stacked coordinate arrays. Points in k-d space are defined by
-            the last axis.
-        *arrays
-            Variable number of coordinate arrays of shape (m, n).
-        triangulate : bool, optional
-            Triangulate quadrilateral faces.
-        order : str, optional
-            Flatten coordinate arrays in row-major mode 'C' or column-major
-            mode 'F'.
-        name : str, optional
-            Name tag. Defaults to the string 'None' if not specified.
-        quiet : bool, optional
-            Suppress console output if :obj:`True`.
-
-        Returns
-        -------
-        Mesh
-            Mesh instance.
-
-        Notes
-        -----
-        As a rule of thumb, use 'C' order when `meshgrid` was used with the
-        'xy' option and 'F' order when `meshgrid` was used with the 'ij'
-        option.
-
-        Examples
-        --------
-        Create a quadrilateral mesh of the graph of :math:`\frac{1}{2}
-        x^2 - y^2` over :math:`[-1, 1] \times [-1, 1]` where the interval
-        in x-direction is sampled at n=10 points and the y-direction at
-        m=20 points:
-
-        >>> x = np.linspace(-1.0, 1.0, 10)
-        >>> y = np.linspace(-1.0, 1.0, 20)
-
-        Prepare the three coordinate arrays using `meshgrid` with the default
-        'xy' indexing (resulting in coordinate arrays of shape (m, n) each)
-        and create the mesh:
-
-        >>> X, Y = np.meshgrid(x, y)
-        >>> Z = 0.5 * X**2 - Y**2
-        >>> mesh = Mesh.from_grid(X, Y, Z)
-
-        The mesh stores rows of the grid contiguously ('C' order is used by
-        default). Hence, all points of the slice ``mesh.points[i*n:(i+1)*n]``
-        of length n have equal y-coordinate ``y[i]``.
-        """
-        if order != 'C' and order != 'F':
-            raise ValueError(f"invalid order argument {order!r}")
-
-        def face(m, n):
-            # Generator function that produces the face definitions of
-            # grid data with given shape (m, n).
-            for major_idx in range(m - 1):
-                ofs = major_idx * n
-
-                for j in range(n - 1):
-                    if triangulate:
-                        yield [ofs + j, ofs + j + 1, ofs + j + n + 1]
-                        yield [ofs + j, ofs + j + n + 1, ofs + j + n]
-                    else:
-                        yield [ofs + j, ofs + j + 1,
-                               ofs + j + n + 1, ofs + j + n]
-
-        CBOLD = '\33[1m'
-        CEND = '\33[0m'
-
-        if not quiet:
-            print(f"generating mesh {CBOLD}{name}{CEND} from grid data ...")
-
-        if arrays:
-            # The case where all coordinates array are given as individual
-            # arrays. All arrays have the same shape and are assumed to have
-            # 2 axis (because it is grid data).
-            if order == 'C':
-                m, n = array.shape
-            elif order == 'F':
-                n, m = array.shape
-
-            # All arrays have to be flattened. Each flattened array froms
-            # a column of the points coordinate array of the generated mesh.
-            arrays = tuple(arr.reshape(-1, order=order) for arr in arrays)
-            points = np.stack(
-                (array.reshape(-1, order=order), *arrays), axis=-1)
-        else:
-            # All coordinates are already stacked. We only need to flatten it
-            # in the correct order.
-            if order == 'C':
-                m, n, k = array.shape
-            elif order == 'F':
-                n, m, k = array.shape
-
-            points = array.reshape(-1, k, order=order)
-
-        if not quiet:
-            print(f"\t\u251c\u2500 grid shape {(m, n)}")
-            print(f"\t\u2514\u2500 dimension {points.shape[-1]}")
-
-        return cls(points, [f for f in face(m, n)], name=name)
-
     def _add_attr_values(self, item, *args, **kwargs):
         """ Add attribute values.
 
@@ -3066,8 +3041,6 @@ class Vertex:
         # Initialize internal state attributes.
         self._deleted = False
 
-        # self._flags = flags.VertexFlag(0)
-
     def __repr__(self):
         return f'Vertex({self._idx})'
 
@@ -3076,9 +3049,6 @@ class Vertex:
             point = self.point
         except AttributeError:
             point = '[None]'
-
-        # if self._flags:
-        #     return f'v {self._idx} {point} {self._flags}'
 
         return f'v {self._idx} {point}'
 
@@ -3108,9 +3078,9 @@ class Vertex:
         """
         return self._idx
 
-    def __lt__(self, other):
-        return id(self) < id(other)
-        # return int(self) < int(other)
+    # def __lt__(self, other):
+    #     return id(self) < id(other)
+    #     # return int(self) < int(other)
 
     def __bool__(self):
         return True
@@ -3449,16 +3419,10 @@ class Halfedge:
 
         self._deleted = False
 
-        # self._flags = flags.HalfedgeFlag(0)
-
     def __repr__(self):
         return f'Halfedge({repr(self._origin)}, {repr(self._target)})'
 
     def __str__(self):
-        # if self._flags:
-        #     return (f'h ({self._origin._idx}, {self._target._idx})' +
-        #             f' {self._flags}')
-
         return f'h ({self._origin._idx}, {self._target._idx})'
 
     def __bool__(self):
@@ -4067,18 +4031,12 @@ class Face:
         # Initialize internal state attributes.
         self._deleted = False
 
-        # self._flags = flags.FaceFlag(0)
-
     def __repr__(self):
         return f'Face({self._idx})'
 
     def __str__(self):
-        face = '[None]' if self._deleted else str([int(v) for v in self])
-
-        # if self._flags:
-        #     return f'f {self._idx} {face} {self._flags}'
-
-        return f'f {self._idx} {face}'
+        face = '[]' if self._deleted else str([int(v) for v in self])
+        return f"f {self._idx} {face}"
 
     def __index__(self):
         """ Face index.
@@ -4104,9 +4062,9 @@ class Face:
         """
         return self._idx
 
-    def __lt__(self, other):
-        return id(self) < id(other)
-        # return int(self) < int(other)
+    # def __lt__(self, other):
+    #     return id(self) < id(other)
+    #     # return int(self) < int(other)
 
     def __len__(self):
         """ Face valence.
