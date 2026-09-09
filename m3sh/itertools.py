@@ -20,16 +20,39 @@
 
 """ Combinatorial mesh iterators.
 
-Adjacent/incident mesh items are visited in counter-clockwise order as
-determined by the mesh orientation (whenever it makes sense to consider
-oriented item traversal).
+The halfedge data structure facilitates efficient neighborhood traversal
+on a mesh. This module provides generic implementations of the most common
+traversal schemes using Python's iterator protocol. Whenever possible and
+meanigful, adjacent/incident mesh items are visited in counter-clockwise
+order as determined by the mesh orientation
 
-Note
-----
-When applied to a :class:`~m3sh.hds.Mesh` instance, the iterators
-:func:`verts` and :func:`faces` will skip deleted mesh items. This is
-an alternative to iteration over the mesh item containers
-:attr:`~m3sh.hds.Mesh.vertices` and :attr:`~m3sh.hds.Mesh.faces`.
+Example
+-------
+To compute the average of the 1-ring neighbors for each vertex of a mesh
+one can do
+
+.. code-block::
+
+    import itertools as it
+
+    for v in it.verts(mesh):
+        avg = sum(w.point for w in it.verts(v))
+
+An equivalent implementation using the interface provided by the halfedge
+data structure would be
+
+.. code-block::
+
+    for v in mesh.vertices:
+        h = v.halfedge
+        avg = 0.0
+
+        while True:
+            avg += h.target.point
+            h = h.prev.pair
+
+            if h is v.halfedge:
+                break
 """
 
 from collections import deque
@@ -43,20 +66,10 @@ from m3sh.heap import Heap
 def verts(obj):
     """ Vertex iterator.
 
-    The returned iterator traverses adjacent/incident vertices
-    of `obj` depending on its type:
-
-    .. table::
-       :width: 100%
-       :widths: 20, 80
-
-       =============== ================================================
-       :class:`Vertex` \u21ba traversal of adjacent vertices
-       --------------- ------------------------------------------------
-       :class:`Face`   \u21ba traversal of incident vertices
-       --------------- ------------------------------------------------
-       :class:`Mesh`   in-order traversal of :attr:`~Mesh.vertices`
-       =============== ================================================
+    Iterator visiting the adjacent/incident vertices of `obj`. For a
+    vertex this results in a counter-clockwise traversal of adjacent
+    vertices (vertices connected by an edge). For a face, the incident
+    vertices are visited in the order determined by the mesh orientation.
 
     Parameters
     ----------
@@ -66,43 +79,64 @@ def verts(obj):
     Yields
     ------
     Vertex
+        Next vertex in a traversal of adjacent/incident vertices.
+        When applied to a mesh, this iterator will skip any deleted
+        vertices present in its vertex list
 
-    Note
-    ----
-    When applied to a mesh, this iterator will skip any deleted vertices
-    present in its vertex list.
+    Examples
+    --------
+    The iterator skips deleted mesh items. Hence, applying it to a mesh
+
+    .. code-block::
+
+        for v in verts(mesh):
+            ...
+
+    is equivalent to
+
+    .. code-block::
+
+        for v in mesh.vertices:
+            if not v.deleted:
+                ...
     """
+    # Does not apply to halfedges, they do not provide a _viter() method.
     return obj._viter()
 
 
-def verts_bfs(item, stop=None, start=0):
+def verts_bfs(item, stop=None, start=1):
     """ Breadth-first vertex neighborhood iterator.
 
-    Breadth-first traversal of vertex neighborhood of a mesh item.
-    Incident vertices are considered neighbors at distance zero.
+    Breadth-first traversal of vertex neighborhood of a mesh item. Incident
+    vertices of a halfedge or face are considered neighbors at distance zero.
 
     Parameters
     ----------
     item : Vertex or Halfedge or Face
-        The seed item.
+        The seed item. Halfedges and faces are treated as vertex containers,
+        their incident vertices define seed vertices.
     stop : int, optional
         All vertices at edge distance less or equal to `stop` are visited.
+        If :obj:`None`, the search will continue until all vertices of a
+        connected component are visited.
     start : int, optional
-        Vertex reporting starts at the given distance level.
+        Vertex reporting starts at the given distance level. Seed vertices
+        are not reported by default.
 
     Yields
     ------
     Vertex
         Next vertex in breadth-first search.
     int
-        Distance to `item`.
+        Distance to `item` measured as the number of traversed edges.
     """
-    # The try block could be replaced by explicit type checking using
-    # isinstance.
+    # Initialization only makes sense for the listed input types. Meshes
+    # are iterable but this iterator yields faces, not vertices! But note
+    # that a list of vertices would be a valid input!
     try:
-        seeds = [v for v in item]           # face and edge are iterable
+        seeds = [v for v in item]
     except TypeError:
-        seeds = [item]                      # vertex case, single seed
+        seeds = [item]
 
     queue = deque(seeds)
     level = dict.fromkeys(seeds, 0)
@@ -111,8 +145,8 @@ def verts_bfs(item, stop=None, start=0):
         v = queue.popleft()
         d = level[v]
 
-        # Stop when all vertices at distance stop (i.e., number of
-        # edges traversed) have been found.
+        # Stop when all vertices at distance stop (i.e., number of edges
+        # traversed) have been found.
         if stop is not None and d > stop:
             return
 
@@ -120,13 +154,13 @@ def verts_bfs(item, stop=None, start=0):
             yield v, d
 
         for w in v._viter():
-            # Vertices with assigned level information are either
-            # in the queue right now or have been removed earlier.
+            # Vertices with assigned level information are either in the
+            # queue right now or have been removed earlier.
             if w not in level:
                 queue.append(w)
                 level[w] = d + 1
-            else:
-                assert level[w] <= d + 1
+            # else:
+            #     assert level[w] <= d + 1
 
 
 def verts_dij(item, stop=None, start=0.0):
@@ -149,22 +183,19 @@ def verts_dij(item, stop=None, start=0.0):
     Vertex
         Next vertex according to distance.
     float
-        Distance to `item`.
-
-    Note
-    ----
-    Distance is measured as the length of the shortest edge path that
-    connects two vertices.
+        Distance to `item`, i.e., the length of the shortest edge path
+        that connects the returned vertex to the seed item.
     """
     # The dictionary of predecessors is generated but not used.
     # prev = dict()
 
-    # The try block could be replaced by explicit type checking using
-    # isinstance.
+    # Initialization only makes sense for the listed input types. Meshes
+    # are iterable but this iterator yields faces, not vertices! But note
+    # that a list of vertices would be a valid input!
     try:
-        seeds = [v for v in item]           # face and edge are iterable
+        seeds = [v for v in item]
     except TypeError:
-        seeds = [item]                      # vertex case, single seed
+        seeds = [item]
 
     # Seed the priority queue with all source vertices. Priorities are
     # distance values. Smaller distance means higher priority.
@@ -206,20 +237,10 @@ def _verts_frozen(obj):
 def halfs(obj):
     """ Halfedge iterator
 
-    The returned iterator traverses incident halfedges of `obj`
-    depending on its type:
-
-    .. table::
-       :width: 100%
-       :widths: 20, 80
-
-       =============== ================================================
-       :class:`Vertex` \u21ba traversal of outward pointing halfedges
-       --------------- ------------------------------------------------
-       :class:`Face`   \u21ba traversal of incident halfedges
-       --------------- ------------------------------------------------
-       :class:`Mesh`   traversal of :attr:`~Mesh.halfedges`
-       =============== ================================================
+    Traverse the incident halfedges of `obj`. For vertex input the
+    halfedges with `obj` as origin are visited in a counter-clockwise
+    traversal. For a face, the face defining loop of halfedges is
+    traversed in counter-clockwise order.
 
     Parameters
     ----------
@@ -229,11 +250,26 @@ def halfs(obj):
     Yields
     ------
     Halfedge
+        Next halfedge in a traversal of incident halfedges. For mesh
+        input those halfedges are in no particular order.
 
-    Note
-    ----
-    This iterator is equivalent to ``iter(mesh.halfedges.values())``
-    when applied to a mesh.
+    Examples
+    --------
+    When applied to a mesh
+
+    .. code-block::
+
+        import itertools as it
+
+        for h in it.halfs(mesh)
+            ...
+
+    is equivalent to
+
+    .. code-block::
+
+        for h in mesh.halfedges.values():
+            ...
     """
     return obj._hiter()
 
@@ -247,9 +283,9 @@ def _halfs_frozen(obj):
 def edges(mesh):
     """ Edge iterator.
 
-    Formally, an undirected edge is defined as a pair of oppositely
-    oriented halfedges. To visit the edges of a mesh, this iterator
-    yields exactly one of the two halfedge representatives of an edge.
+    An undirected edge is a pair of oppositely oriented halfedges. This
+    iterator visits exactly one of the two halfedge representatives of
+    an edge.
 
     Parameters
     ----------
@@ -259,6 +295,7 @@ def edges(mesh):
     Yields
     ------
     Halfedge
+        Next representative of an edge.
     """
     return mesh._eiter()
 
@@ -270,24 +307,10 @@ def _edges_frozen(mesh):
 
 
 def faces(obj):
-    r""" Face iterator.
+    """ Face iterator.
 
-    A vertex :math:`v` and a face :math:`f` are incident if
-    :math:`v \in f`. Two faces are incident if they share a common edge.
-    The returned iterator visits the incident faces of `obj` depending
-    on its type:
-
-    .. table::
-       :width: 100%
-       :widths: 20, 80
-
-       =============== ================================================
-       :class:`Vertex` \u21ba traversal of incident faces
-       --------------- ------------------------------------------------
-       :class:`Face`   \u21ba traversal of incident faces
-       --------------- ------------------------------------------------
-       :class:`Mesh`   in-order traversal of :attr:`~Mesh.faces`
-       =============== ================================================
+    Iterator visiting the adjacent/incident faces of `obj`. Faces are
+    adjacent if they share a common edge.
 
     Parameters
     ----------
@@ -297,20 +320,36 @@ def faces(obj):
     Yields
     ------
     Face
+        Next face in a traversal of all adjacent/incident faces. When
+        applied to a mesh, this iterator skips any deleted faces still
+        present in its face list.
 
-    Note
-    ----
-    When applied to a mesh, this iterator will skip any deleted faces
-    still present in its face list.
+    Examples
+    --------
+    For vertex input all incident faces are visited in counter-clockwise
+    order. For non-boundary vertices this is equivalent to
+
+    .. code-block::
+
+        h = v.halfedge
+
+        while True:
+            f = h.face
+            h = h.prev.pair
+
+            if h is v.halfedge:
+                break
     """
+    # Does not apply to halfedges, they do not provide a _fiter() method.
     return obj._fiter()
 
 
-def faces_bfs(item, stop=None, start=0):
+def faces_bfs(item, stop=None, start=1):
     """ Breadth-first face neighborhood iterator.
 
-    Breadth-first traversal of the face neighborhood of a mesh
-    item. The 0-ring face neighborhood of a vertex is empty.
+    Breadth-first traversal of the face neighborhood of a mesh item. A
+    face and a mesh item (a vertex, a halfedge, or another face) are
+    considered neighbors is they share a vertex or an edge.
 
     Parameters
     ----------
@@ -318,8 +357,11 @@ def faces_bfs(item, stop=None, start=0):
         The seed item.
     stop : int, optional
         All faces at distance less or equal to `stop` are visited.
+        If :obj:`None`, the search will continue until all faces of a
+        connected component are visited.
     start : int, optional
-        Face reporting starts at the given distance level.
+        Face reporting starts at the given distance level. Seed faces
+        are not reported by default.
 
     Yields
     ------
@@ -327,27 +369,60 @@ def faces_bfs(item, stop=None, start=0):
         The next face in breadth-first search.
     int
         Distance to `item`.
+
+    Notes
+    -----
+    The neighborhood relation used in breadth-first search is different
+    for the one used by :func:`faces` where faces are considered neighbors
+    if they share an edge. For instance, the faces at distance 1 to a seed
+    face are all faces that share an edge or a vertex with the seed. This
+    can be imagined as a ring of faces around the seed face. Consequently,
+    the list
+
+    >>> [f for f in faces(seed)]
+
+    is different from
+
+    >>> [f for f in faces_bfs(seed, stop=1)]
+
+    Use :func:`fdual_bfs` to restrict the neighborhood relation to having
+    a common edge.
     """
-    # The try block could be replaced by explicit type checking using
-    # isinstance.
+    # Initialization only makes sense for the listed input types. Meshes
+    # are iterable but this iterator yields faces, not vertices!
     try:
-        seeds = [v for v in item]           # item is face or edge
+        # The seeds container always holds vertices. In constrast, level
+        # assigns a level to visited vertices and faces!
+        seeds = [v for v in item]
         level = dict.fromkeys(seeds, 0)
-        level[item] = 0
-    except TypeError:                       # item is a vertex
+
+        # Edges and faces can be seen as vertex containers. It would be
+        # fine to use an explicit list of vertices as input. But note
+        # that using a list of the three vertices of a face will make
+        # this face a level 1 face, not level 0. The level of all other
+        # faces does not change.
+        if isinstance(item, Face):
+            # This is the only way in which a face can be of level zero.
+            # In general, the following rule applies. Visited a level d
+            # vertex will assign level d + 1 to all incident faces that
+            # have not yet been visited.
+            level[item] = 0
+
+            # Also, if reporting starts a level zero, yield the initial
+            # face .
+            if start == 0:
+                yield item
+    except TypeError:
         seeds = [item]
         level = dict.fromkeys(seeds, 0)
-    else:
-        if start == 0 and isinstance(item, Face):
-            yield item
 
     queue = deque(seeds)
 
     while queue:
         v = queue.popleft()
 
-        # Once a stop level vertex is visited in a breadth-first
-        # traversal, all faces of lower levels are exhausted.
+        # Once a stop level vertex is visited in a breadth-first traversal,
+        # all faces of lower levels are exhausted.
         if stop is not None and level[v] >= stop:
             return
 
@@ -362,6 +437,49 @@ def faces_bfs(item, stop=None, start=0):
 
                 if start <= level[v]:
                     yield f, level[f]
+
+
+def fdual_bfs(*seeds, stop=None, start=1):
+    """ Dual breadth-first face neighborhood iterator.
+
+    Breadth-first search using dual mesh combinatorics.
+
+    Parameters
+    ----------
+    *seeds
+        At least one but otherwise arbitrary number of faces.
+    stop : int, optional
+        All faces at dual edge distance less or equal to `stop` are visited.
+        If :obj:`None`, the search continues until all faces of a connected
+        component are visited.
+    start : int, optional
+        Face reporting starts at the given distance level. Seed faces are
+        not reported by default.
+
+    Yields
+    ------
+    Face
+        The next face in a breadth-first search.
+    int
+        Distance
+    """
+    queue = deque(seeds)
+    level = dict.fromkeys(seeds, 0)
+
+    while queue:
+        f = queue.popleft()
+        d = level[f]
+
+        if stop is not None and d > stop:
+            return
+
+        if start <= d:
+            yield f, d
+
+        for g in f._fiter():
+            if g not in level:
+                queue.append(g)
+                level[g] = d + 1
 
 
 def _faces_lnk(item):
