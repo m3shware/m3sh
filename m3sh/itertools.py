@@ -18,7 +18,7 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
 # IN THE SOFTWARE.
 
-""" Combinatorial mesh iterators.
+r""" Combinatorial mesh iterators.
 
 The halfedge data structure facilitates efficient neighborhood traversal
 on a mesh. This module provides generic implementations of the most common
@@ -53,6 +53,31 @@ data structure would be
 
             if h is v.halfedge:
                 break
+
+Relation to simplical complexes
+-------------------------------
+Some basics forms of the provided iterators model notions from algebraic
+topology, see [1]_. A triangle mesh is a simplical complex
+
+The star operator st()
+~~~~~~~~~~~~~~~~~~~~~~
+The open star of a simplex :math:`\sigma` is defined as
+
+.. math::
+
+   \operatorname{st}(\sigma) = \{ \circ{\tau} | \tau \subset \sigma}
+
+The link operator lnk()
+~~~~~~~~~~~~~~~~~~~~~~~
+The link is defined as the boundary of
+
+.. math::
+
+   \operatorname{lnk}(\sigma) =
+
+References
+----------
+.. [1] Allen Hatcher: *Algebraic Topology*, 2001.
 """
 
 from collections import deque
@@ -482,7 +507,7 @@ def fdual_bfs(*seeds, stop=None, start=1):
                 level[g] = d + 1
 
 
-def _faces_lnk(item):
+def faces_lnk(item):
     """ Face iterator.
 
     Counter-clockwise traversal of all faces that share an edge or a
@@ -496,6 +521,19 @@ def _faces_lnk(item):
     Yields
     ------
     Face
+        Next face in a counter-clockwise traversal of faces.
+
+    Notes
+    -----
+    For a given seed face the lists
+
+    >>> [f for f in faces_lnk(seed)]
+
+    and
+
+    >>> [f for f in faces_bfs(seed, stop=1)]
+
+    are the same.
     """
     return item._fiter_lnk()
 
