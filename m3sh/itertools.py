@@ -57,23 +57,25 @@ data structure would be
 Relation to simplical complexes
 -------------------------------
 Some basics forms of the provided iterators model notions from algebraic
-topology, see [1]_. A triangle mesh is a simplical complex
+topology, see [1]_. A triangle mesh is a simplical complex ...
 
-The star operator st()
-~~~~~~~~~~~~~~~~~~~~~~
-The open star of a simplex :math:`\sigma` is defined as
-
-.. math::
-
-   \operatorname{st}(\sigma) = \{ \circ{\tau} | \tau \subset \sigma}
-
-The link operator lnk()
-~~~~~~~~~~~~~~~~~~~~~~~
-The link is defined as the boundary of
+The star operator
+~~~~~~~~~~~~~~~~~
+Let :math:`K` be a simplicial complex. The (open) star of a simplex
+:math:`\sigma \in K` is defined as
 
 .. math::
 
-   \operatorname{lnk}(\sigma) =
+   \operatorname{st}(\sigma) = \{ \tau \in K | \sigma \subset \tau \}
+
+The link operator
+~~~~~~~~~~~~~~~~~
+The link is defined as the boundary of the star
+
+.. math::
+
+   \operatorname{lnk}(\sigma) = \overline{\operatorname{st}(\sigma)}
+        \setminus \operatorname{st}(\sigma)
 
 References
 ----------
