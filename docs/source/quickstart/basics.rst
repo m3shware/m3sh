@@ -13,12 +13,10 @@ We define a **polygonal mesh** by specifying two sequences: a sequence
 :math:`F = (f_j)_{j=0}^{m-1}` of combinatorial face definitions.
 
 Faces :math:`f \in F` are sequences themselves. A :math:`k`-tuple
-:math:`f = (i_0, \dots, i_{k-1})` of integers defines a face :math:`|f|` of
-valence
+:math:`f = (i_0, \dots, i_{k-1})` of integers defines a face of valence
 :math:`k` with vertices :math:`\mathbf{v}_{i_0}, \dots, \mathbf{v}_{i_{k-1}}`.
-Geometric faces :math:`|f|` are not required to be planar or convex. 
-If :math:`k` is equal to three for all faces, the pair :math:`(V, F)` defines
-a **triangle mesh**.
+Faces are not required to be planar or convex. If :math:`k` is equal to three 
+for all faces, the pair :math:`(V, F)` defines a **triangle mesh**.
 
 .. note::
 
@@ -96,11 +94,11 @@ its halfedges and their attributes. Each halfedge is aware of its incident
 
 References
 ----------
-.. [1] K. Crane: "A Survey of Efficient Structures for Digital Geometry
-       Processing", 2006. 
+.. [1] K. Crane: *A Survey of Efficient Structures for Digital Geometry
+       Processing*, 2006. 
 
-.. [2] H. Brönnimann: "Designing and Implementing a General Purpose Halfedge
-       Data Structure", Proceedings of the 5th International Workshop on 
+.. [2] H. Brönnimann: *Designing and Implementing a General Purpose Halfedge
+       Data Structure*, Proceedings of the 5th International Workshop on 
        Algorithm Engineering, 2001.
 
 

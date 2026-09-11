@@ -61,14 +61,14 @@ are connected to form the faces of the cube:
 
 
 During mesh construction, the list `V` is converted to an equivalent
-:obj:`~numpy.ndarray` object. The vertex coordinate array of `cube` can
+:class:`~numpy.ndarray` object. The vertex coordinate array of `cube` can
 be accessed via its :attr:`~Mesh.points` attribute. The list `F` becomes
 redundant.
 
 .. note::
 
    If `V` is of type :obj:`~numpy.ndarray`, this array is directly used by
-   the :class:`Mesh` object and not copied or altered in any way. In this
+   the :class:`Mesh` instance and not copied or altered in any way. In this
    case any changes applied to `V` will be reflected in the mesh.
 
 
@@ -129,6 +129,11 @@ If vertex normals or texture coordinates are stored in an OBJ file, they
 can be recovered via
 
 >>> mesh, vecs, uvs = Mesh.read('some-mesh.obj', 'vn', 'vt')
+
+.. note::
+
+   New code should use :meth:`~m3sh.hds.Mesh.from_OBJ` instead of
+   :meth:`~m3sh.hds.Mesh.read`.
 
 
 Visualization

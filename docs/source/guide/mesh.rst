@@ -1,14 +1,19 @@
+.. currentmodule:: m3sh.hds
+
+
 Halfedge data structure
 =======================
 
 The :mod:`~m3sh.hds` module provides a general purpose halfedge data 
 structure :class:`~m3sh.hds.Mesh` for 2-manifold meshes with polygonal 
-faces. The :mod:`~m3sh.iterators` and :mod:`~m3sh.traits` modules build
+faces. The :mod:`~m3sh.itertools` and :mod:`~m3sh.traits` modules build
 on the facilities provided by :mod:`~m3sh.hds` and provide convenient
 access to both combinatorial and geometric characteristics of a mesh.
 
 Mesh initialization
 -------------------
+
+*Coming soon ...*
 
 Mesh iterators
 --------------
@@ -74,6 +79,8 @@ The :attr:`~Mesh.halfedges` dictionary maps pairs of :class:`Vertex` objects to
 
     for h in mesh.halfedges.values():
         m = 0.5 * (h.origin.point + h.target.point)
+        
+Equivalently one can use the :meth:`~Halfedge.midpoint` method directly.
 
 
 Extracting face definitions
@@ -102,14 +109,14 @@ The above loop is equivalent to the following list comprehension:
 
    The :attr:`~m3sh.hds.Mesh.vertices` and :attr:`~m3sh.hds.Mesh.faces`
    attributes of a mesh expose deleted mesh items. Applying one of the
-   corresponding predefined iterators :func:`~m3sh.iterators.verts` and
-   :func:`~m3sh.iterators.faces` to a mesh will skip those items.
+   corresponding predefined iterators :func:`~m3sh.itertools.verts` and
+   :func:`~m3sh.itertools.faces` to a mesh will skip those items.
    
    
 Local neighborhood traversal
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The following recipe will visit adjacent vertices of a vertex :math:`v` in
+The following recipe will visit adjacent vertices of a vertex in
 counter-clockwise order:
 
 .. code-block:: python
@@ -130,15 +137,15 @@ counter-clockwise order:
             break
 
 
-The :mod:`~m3sh.iterators` module provides several generic iterators. The most
-basic ones being :func:`~m3sh.iterators.verts`, :func:`~m3sh.iterators.halfs`,
-:func:`~m3sh.iterators.edges`, and :func:`~m3sh.iterators.faces`. The behavior
+The :mod:`~m3sh.itertools` module provides several generic iterators. The most
+basic ones being :func:`~m3sh.itertools.verts`, :func:`~m3sh.itertools.halfs`,
+:func:`~m3sh.itertools.edges`, and :func:`~m3sh.itertools.faces`. The behavior
 of an iterator depends on the type of the provided argument. Using the
-:func:`~m3sh.iterators.verts` iterator, the above recipe simplifies to
+:func:`~m3sh.itertools.verts` iterator, the above recipe simplifies to
 
 .. code-block:: python
 
-    import m3sh.iterators as it
+    import m3sh.itertools as it
 
     # Visit the adjacent vertices of v in ccw-order.
     for w in it.verts(v):
@@ -149,13 +156,13 @@ of an iterator depends on the type of the provided argument. Using the
 Vertex neighborhood iterators
 +++++++++++++++++++++++++++++
 
-When applied to a vertex instance, the :func:`~m3sh.iterators.verts` iterator
+When applied to a vertex instance, the :func:`~m3sh.itertools.verts` iterator
 can be used to visit the 1-ring neighbors of a vertex in counter-clockwise
 order as induced by the mesh orientation:
 
 .. code-block:: python
 
-    import m3sh.iterators as it
+    import m3sh.itertools as it
 
     # Visit all vertices of a mesh in the order they were added.
     for v in mesh.vertices:
@@ -170,13 +177,13 @@ order as induced by the mesh orientation:
         print()
 
 
-When applied to a vertex :math:`v`, the :func:`~m3sh.iterators.faces` iterator
+When applied to a vertex :math:`v`, the :func:`~m3sh.itertools.faces` iterator
 will traverse all faces :math:`f` with :math:`v \in f` in counter-clockwise
 order:
 
 .. code-block:: python
 
-    import m3sh.iterators as it
+    import m3sh.itertools as it
 
     for v in mesh.vertices:
         print(f'Faces incident to vertex {int(v)}:')
@@ -192,12 +199,12 @@ Face neighborhood iterators
 +++++++++++++++++++++++++++
 
 Two facs are adjacent if they share a common edge. When applied to a face
-:math:`f`, the :func:`~m3sh.iterators.face` iterator visits all adjacent
+:math:`f`, the :func:`~m3sh.itertools.faces` iterator visits all adjacent
 faces in counter-clockwise order:
 
 .. code-block:: python
 
-    import m3sh.iterators as it
+    import m3sh.itertools as it
 
     for x in it.faces(f):
         print(x)
