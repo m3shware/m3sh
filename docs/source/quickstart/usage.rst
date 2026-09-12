@@ -114,26 +114,15 @@ A mesh can be built by adding vertices and faces incrementally:
 Reading and writing meshes
 --------------------------
 
-The :class:`~m3sh.hds.Mesh` class provides interface functions
-:meth:`~m3sh.hds.Mesh.read` and :meth:`~m3sh.hds.Mesh.write` to read and
-write meshes in OBJ format. Assuming the above definition of the cube, it
-can be saved in OBJ format:
+The :class:`~m3sh.hds.Mesh` class provides methods :meth:`~m3sh.hds.Mesh.read`
+and :meth:`~m3sh.hds.Mesh.write` for file input and output operations. Assuming
+the above definition of the cube, it can be saved in OBJ format:
 
 >>> cube.write('cube.obj')
 
 Similarly, we can read a mesh from file:
 
 >>> mesh = Mesh.read('cube.obj')
-
-If vertex normals or texture coordinates are stored in an OBJ file, they
-can be recovered via
-
->>> mesh, vecs, uvs = Mesh.read('some-mesh.obj', 'vn', 'vt')
-
-.. note::
-
-   New code should use :meth:`~m3sh.hds.Mesh.from_OBJ` instead of
-   :meth:`~m3sh.hds.Mesh.read`.
 
 
 Visualization

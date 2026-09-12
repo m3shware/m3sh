@@ -10,20 +10,15 @@ faces. The :mod:`~m3sh.itertools` and :mod:`~m3sh.traits` modules build
 on the facilities provided by :mod:`~m3sh.hds` and provide convenient
 access to both combinatorial and geometric characteristics of a mesh.
 
-Mesh initialization
--------------------
+
+Initialization
+--------------
 
 *Coming soon ...*
 
-Mesh iterators
---------------
-
-A basic task in any mesh processing algorithm is the systematic traversal
-of mesh items and their local neighborhoods. The halfedge based mesh
-representation is very efficient in this respect.
 
 Accessing vertices, faces, and halfedges
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+----------------------------------------
 
 Once a mesh has been constructed, its items (vertices, halfedges, and
 faces) can be accessed via properties :attr:`~Mesh.vertices`,
@@ -113,11 +108,19 @@ The above loop is equivalent to the following list comprehension:
    :func:`~m3sh.itertools.faces` to a mesh will skip those items.
    
    
-Local neighborhood traversal
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Iterators
+---------
 
-The following recipe will visit adjacent vertices of a vertex in
-counter-clockwise order:
+A basic task in any mesh processing algorithm is the systematic traversal
+of mesh items and their local neighborhoods. The halfedge based mesh
+representation is very efficient in this respect.
+
+   
+Local neighborhood traversal
+++++++++++++++++++++++++++++
+
+We start with an example. The following recipe will visit adjacent vertices of
+a vertex in counter-clockwise order:
 
 .. code-block:: python
 
@@ -137,7 +140,8 @@ counter-clockwise order:
             break
 
 
-The :mod:`~m3sh.itertools` module provides several generic iterators. The most
+The :mod:`~m3sh.itertools` module provides several generic iterators to
+reduce the boiler plate code for local mesh traversal. The most
 basic ones being :func:`~m3sh.itertools.verts`, :func:`~m3sh.itertools.halfs`,
 :func:`~m3sh.itertools.edges`, and :func:`~m3sh.itertools.faces`. The behavior
 of an iterator depends on the type of the provided argument. Using the
@@ -209,3 +213,8 @@ faces in counter-clockwise order:
     for x in it.faces(f):
         print(x)
 
+
+Breadth-first neighborhood traversal
+++++++++++++++++++++++++++++++++++++
+
+*Coming soon ...*
