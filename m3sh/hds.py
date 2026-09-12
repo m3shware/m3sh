@@ -61,12 +61,15 @@ except ImportError:
     pass
 
 
+# Some ideas for handling vertex coordinates in a future version. Treat
+# the points attribute as vertex data. This facilitates combinatorial
+# meshes without vertex coordinates.
+
 class Mesh:
     """ Mesh kernel.
 
     A mesh can be built by converting a sequence of vertex coordinates and
-    a sequence of face definitions to its halfedge representation. An empty
-    mesh is created when no arguments are specified.
+    a sequence of face definitions to its halfedge representation.
 
     Parameters
     ----------
@@ -88,6 +91,15 @@ class Mesh:
     from_OBJ : read from Wavefront OBJ file
     from_OFF : read from OFF (Object File Format) file
     from_grid : convert grid data to quadrilateral mesh
+
+    Notes
+    -----
+    If neither `points` nor `faces` is specified, an empty mesh is created.
+    You may specify `points` and omit `faces` but not the other way around.
+
+    Examples
+    --------
+    *Convex hull ...*
     """
 
     def __init__(self, points=None, faces=None, *, name=None):
@@ -394,7 +406,7 @@ class Mesh:
     def from_OBJ(cls, filename, *args, quiet=False):
         """ Read mesh from Wavefront OBJ file.
 
-        .. version-added:: 1.1.0 replaces `read`
+        .. version-added:: 1.1.0
 
         Read mesh combinatorics (face definitions) and vertex coordinates
         from an OBJ file. Additional data, like vertex normals, is read
@@ -414,9 +426,10 @@ class Mesh:
         mesh : Mesh
             Mesh instance. Reading fails if mesh combinatorics do not
             represent an orientable manifold surface mesh.
-        data : ndarray or tuple[ndarray, ...]
-            Data blocks as requested via `args`. If a data block could
-            not be read, a :obj:`None` value is returned in its place.
+        data
+            A corresponding data block of type :class:`~numpy.ndarray`
+            as requested via `args`. If a data block could not be read,
+            :obj:`None` is returned in its place.
 
         See Also
         --------
@@ -569,15 +582,21 @@ class Mesh:
         return mesh
 
     @classmethod
-    def from_OFF(cls, filename, quiet=False):
+    def from_OFF(cls, filename, *args, quiet=False):
         """ Read from OFF file.
 
         .. version-added:: 1.1.0
 
+        Read mesh combinatorics (face definitions) and vertex coordinates
+        from an OFF file.
+
         Parameters
         ----------
         filename : str
-            Name of OBJ file.
+            Name of OFF file.
+        *args
+            Variable number of arguments. Currently all arguments are
+            ignored.
         quiet : bool, optional
             Suppress console output if :obj:`True`.
 
@@ -586,12 +605,14 @@ class Mesh:
         mesh : Mesh
             Mesh instance. Reading fails if mesh combinatorics do not
             represent an orientable manifold surface mesh.
+        data
+            A :obj:`None` value for each data block requested via `args`.
         """
-        CBOLD = '\33[1m'
+        BOLD = '\33[1m'
         CEND = '\33[0m'
 
         if not quiet:
-            print(f'reading {CBOLD}{Path(filename).name}{CEND}', end=' ...',
+            print(f'reading {BOLD}{Path(filename).name}{CEND}', end=' ...',
                   flush=True)
 
         start = perf_counter()
@@ -604,6 +625,9 @@ class Mesh:
             print(f' done ({perf_counter() - start:.2f} sec)')
             print(f'\t├─ {len(verts)} vertices')
             print(f'\t└─ {len(faces)} faces')
+
+        if args:
+            return mesh, *(None for _ in args)
 
         return mesh
 
@@ -624,7 +648,8 @@ class Mesh:
             Stacked coordinate arrays. Points in k-d space are defined by
             the last axis.
         *arrays
-            Variable number of coordinate arrays of shape (m, n).
+            Variable number of coordinate arrays of shape (m, n). If given,
+            `array` has to be of shape (m, n), too.
         triangulate : bool, optional
             Triangulate quadrilateral faces.
         order : str, optional
@@ -637,7 +662,7 @@ class Mesh:
 
         Returns
         -------
-        Mesh
+        mesh : Mesh
             Mesh instance.
 
         Notes
@@ -672,8 +697,8 @@ class Mesh:
             raise ValueError(f"invalid order argument {order!r}")
 
         def face(m, n):
-            # Generator function that produces the face definitions of
-            # grid data with given shape (m, n).
+            # Generator function that produces the face definitions of grid
+            # data with given shape (m, n).
             for major_idx in range(m - 1):
                 ofs = major_idx * n
 
@@ -725,18 +750,16 @@ class Mesh:
     def read(cls, filename, *args, quiet=False):
         """ Read mesh from file.
 
-        .. version-deprecated:: 1.1.0 use `from_OBJ` in new code
-
-        Read mesh combinatorics (face definitions) and vertex coordinates
-        from an OBJ file. Additional data, like vertex normals, is read
-        only on request.
+        Read mesh combinatorics and vertex coordinates from file.
 
         Parameters
         ----------
         filename : str
-            Name of OBJ file.
+            File to read from. Currently supports OBJ and OFF file
+            formats.
         *args
-            Variable number of arguments of type :class:`str`.
+            Variable number of arguments of type :class:`str`. Not
+            all file formats support additional arguments.
         quiet : bool, optional
             Suppress console output if :obj:`True`.
 
@@ -745,11 +768,25 @@ class Mesh:
         mesh : Mesh
             Mesh instance. Reading fails if mesh combinatorics do not
             represent an orientable manifold surface mesh.
-        data : ndarray or tuple[ndarray, ...]
-            Data blocks as requested via `args`. If a data block could
-            not be read, a :obj:`None` value is returned in its place.
+        data
+            Data blocks of type :class:`~numpy.ndarray` as requested
+            via `args`. If a data block could not be read, :obj:`None`
+            is returned in its place.
+
+        See Also
+        --------
+        from_OBJ : read from OBJ file
+        from_OFF : read from OFF file
         """
-        return cls.from_OBJ(filename, *args, quiet=quiet)
+        # Reading from file adds a private attribute _file to the mesh
+        # instance that holds the original file name without directory.
+        match (suffix := Path(filename).suffix.lower()):
+            case '.obj':
+                return cls.from_OBJ(filename, *args, quiet=quiet)
+            case '.off':
+                return cls.from_OFF(filename, *args, quiet=quiet)
+
+        raise ValueError(f"file format {suffix!r} not recognized")
 
     def write(self, filename, append=False, absolute=True, quiet=False,
               **data):
