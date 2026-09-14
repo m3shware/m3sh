@@ -55,6 +55,7 @@ References
 
 import math
 import statistics as stats
+from collections import namedtuple
 
 import numpy as np
 import scipy as sp
@@ -816,11 +817,14 @@ def edge_stats(item):
 
     Returns
     -------
-    min, max, avg, med : float
-        Minimal, maximal, average, and median edge length.
+    min, max, mean, median : float
+        Minimal, maximal, average, and median edge length as a named
+        tuple with corresponding field names.
     """
+    Stats = namedtuple('Stats', ['min', 'max', 'mean', 'median'])
     len = [linalg.norm(h.vector) for h in item._eiter()]
-    return min(len), max(len), stats.fmean(len), stats.median(len)
+
+    return Stats(min(len), max(len), stats.fmean(len), stats.median(len))
 
 
 def _halfedge_normal(halfedge):
