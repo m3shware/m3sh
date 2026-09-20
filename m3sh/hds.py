@@ -74,7 +74,7 @@ class Mesh:
     Parameters
     ----------
     points : array_like, optional
-        Vertex coordinates. Converted to equivalent :obj:`~numpy.ndarray`
+        Vertex coordinates. Converted to equivalent :class:`~numpy.ndarray`
         instance if not already of this type. In the latter case the mesh
         uses the `points` array directly without making a copy.
     faces : list[list[int]], optional
@@ -348,9 +348,9 @@ class Mesh:
 
         Parameters
         ----------
-        x, y : ~numpy.ndarray, shape (m, n)
+        x, y : ndarray, shape (m, n)
             Coordinate arrays.
-        z : ~numpy.ndarray, shape (m, n), optional
+        z : ndarray, shape (m, n), optional
             Coordinate array.
         triangulate : bool, optional
             Triangulate quadrilateral faces.
@@ -406,7 +406,7 @@ class Mesh:
     def from_OBJ(cls, filename, *args, quiet=False):
         """ Read mesh from Wavefront OBJ file.
 
-        .. version-added:: 1.1.0
+        .. versionadded:: 1.1.0
 
         Read mesh combinatorics (face definitions) and vertex coordinates
         from an OBJ file. Additional data, like vertex normals, is read
@@ -585,7 +585,7 @@ class Mesh:
     def from_OFF(cls, filename, *args, quiet=False):
         """ Read from OFF file.
 
-        .. version-added:: 1.1.0
+        .. versionadded:: 1.1.0
 
         Read mesh combinatorics (face definitions) and vertex coordinates
         from an OFF file.
@@ -636,7 +636,7 @@ class Mesh:
                   name=None, quiet=False):
         r""" Construct mesh from grid data.
 
-        .. version-added:: 1.1.0
+        .. versionadded:: 1.1.0
 
         A quadrilateral mesh with m⋅n faces is generated from k coordinate
         arrays of shape (m, n). Alternatively a single stacked coordinate
@@ -749,6 +749,9 @@ class Mesh:
     @classmethod
     def read(cls, filename, *args, quiet=False):
         """ Read mesh from file.
+
+        .. versionchanged:: 1.1.0
+           Added support for OFF files.
 
         Read mesh combinatorics and vertex coordinates from file.
 
@@ -954,7 +957,7 @@ class Mesh:
             Name of the data block.
         attr : str
             Name of vertex attribute.
-        data : list or dict or ~numpy.ndarray
+        data : list or dict or ndarray
             Data object.
         default : object, optional
             Immutable default vertex attribute value.
@@ -1195,7 +1198,7 @@ class Mesh:
             Name of the data block.
         attr : str
             Name of face attribute.
-        data : list or dict or ~numpy.ndarray
+        data : list or dict or ndarray
             Data object.
         default : object, optional
             Immutable default face attribute value.
@@ -1976,7 +1979,7 @@ class Mesh:
     def collapse_halfedge(self, halfedge, point=None, pull=True):
         """ Perform edge collapse.
 
-        .. version-added:: 1.1.0
+        .. versionchanged:: 1.1.0
 
         Collapse `halfedge` into one of its vertices. The other vertex is
         marked as deleted.
@@ -3145,7 +3148,7 @@ class Vertex:
 
         Returns
         -------
-        ~numpy.ndarray
+        ndarray
             Array of vertex coordinates.
 
         Notes
@@ -3488,7 +3491,7 @@ class Halfedge:
 
     #     Returns
     #     -------
-    #     ~numpy.ndarray
+    #     ndarray
     #         Coordinates of halfedge direction vector.
     #     """
     #     return self.vector
@@ -3764,7 +3767,7 @@ class Halfedge:
     def collapsible(self):
         """ Topological state.
 
-        .. version-added:: 1.1.0
+        .. versionchanged:: 1.1.0
 
         An edge joining non-boundary vertices of a triangle mesh is
         collapsible if the 1-ring vertex neighborhoods of :attr:`origin`
@@ -3779,7 +3782,7 @@ class Halfedge:
         References
         ----------
         .. [1] Tamal K. Dey et al.: *Topology Preserving Edge Contraction*,
-                ????.
+               ????.
         """
         # New version of _collapsible test that does not automatically
         # reject boundary edges as non-collapsible but uses the pair for
@@ -4148,7 +4151,7 @@ class Face:
 
         Returns
         -------
-        ~numpy.ndarray
+        ndarray
             Array of vertex coordinates.
         """
         return np.array([v.point for v in self], dtype=dtype, copy=copy)
@@ -4465,7 +4468,7 @@ def _array_append(array, item):
 
     Parameters
     ----------
-    array : ~numpy.ndarray or None
+    array : ndarray or None
         Array object to be augmented. A new array of shape
         ``(1, *item.shape)`` will be created if :obj:`None`.
     item : array_like or None
@@ -4479,7 +4482,7 @@ def _array_append(array, item):
 
     Returns
     -------
-    ~numpy.ndarray
+    ndarray
         Reference to the enlarged array. This is a new array if the
         input array argument was :obj:`None`.
     """
@@ -4509,12 +4512,12 @@ def _array_clear(array):
 
     Parameters
     ----------
-    array : ~numpy.ndarray
+    array : ndarray
         Array with at least two axes.
 
     Returns
     -------
-    ~numpy.ndarray
+    ndarray
         The resized array.
     """
     arr_shape = list(array.shape)
