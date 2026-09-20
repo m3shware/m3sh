@@ -1,4 +1,4 @@
-name: build-sphinx-rtd
+name: build-sphinx-docs
 
 on:
   push:
@@ -14,7 +14,7 @@ jobs:
       - uses: actions/setup-python@v5
       
       - name: Install dependencies
-        run: pip install numpy sphinx sphinx_rtd_theme vtk
+        run: pip install numpy numpydoc scipy sphinx pydata-sphinx-theme sphinx_rtd_theme vtk
 
       - name: Sphinx build
         run: sphinx-build docs/source docs/build
