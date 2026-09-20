@@ -6,7 +6,7 @@
 
 
 # -- Path setup --------------------------------------------------------------
-
+#
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
@@ -20,11 +20,13 @@ sys.path.insert(0, os.path.abspath('../../.'))
 # -- Project information -----------------------------------------------------
 
 project = 'm3sh'
-copyright = '2024, m3shware'
+copyright = '2024-2026, m3shware developers'
 author = 'm3shware'
 
+from m3sh import __version__
+
 # The full version, including alpha/beta/rc tags
-release = '1.0'
+release = __version__
 
 
 # -- General configuration ---------------------------------------------------
@@ -37,28 +39,28 @@ extensions = [
     'sphinx.ext.intersphinx',
     'sphinx.ext.mathjax',
     'sphinx.ext.githubpages',
-    'sphinx.ext.napoleon',
+#    'sphinx.ext.napoleon',
     'sphinx.ext.autosummary',
-    'sphinx.ext.viewcode',
-    'sphinx.ext.todo'
+#    'sphinx.ext.viewcode',
+#    'sphinx.ext.todo'
+    'numpydoc'
 ]
 
-# Set up intersphinx mapping to link to the python, numpy and scipy
-# documentation
 intersphinx_mapping = {
     'python': ('https://docs.python.org/3', None),
     'numpy': ('https://numpy.org/doc/stable', None),
     'scipy': ('https://scipy.github.io/devdocs', None)
 }
 
-# Turn on .rst file generation when using autosummary
 autosummary_generate = True
 autosummary_generate_overwrite = True
 
-# Display todos by setting to True
-todo_include_todos = True
+numpydoc_attributes_as_param_list = False
+numpydoc_class_members_toctree = False
+numpydoc_show_class_members = False
+numpydoc_show_inherited_class_members = False
 
-# Add any paths that contain templates here, relative to this directory.
+todo_include_todos = False
 templates_path = ['_templates']
 
 # List of patterns, relative to source directory, that match files and
@@ -69,7 +71,9 @@ exclude_patterns = []
 # New in 5.2: create table of contents entries for domain objects (e.g. 
 # functions, classes, attributes, etc.). This generated unwanted sidebar
 # entries.
-toc_object_entries = False
+toc_object_entries = 'numpydoc' in extensions
+
+add_module_names = False
 
 
 # -- Options for AutoDoc output -------------------------------------------
@@ -92,23 +96,20 @@ def skip(app, what, name, obj, skip, options):
 
 def setup(app):
     app.connect("autodoc-skip-member", skip)
-
+    
 
 # -- Options for HTML output -------------------------------------------------
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 #
-html_theme = 'sphinx_rtd_theme'
-html_logo = 'logo/logo-small.png'
-html_favicon = 'icon/ghems_red.ico'
+if 'sphinx.ext.napoleon' in extensions:
+	html_theme = 'sphinx_rtd_theme'
+elif 'numpydoc' in extensions:
+	html_theme = 'pydata_sphinx_theme'
 
-# Theme options are theme-specific and customize the look and feel of a theme
-# further.  For a list of options available for each theme, see the
-# documentation.
-#
-# html_theme_options = {
-#    'navigation_depth': 3}
+html_logo = '_static/m3.png'
+html_favicon = '_static/m3-red.ico'
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
@@ -116,4 +117,29 @@ html_favicon = 'icon/ghems_red.ico'
 html_static_path = ['_static']
 
 # Do not offer to show html source files.
-html_show_sourcelink = True
+html_show_sourcelink = False
+
+# Theme options are theme-specific and customize the look and feel of a theme
+# further.  For a list of options available for each theme, see the
+# documentation.
+#
+html_theme_options = {
+    "icon_links": [
+        {
+            "name": "GitHub",
+            "url": "https://github.com/m3shware",
+            "icon": "fa-brands fa-github",
+        },
+    ],
+    "logo": {
+        "text": "m3sh",
+    },
+    "navigation_depth": 2
+#	'show_toc_level': 2,
+#	'show_nav_level': 0
+}
+
+#html_sidebars = {
+#  'basics': [],
+#  'usage': []
+#}

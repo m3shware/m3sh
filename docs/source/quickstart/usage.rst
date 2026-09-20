@@ -22,10 +22,11 @@ the search path in your Python scripts before importing any m3sh modules:
 Building a cube
 ---------------
 
-.. image:: figures/cube_alpha.png
+.. image:: ../_static/cube_alpha.png
    :width: 45 %
    :align: center
 
+|
 
 We build a :class:`Mesh` instance that holds the geometry of the unit cube
 :math:`[0, 1]^3` by specifying its vertex coordinates and how those vertices
@@ -47,8 +48,8 @@ are connected to form the faces of the cube:
          [1., 1., 1.],
          [0., 1., 1.]]
 
-    # List of combinatorial face definitions. Indices refer to
-    # rows of the vertex coordinate list V.
+    # List of combinatorial face definitions. Indices refer to rows
+    # of the vertex coordinate list V.
     F = [[0, 1, 2, 3],
          [1, 5, 6, 2],
          [3, 2, 6, 7],
@@ -60,14 +61,14 @@ are connected to form the faces of the cube:
 
 
 During mesh construction, the list `V` is converted to an equivalent
-:obj:`~numpy.ndarray` object. The vertex coordinate array of `cube` can
+:class:`~numpy.ndarray` object. The vertex coordinate array of `cube` can
 be accessed via its :attr:`~Mesh.points` attribute. The list `F` becomes
 redundant.
 
 .. note::
 
    If `V` is of type :obj:`~numpy.ndarray`, this array is directly used by
-   the :class:`Mesh` object and not copied or altered in any way. In this
+   the :class:`Mesh` instance and not copied or altered in any way. In this
    case any changes applied to `V` will be reflected in the mesh.
 
 
@@ -113,21 +114,15 @@ A mesh can be built by adding vertices and faces incrementally:
 Reading and writing meshes
 --------------------------
 
-The :class:`~m3sh.hds.Mesh` class provides interface functions
-:meth:`~m3sh.hds.Mesh.read` and :meth:`~m3sh.hds.Mesh.write` to read and
-write meshes in OBJ format. Assuming the above definition of the cube, it
-can be saved in OBJ format:
+The :class:`~m3sh.hds.Mesh` class provides methods :meth:`~m3sh.hds.Mesh.read`
+and :meth:`~m3sh.hds.Mesh.write` for file input and output operations. Assuming
+the above definition of the cube, it can be saved in OBJ format:
 
 >>> cube.write('cube.obj')
 
 Similarly, we can read a mesh from file:
 
 >>> mesh = Mesh.read('cube.obj')
-
-If vertex normals or texture coordinates are stored in an OBJ file, they
-can be recovered via
-
->>> mesh, vecs, uvs = Mesh.read('some-mesh.obj', 'vn', 'vt')
 
 
 Visualization

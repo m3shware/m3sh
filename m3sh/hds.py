@@ -1,4 +1,4 @@
-# Copyright 2024, m3shware
+# Copyright 2024-2026, m3shware developers
 #
 # Permission is hereby granted, free of charge, to any person obtaining a
 # copy of this software and associated documentation files (the "Software"),
@@ -20,97 +20,112 @@
 
 """ Halfedge data structure.
 
-An orientable 2-manifold mesh (with or without boundary) is described by
-three containers:
+An orientable 2-manifold mesh (with or without boundary) is represented by
+a halfedge data structure, see, e.g., [1]_. To this end the :class:`Mesh`
+class manages three containers:
 
-    - a list of :class:`Vertex` objects,
-    - a list of :class:`Face` objects,
-    - and a dictionary of :class:`Halfedge` objects.
+- a list :attr:`~Mesh.vertices` of :class:`Vertex` instances,
+- a list :attr:`~Mesh.faces` of :class:`Face` instances,
+- and a dictionary :attr:`~Mesh.halfedges` that maps vertex pairs to
+  corresponding :class:`Halfedge` instances.
 
-These containers and the relations between their items are managed by
-the :class:`Mesh` class.
+While surfaces are mainly described as triangle meshes, the halfedge data
+structure is not limited to triangular faces. Vertex coordinates may live
+in n-dimensional space. For the above reasons, the :class:`Mesh` class
+provides only those geometric operations that do not depend on ambient
+space dimension or face valence. In particular there is no default
+implementation to compute face normals as those are only well defined for
+planar faces in 3-space.
 
-Note
-----
-To ease debugging, this module relies on assertions which can slow down
-script execution. You can disable assertions by running in optimized mode
-via the "-O" command line argument.
+References
+----------
+.. [1] H. Brönnimann: *Designing and Implementing a General Purpose Halfedge
+       Data Structure*, In Proceedings of the 5th International Workshop on
+       Algorithm Engineering, 2001.
 """
 
 from pathlib import Path
 from datetime import datetime
-from time import time   #use perf_counter instead
-from copy import copy, deepcopy
+from time import perf_counter
+from copy import copy
 
 import numpy as np
 
-import m3sh.obj as obj
-import m3sh.flags as flags
+# In case hds.py is used as a stand-alone module we loose the ability to
+# read meshes from files. Calling from_OBJ or from_OFF will still raise
+# an exception.
+try:
+    import m3sh.obj as obj
+    import m3sh.off as off
+except ImportError:
+    pass
 
-# from . import obj
-# from . import flags
 
+# Some ideas for handling vertex coordinates in a future version. Treat
+# the points attribute as vertex data. This facilitates combinatorial
+# meshes without vertex coordinates.
 
 class Mesh:
     """ Mesh kernel.
 
-    The combinatorics of a mesh can be built by reading from a file or
-    by converting a sequence of vertex coordinates and a sequence of face
-    definitions to its halfedge representation.
+    A mesh can be built by converting a sequence of vertex coordinates and
+    a sequence of face definitions to its halfedge representation.
 
     Parameters
     ----------
     points : array_like, optional
-        Vertex coordinates. Converted to an equivalent
-        :obj:`~numpy.ndarray` object if necessary.
-    faces : array_like, optional
-        Face definitions, 0-based vertex indexing.
+        Vertex coordinates. Converted to equivalent :class:`~numpy.ndarray`
+        instance if not already of this type. In the latter case the mesh
+        uses the `points` array directly without making a copy.
+    faces : list[list[int]], optional
+        Face definitions, 0-based vertex indexing. The `faces` list itself
+        is not stored or modified but converted to an equivalent list of
+        :obj:`Face` instances that is accessible via the :attr:`faces`
+        attribute of a mesh.
     name : str, optional
-        Name tag.
+        Name tag. Defaults to the string 'None' if not specified. Can be
+        queried later using the :attr:`name` property.
 
-    Raises
-    ------
-    NonManifoldError
-        When trying to initialize a mesh from non-manifold data.
+    See Also
+    --------
+    from_OBJ : read from Wavefront OBJ file
+    from_OFF : read from OFF (Object File Format) file
+    from_grid : convert grid data to quadrilateral mesh
 
-    Note
-    ----
-    The `NumPy glossary <https://numpy.org/doc/stable/glossary.html>`_
-    states the following about :term:`array_like` data representations:
+    Notes
+    -----
+    If neither `points` nor `faces` is specified, an empty mesh is created.
+    You may specify `points` and omit `faces` but not the other way around.
 
-        *Any scalar or sequence that can be interpreted as*
-        :class:`numpy.ndarray`. *In addition to ndarrays and scalars
-        this category includes lists (possibly nested and with different
-        element types) and tuples. Any argument accepted by*
-        :func:`numpy.array` *is array_like.*
+    Examples
+    --------
+    *Convex hull ...*
     """
 
     def __init__(self, points=None, faces=None, *, name=None):
-        """ Initialize from vertex and face lists.
-        """
-        CWHITERED = '\33[41m'               # white on red background
-        CEND = '\33[0m'
-
-        # The points argument could also be an integer resulting in an
-        # abstract connectivity-only halfedge mesh...
+        # If there are faces defined, a corresponding sequence of vertex
+        # coordinates has to be given.
         if points is None and faces is not None:
-            msg = "face definitions require 'points' argument != None"
-            raise ValueError(msg)
+            raise ValueError(f"'points' cannot be None")
+
+        # Measure mesh construction time, i.e., conversion from points
+        # and faces to halfedge representation.
+        start = perf_counter()
 
         if points is not None:
-            self._points = np.asarray(points)
+            self._points = np.atleast_2d(points)
             self._verts = [Vertex(i, parent=self)
                            for i in range(len(points))]
 
             if self._points.base is not None:
-                print(f"{CWHITERED}array data buffer not owned by " +
-                      f"'points' array{CEND}")
+                print("'points' is a view object, consider using a copy"
+                      + " to prevent unintentional data modification")
         else:
             self._points = None
             self._verts = []
 
         # Used to detect and handle non-manifold vertices during mesh
-        # construction.
+        # construction and modification.
         self._vhout = {v: set() for v in self._verts}
 
         # User defined vertex, halfedge, and face data. Each container
@@ -135,9 +150,9 @@ class Mesh:
                 self.add_face(face)
 
             # Typically one does not expect isolated vertices in a mesh
-            # that does define faces (i.e., not a point cloud).
+            # that does define faces. Such vertices might be artifacts.
             if any(v.isolated for v in self._verts):
-                print(f'{CWHITERED}there are isolated vertices{CEND}')
+                print('there are isolated vertices')
 
         # Vertex neighborhood iterators will not work properly in the
         # presence of non-manifold vertices.
@@ -145,58 +160,47 @@ class Mesh:
             if not v._manifold:
                 raise NonManifoldError(f'vertex #{v._idx} is non-manifold')
 
-        # The corresponding property setter will strip any directory
-        # prefix and type suffix from the name.
+        # Set creation date and time, invalid file name, and name attribute.
+        # The name value is converted to str by the corresponding setter.
+        self._date = f"{str(datetime.now())[:16]}"
+        self._file = None
+        self._time = perf_counter() - start
+
+        # The property setter converts name to its corresponding string
+        # representation (using str()).
         self.name = name
 
-    # def __repr__(self):
-    #     return (f'Mesh({repr(self._points)}, \n' +
-    #             f'{[[int(v) for v in f] for f in self]})')
+    def __repr__(self):
+        return (f"{type(self).__name__}(\n{repr(self._points)},\n"
+                + f"{[[int(v) for v in f] for f in self]})")
 
-    # def __str__(self):
-    #     return (str(self._points)
-    #             + '\n[' + '\n '.join([str(f) for f in self]) + ']')
+    def __str__(self):
+        BOLD = '\33[1m'
+        CEND = '\33[0m'
+
+        return (f"mesh instance {BOLD}{self.name}{CEND}\n"
+                + f"\t\u251c\u2500 {len(self.vertices)} vertices\n"
+                + f"\t\u251c\u2500 {len(self.faces)} faces\n"
+                + f"\t\u251c\u2500 {self._time:.2f} sec construction time\n"
+                + f"\t\u2514\u2500 from file {self._file!r}")
 
     def __iter__(self):
         """ Face iterator.
 
-        The returned iterator visits all faces of a mesh that are **not**
-        marked as deleted in order of ascending face indices.
+        Visit all faces of a mesh that are not marked as deleted in order
+        of ascending face indices.
 
         Yields
         ------
         Face
             Next face in insertion order traversal.
-
-
-        The loop that visits all faces of a mesh that contribute to its
-        combinatorics
-
-        .. code-block:: python
-           :linenos:
-
-           for f in mesh:
-               # do something with the face
-               ...
-
-        is equivalent to explicitly checking the :attr:`deleted` attribute
-        of a face:
-
-        .. code-block:: python
-           :linenos:
-
-           for f in mesh.faces:
-               if not f.deleted:
-                   # do something with the face
-                   ...
         """
         return (f for f in self._faces if not f._deleted)
 
     def __copy__(self):
         """ Shallow mesh copy.
 
-        Duplicate the mesh combinatorics and vertex coordinates. Equivalent
-        to :meth:`copy` method.
+        Duplicate the mesh combinatorics and vertex coordinates.
 
         Returns
         -------
@@ -207,17 +211,15 @@ class Mesh:
 
     def __deepcopy__(self, *args):
         """ Reserved for future use.
-
-        Use :meth:`copy` to copy a halfedge mesh.
         """
-        raise NotImplementedError('use .copy() instead')
+        raise NotImplementedError('use copy() instead')
 
     def __bool__(self):
         return True
 
     def __getitem__(self, index):
-        # Treat a mesh like a tuple consisting of a list of goemetric
-        # vertices and face definitions.
+        # Treat a mesh like a tuple consisting of a list of points and
+        # face definitions. Both lists contain deleted items!
         if index == 0:
             return self._points
         elif index == 1:
@@ -233,17 +235,17 @@ class Mesh:
         size of the coordinate array is likely to break the halfedge data
         structure.
 
-        :type: ~numpy.ndarray
-
-        Note
-        ----
+        Warnings
+        --------
         The vertex coordinate array contains coordinate entries of deleted
-        vertices. Calling :meth:`clean` removes those entries.
+        vertices. Garbage collection is performed by calling :meth:`clean`.
         """
         return self._points
 
     @points.setter
     def points(self, value):
+        # This is inconsistent. In __init__ we use atleast_2d to convert
+        # array_like data to ndarray.
         self._points = np.asarray(value)
 
     @property
@@ -252,14 +254,6 @@ class Mesh:
 
         Read access to the vertex list. This list should not be modified
         directly.
-
-        :type: list[Vertex]
-
-        Note
-        ----
-        The vertex list may contain deleted vertices. Call
-        :meth:`~Mesh.clean` to remove deleted vertices from the vertex
-        container.
         """
         return self._verts
 
@@ -270,18 +264,13 @@ class Mesh:
         Read access to the face list. This list should not be modified
         directly.
 
-        :type: list[Face]
-
-        This is **not** the list passed as argument `faces` during mesh
-        construction but it can be generated easly with a list
-        comprehension:
+        Notes
+        -----
+        This is not the list passed as argument `faces` during mesh
+        construction but an equivalent list can be generated easily if
+        needed:
 
         >>> faces = [[int(v) for v in f] for f in mesh]
-
-        Note
-        ----
-        The face list may contain deleted faces. A call to
-        :meth:`~Mesh.clean` will remove such entries.
         """
         return self._faces
 
@@ -290,17 +279,18 @@ class Mesh:
         """ Halfedge dictionary.
 
         Dictionary that maps pairs of :class:`Vertex` objects to
-        :class:`Halfedge` instances. Hence, to visit :class:`Halfedge`
-        instances one can use
+        :class:`Halfedge` instances.
+
+        Examples
+        --------
+        To visit all :class:`Halfedge` instances of a mesh one can use
 
         .. code-block:: python
 
             for h in mesh.halfedges.values():
-                v = h.origin
-                w = h.target
                 ...
 
-        to directly visit halfedges as :class:`Vertex` instance pairs use
+        To directly visit halfedges as :class:`Vertex` instance pairs use
 
         .. code-block:: python
 
@@ -323,17 +313,15 @@ class Mesh:
     def size(self):
         """ Mesh size.
 
-        Mesh size **not** accounting for deleted vertices and faces. The
-        attribute value :math:`(v, e, f)` holds the number of vertices,
-        the number of edges, and the number of faces.
+        A 3-tuple :math:`(|V|, |E|, |F|)` of integers holding the number
+        of vertices, the number of edges, and the number of faces.
 
-        :type: (int, int, int)
-
-        Note
-        ----
-        In the presence of **deleted** items the value ``len(mesh.vertices)``
-        (resp. ``len(mesh.faces)``) and the corresponding value of
-        ``mesh.size`` are different.
+        Notes
+        -----
+        The numbers do not account for deleted vertices and faces. In the
+        presence of deleted items the value ``len(mesh.vertices)`` (resp.
+        ``len(mesh.faces)``) and the corresponding entries of ``mesh.size``
+        are different!
         """
         assert len(self._halfs) % 2 == 0
 
@@ -344,23 +332,12 @@ class Mesh:
     @property
     def name(self):
         """ Name property.
-
-        Name augmented with current time stamp.
-
-        :type: str
-
-        Note
-        ----
-        The returned string does not include a type suffix!
         """
-        date = str(datetime.now())[:10]
-        time = str(datetime.now())[11:16]
-
-        return f'{date}_{time}_{self._name}'
+        return self._name
 
     @name.setter
     def name(self, value):
-        self._name = value if value is None else Path(value).stem
+        self._name = str(value)
 
     @classmethod
     def _from_grid(cls, x, y, z=None, *, triangulate=False, name=None):
@@ -371,9 +348,9 @@ class Mesh:
 
         Parameters
         ----------
-        x, y : ~numpy.ndarray, shape (m, n)
+        x, y : ndarray, shape (m, n)
             Coordinate arrays.
-        z : ~numpy.ndarray, shape (m, n), optional
+        z : ndarray, shape (m, n), optional
             Coordinate array.
         triangulate : bool, optional
             Triangulate quadrilateral faces.
@@ -385,10 +362,12 @@ class Mesh:
         Mesh
             Mesh instance.
 
-        Note
-        ----
+        Notes
+        -----
         Currently no `array_like` arguments are accepted.
         """
+        assert False, 'deprecated, use from_grid() instead'
+
         # Raises an error if x has not the proper number of axis. Shapes
         # of y (and z if not None) have to match.
         m, n = x.shape
@@ -424,65 +403,98 @@ class Mesh:
         return mesh
 
     @classmethod
-    def read(cls, filename, *args, merge=False, quiet=True):
-        """ Read mesh from file.
+    def from_OBJ(cls, filename, *args, quiet=False):
+        """ Read mesh from Wavefront OBJ file.
+
+        .. versionadded:: 1.1.0
 
         Read mesh combinatorics (face definitions) and vertex coordinates
-        from an OBJ file. Additional data is read on request.
+        from an OBJ file. Additional data, like vertex normals, is read
+        only on request, see the example below.
 
         Parameters
         ----------
         filename : str
-            Name of an OBJ file.
+            Name of OBJ file.
         *args
             Variable number of arguments of type :class:`str`.
         quiet : bool, optional
-            Suppress console output.
+            Suppress console output if :obj:`True`.
 
         Returns
         -------
         mesh : Mesh
-            Mesh object.
-        data : ndarray or tuple(ndarray, ...)
-            Data blocks as requested via `args`. If a data block could
-            not be read, a :obj:`None` value is returned.
+            Mesh instance. Reading fails if mesh combinatorics do not
+            represent an orientable manifold surface mesh.
+        data
+            A corresponding data block of type :class:`~numpy.ndarray`
+            as requested via `args`. If a data block could not be read,
+            :obj:`None` is returned in its place.
 
+        See Also
+        --------
+        m3sh.obj.read : low-level read function, can read non-manifold data
 
-        Vertex normals or texture coordinates stored in a file can be
-        read via
+        Warnings
+        --------
+        This method cannot read multiple meshes from a single file! If the
+        file defines multiples meshes they are interpreted as the connected
+        components of a single mesh.
 
-        >>> mesh, vecs, uvs = Mesh.read(filename, 'vn', 'vt')
+        Notes
+        -----
+        By default `filename` (without suffix) is used as the name of the
+        created mesh instance. If the OBJ file defines an object name it
+        is used instead.
 
-        Note
-        ----
-        Additional return values (vertex normals, texture vertices, and
-        custom data) are returned in the same order as they are presented
-        in the argument list `args`.
+        Examples
+        --------
+        Vertex normals or texture coordinates stored in an OBJ file can
+        be read via
+
+        >>> mesh, vecs, uvs = Mesh.from_OBJ(filename, 'vn', 'vt')
+
+        Additional return values (in this case vertex normals and texture
+        coordinates) are returned in the same order as they are presented
+        in the argument list `args`. If the requested data is not stored
+        in the file a :obj:`None` value is returned in its place.
         """
-        CBOLD = '\33[1m'                    # bold text, white on black
-        CEND = '\33[0m'
-
-        if not quiet:
-            start = time()
-            print(f'reading {CBOLD}{Path(filename).name}{CEND}', end=' ...')
-
         if 'v' in args:
             raise ValueError("'v' cannot be used as argument")
 
         if 'f' in args:
             raise ValueError("'f' cannot be used as argument")
 
-        # The *data expression will assign a list of all return values not
-        # assigned to a name to data.
-        verts, faces, *data = obj.read(filename, 'v', 'f', *args)
+        if 'o' in args:
+            raise ValueError("'o' cannot be used as argument")
+
+        BOLD = '\33[1m'
+        ENDC = '\33[0m'
+
+        if not quiet:
+            print(f'reading {BOLD}{Path(filename).name}{ENDC}', end=' ...',
+                  flush=True)
+
+        start = perf_counter()
+
+        # The *data expression will assign a list of all return values that
+        # correspond to *args to a list with name data.
+        verts, faces, objs, *data = obj.read(filename, 'v', 'f', 'o', *args)
+
+        if len(objs) > 1:
+            print(f"\n\tfile {filename!r} defines multiple objects: {objs}")
+
+        name = objs[0] if objs else Path(filename).stem
+        file = Path(filename).name
 
         # Convert list of data blocks to a dictionary. Since insertion
         # order traversal is guaranteed, *data before conversion is equal
         # to *data.values() after conversion.
-        data = {arg: block for arg, block in zip(args, data)}
+        data = {arg: np.asarray(block) if block else None
+                for arg, block in zip(args, data, strict=True)}
 
         if not quiet:
-            print(f' done ({time()-start:.3f} sec, {merge=})')
+            print(f' done ({perf_counter() - start:.2f} sec)') #, {merge=})')
 
             for arg in args:
                 print(f"\t\u251c\u2500 data block '{arg}' " +
@@ -491,13 +503,13 @@ class Mesh:
             print(f'\t\u251c\u2500 {len(verts)} vertices')
             print(f'\t\u2514\u2500 {len(faces)} faces')
 
-        if merge:
-            start = time()
-            faces = obj.merge(verts, faces)
+        # if merge:
+        #     start = time()
+        #     faces = _merge(verts, faces)
 
-            if not quiet:
-                print(f'merged vertices of {CBOLD}{Path(filename).name}' +
-                      f'{CEND} by distance ({time()-start:.3f} sec)')
+        #     if not quiet:
+        #         print(f'merged vertices of {CBOLD}{Path(filename).name}' +
+        #               f'{CEND} by distance ({time()-start:.3f} sec)')
 
         if 'vn' in args:
             # Check if each vertex is assigned the normal with identical
@@ -516,13 +528,14 @@ class Mesh:
                 # All vertices are assigned the normal vector with
                 # identical index. This is fine for mesh generation.
                 mesh = cls(verts, [[v[0] for v in f] for f in faces])
-                mesh.name = filename
+                mesh.name = name
+                mesh._file = file
 
                 return mesh, *data.values()
 
             if not quiet:
                 print(f'rebuilding normal data block of ', end='')
-                print(f'{CBOLD}{Path(filename).name}{CEND}')
+                print(f'{BOLD}{Path(filename).name}{ENDC}')
                 print(f'\t\u251c\u2500 {len(data["vn"])} normals read')
 
             # Fix the normals data block such that there are as many
@@ -559,33 +572,257 @@ class Mesh:
             if not quiet:
                 print(f'\t\u2514\u2500 {num_avg} averages performed')
 
-        if args:
-            mesh = cls(verts, [[v[0] for v in f] for f in faces])
-            mesh.name = filename
+        mesh = cls(verts, [[v[0] for v in f] for f in faces])
+        mesh.name = name
+        mesh._file = file
 
+        if args:
             return mesh, *data.values()
 
-        return cls(verts, [[v[0] for v in f] for f in faces], name=filename)
+        return mesh
 
-    def write(self, filename, quiet=True, **data):
-        """ Write mesh to file.
+    @classmethod
+    def from_OFF(cls, filename, *args, quiet=False):
+        """ Read from OFF file.
 
-        Data arrays, like vertex normals and texture coordinates, can be
-        saved by passing them as keyword arguments.
+        .. versionadded:: 1.1.0
+
+        Read mesh combinatorics (face definitions) and vertex coordinates
+        from an OFF file.
 
         Parameters
         ----------
         filename : str
-            Name of an OBJ file.
+            Name of OFF file.
+        *args
+            Variable number of arguments. Currently all arguments are
+            ignored.
         quiet : bool, optional
-            Suppress console output.
+            Suppress console output if :obj:`True`.
+
+        Returns
+        -------
+        mesh : Mesh
+            Mesh instance. Reading fails if mesh combinatorics do not
+            represent an orientable manifold surface mesh.
+        data
+            A :obj:`None` value for each data block requested via `args`.
+        """
+        BOLD = '\33[1m'
+        CEND = '\33[0m'
+
+        if not quiet:
+            print(f'reading {BOLD}{Path(filename).name}{CEND}', end=' ...',
+                  flush=True)
+
+        start = perf_counter()
+        verts, faces = off.read(filename)
+
+        mesh = cls(verts, faces, name=Path(filename).stem)
+        mesh._file = Path(filename).name
+
+        if not quiet:
+            print(f' done ({perf_counter() - start:.2f} sec)')
+            print(f'\t├─ {len(verts)} vertices')
+            print(f'\t└─ {len(faces)} faces')
+
+        if args:
+            return mesh, *(None for _ in args)
+
+        return mesh
+
+    @classmethod
+    def from_grid(cls, array, *arrays, triangulate=False, order='C',
+                  name=None, quiet=False):
+        r""" Construct mesh from grid data.
+
+        .. versionadded:: 1.1.0
+
+        A quadrilateral mesh with m⋅n faces is generated from k coordinate
+        arrays of shape (m, n). Alternatively a single stacked coordinate
+        array of shape (m, n, k) can be provided.
+
+        Parameters
+        ----------
+        array : ndarray, shape (m, n, k)
+            Stacked coordinate arrays. Points in k-d space are defined by
+            the last axis.
+        *arrays
+            Variable number of coordinate arrays of shape (m, n). If given,
+            `array` has to be of shape (m, n), too.
+        triangulate : bool, optional
+            Triangulate quadrilateral faces.
+        order : str, optional
+            Flatten coordinate arrays in row-major mode 'C' or column-major
+            mode 'F'.
+        name : str, optional
+            Name tag. Defaults to the string 'None' if not specified.
+        quiet : bool, optional
+            Suppress console output if :obj:`True`.
+
+        Returns
+        -------
+        mesh : Mesh
+            Mesh instance.
+
+        Notes
+        -----
+        As a rule of thumb, use 'C' order when `meshgrid` was used with the
+        'xy' option and 'F' order when `meshgrid` was used with the 'ij'
+        option.
+
+        Examples
+        --------
+        Create a quadrilateral mesh of the graph of :math:`\frac{1}{2}
+        x^2 - y^2` over :math:`[-1, 1] \times [-1, 1]` where the interval
+        in x-direction is sampled at n=10 points and the y-direction at
+        m=20 points:
+
+        >>> x = np.linspace(-1.0, 1.0, 10)
+        >>> y = np.linspace(-1.0, 1.0, 20)
+
+        Prepare the three coordinate arrays using `meshgrid` with the default
+        'xy' indexing (resulting in coordinate arrays of shape (m, n) each)
+        and create the mesh:
+
+        >>> X, Y = np.meshgrid(x, y)
+        >>> Z = 0.5 * X**2 - Y**2
+        >>> mesh = Mesh.from_grid(X, Y, Z)
+
+        The mesh stores rows of the grid contiguously ('C' order is used by
+        default). Hence, all points of the slice ``mesh.points[i*n:(i+1)*n]``
+        of length n have equal y-coordinate ``y[i]``.
+        """
+        if order != 'C' and order != 'F':
+            raise ValueError(f"invalid order argument {order!r}")
+
+        def face(m, n):
+            # Generator function that produces the face definitions of grid
+            # data with given shape (m, n).
+            for major_idx in range(m - 1):
+                ofs = major_idx * n
+
+                for j in range(n - 1):
+                    if triangulate:
+                        yield [ofs + j, ofs + j + 1, ofs + j + n + 1]
+                        yield [ofs + j, ofs + j + n + 1, ofs + j + n]
+                    else:
+                        yield [ofs + j, ofs + j + 1,
+                               ofs + j + n + 1, ofs + j + n]
+
+        BOLD = '\33[1m'
+        CEND = '\33[0m'
+
+        if not quiet:
+            print(f"generating mesh {BOLD}{name}{CEND} from grid data ...")
+
+        if arrays:
+            # The case where all coordinates array are given as individual
+            # arrays. All arrays have the same shape and are assumed to have
+            # 2 axis (because it is grid data).
+            if order == 'C':
+                m, n = array.shape
+            elif order == 'F':
+                n, m = array.shape
+
+            # All arrays have to be flattened. Each flattened array froms
+            # a column of the points coordinate array of the generated mesh.
+            arrays = tuple(arr.reshape(-1, order=order) for arr in arrays)
+            points = np.stack(
+                (array.reshape(-1, order=order), *arrays), axis=-1)
+        else:
+            # All coordinates are already stacked. We only need to flatten it
+            # in the correct order.
+            if order == 'C':
+                m, n, k = array.shape
+            elif order == 'F':
+                n, m, k = array.shape
+
+            points = array.reshape(-1, k, order=order)
+
+        if not quiet:
+            print(f"\t\u251c\u2500 grid shape {(m, n)}")
+            print(f"\t\u2514\u2500 dimension {points.shape[-1]}")
+
+        return cls(points, [f for f in face(m, n)], name=name)
+
+    @classmethod
+    def read(cls, filename, *args, quiet=False):
+        """ Read mesh from file.
+
+        .. versionchanged:: 1.1.0
+           Added support for OFF files.
+
+        Read mesh combinatorics and vertex coordinates from file.
+
+        Parameters
+        ----------
+        filename : str
+            File to read from. Currently supports OBJ and OFF file
+            formats.
+        *args
+            Variable number of arguments of type :class:`str`. Not
+            all file formats support additional arguments.
+        quiet : bool, optional
+            Suppress console output if :obj:`True`.
+
+        Returns
+        -------
+        mesh : Mesh
+            Mesh instance. Reading fails if mesh combinatorics do not
+            represent an orientable manifold surface mesh.
+        data
+            Data blocks of type :class:`~numpy.ndarray` as requested
+            via `args`. If a data block could not be read, :obj:`None`
+            is returned in its place.
+
+        See Also
+        --------
+        from_OBJ : read from OBJ file
+        from_OFF : read from OFF file
+        """
+        # Reading from file adds a private attribute _file to the mesh
+        # instance that holds the original file name without directory.
+        match (suffix := Path(filename).suffix.lower()):
+            case '.obj':
+                return cls.from_OBJ(filename, *args, quiet=quiet)
+            case '.off':
+                return cls.from_OFF(filename, *args, quiet=quiet)
+
+        raise ValueError(f"file format {suffix!r} not recognized")
+
+    def write(self, filename, append=False, absolute=True, quiet=False,
+              **data):
+        """ Write mesh to file.
+
+        Data arrays, like vertex normals and texture coordinates, can be
+        saved by passing them as keyword arguments, see below.
+
+        Parameters
+        ----------
+        filename : str
+            If a file with this name already exists it will be overwritten
+            unless `append` evaluates to :obj:`True`.
+        append : bool, optional
+            Append to file if it exists. When writing multiple meshes to
+            the same file `absolute` should be set to :obj:`False`.
+        absolute : bool, optional
+            Pass :obj:`False` to store relative indices.
+        quiet : bool, optional
+            Suppress console output if :obj:`True`.
         **data
-            Arbitrary keyword arguments.
+            Arbitrary number of keyword arguments.
 
+        Warnings
+        --------
+        The values 'v' and 'f' may not be used as keywords since they are
+        implicitly used when writing mesh data to an .obj file.
 
+        Notes
+        -----
         User defined data blocks can be written with
 
-        >>> mesh.write('output-file.obj', line_tag=data)
+        >>> mesh.write('output-file.obj', tag=data)
 
         This assumes that ``data`` can be interpreted as a 2-dimensional
         array. The contents of each row are written to a line that starts
@@ -594,13 +831,12 @@ class Mesh:
 
         >>> mesh.write('outfile-file.obj', vn=normals)
 
-        Note
-        ----
-        The standard OBJ tags 'v' and 'f' may not be used as keywords
-        since they are implicitly used when writing mesh data to an OBJ
-        file.
+        .. rubric:: Interfacing with Blender
+
+        To properly orient a mesh when importing it in Blender, use Z as
+        `up` and Y as `forward` direction.
         """
-        CBOLD = '\33[1m'                    # bold text, white on black
+        BOLD = '\33[1m'                    # bold text, white on black
         CEND = '\33[0m'
 
         if 'v' in data.keys():
@@ -630,25 +866,33 @@ class Mesh:
                        f'number of vertices ({len(self._points)})')
                 raise ValueError(msg)
 
-        tidx = lambda v : int(v) if vt_given else None
-        nidx = lambda v : int(v) if vn_given else None
+        # Mesh uses absolute 0-based indices. The low-level write() function
+        # accepts either negative or positive 0-based indices. In the latter
+        # case they are transformed to 1-based indices before writing them to
+        # disk. Note that 0 is never a valid index in an .obj file!
+        ofs = 0 if absolute else len(self._points)
+
+        tidx = lambda v : int(v) - ofs if vt_given else None
+        nidx = lambda v : int(v) - ofs if vn_given else None
 
         # Using the implicit face iterator (instead of using self.faces
         # explicitly) will skip all faces of the mesh that are marked as
         # deleted.
-        faces = (((int(v), tidx(v), nidx(v)) for v in f) for f in self)
+        faces = (((int(v) - ofs, tidx(v), nidx(v)) for v in f) for f in self)
 
         if not quiet:
-            start = time()
-            print(f'writing {CBOLD}{Path(filename).name}{CEND}', end=' ...')
+            print(f'writing {BOLD}{Path(filename).name}{CEND}', end=' ...',
+                  flush=True)
+
+        start = perf_counter()
 
         # Write all vertex coordinates (including unused/deleted/isolated)
-        # ones. This is necessary since the faces list generated above
-        # uses vertex offsets into the list of all vertices.
-        obj.write(filename, v=self._points, f=faces, **data)
+        # ones. This is necessary since the faces list generated above uses
+        # vertex offsets into the list of all vertices.
+        obj.write(filename, append, absolute, v=self._points, f=faces, **data)
 
         if not quiet:
-            print(f' done ({time()-start:.3} sec)')
+            print(f' done ({perf_counter() - start:.3} sec)')
 
     def add_vertex(self, point, *args, **kwargs):
         """ Create and add new vertex.
@@ -661,37 +905,27 @@ class Mesh:
         point : array_like or float
             Vertex coordinates.
         *args
-            Variable number of scalars.
+            Variable number of scalars that are interpreted as vertex
+            coordinates.
         **kwargs
-            Attribute name and value pairs.
-
-        Raises
-        ------
-        ValueError
-            If `point` has the wrong shape.
+            Arbitrary number of attribute name and value pairs.
 
         Returns
         -------
         Vertex
             The newly created :class:`Vertex` instance.
 
-        Note
-        ----
-        When adding a new vertex all vertex data blocks are extended by
-        a correponding value:
-
-            - either by using the `default` value specified when
-              the data block was added,
-
-            - or by using a value provided as keyword argument.
-
-        Values specified as keyword arguments that don't fit this pattern
-        are added as :class:`Vertex` instance attributes and only availabe
-        as attributes of this particular instance.
+        Notes
+        -----
+        When adding a new vertex all vertex data blocks are extended by a
+        corresponding value: either by using the default value specified
+        when the data block was added, or by using a value provided as
+        keyword argument. Values specified as keyword arguments that don't
+        fit this pattern are added as ordinary instance attributes.
         """
         # Append to (or create) the array of all vertex coordinates.
         point = [point, *args] if len(args) else point
-        self._points = obj._array_append(self._points, point)
+        self._points = _array_append(self._points, point)
 
         # New vertex object that goes to the end of the list of all
         # vertices.
@@ -706,7 +940,6 @@ class Mesh:
         for key, value in kwargs.items():
             # This calls the setter method of the property with the
             # name 'key' if it exists.
-            # if key not in (attr for _, attr, _ in self._vattr):
             setattr(v, key, value)
 
         return v
@@ -724,7 +957,7 @@ class Mesh:
             Name of the data block.
         attr : str
             Name of vertex attribute.
-        data : list or dict or ~numpy.ndarray
+        data : list or dict or ndarray
             Data object.
         default : object, optional
             Immutable default vertex attribute value.
@@ -759,51 +992,51 @@ class Mesh:
                 print(v.vec == vecs[v])
 
 
-        Note
-        ----
+        Notes
+        -----
         A mutable `default` value has the same drawbacks as mutable
         default function arguments.
         """
 
-        def get(self):
-            # self refers to a vertex instance
-            return getattr(self._mesh, private_name)[self]
+        def get(vertex):
+            return getattr(vertex._mesh, private_name)[vertex]
 
-        def get_data(self):
-            # self refers to a mesh instance
-            return getattr(self, private_name)
+        def set(vertex, value):
+            getattr(vertex._mesh, private_name)[vertex] = value
 
-        def set(self, value):
-            getattr(self._mesh, private_name)[self] = value
+        def get_data(mesh):
+            return getattr(mesh, private_name)
 
-        def set_data(self, value):
-            setattr(self, private_name, value)
+        def set_data(mesh, value):
+            setattr(mesh, private_name, value)
 
-        def del_data(self):
-            for i, (data_name, _, _) in enumerate(self._vattr):
+        def del_data(mesh):
+            for i, (data_name, _, _) in enumerate(mesh._vattr):
                 if data_name == private_name:
-                    del self._vattr[i]
+                    del mesh._vattr[i]
 
-            delattr(self, private_name)
+            delattr(mesh, private_name)
 
-        # The hidden name for direct access of the attribute data block.
-        # Make sure not to unintentionally overwrite existing data.
-        private_name = '_' + name
-
-        if hasattr(self, private_name):
-            raise ValueError(f"data block '{name}' already exists")
+        # if hasattr(self, private_name):
+        #     raise ValueError(f"data block '{name}' already exists")
 
         # if hasattr(Vertex, attr):
         #     raise ValueError(f"vertex attribute '{attr}' already in use")
 
-        setattr(self, private_name, data)
+        # The hidden name for direct access of the attribute data block. Do
+        # not unintentionally overwrite existing data.
+        setattr(self, (private_name := '_' + name), data)
 
-        # Store name and type of attribute. Memory management functions
-        # need this information.
-        self._vattr.append((private_name, attr, default))
+        # Store name and type of attribute. Memory management functions need
+        # this information.
+        for i, (data_name, _, _) in enumerate(self._vattr):
+            if data_name == private_name:
+                self._vattr[i] = private_name, attr, default
+        else:
+            self._vattr.append((private_name, attr, default))
 
-        # Attribute access via properties. One global property bound to
-        # the mesh and local properties bound to vertices.
+        # Attribute access via properties. One global property bound to the
+        # mesh and local properties bound to vertices.
         setattr(self.__class__, name, property(get_data, set_data, del_data))
         setattr(Vertex, attr, property(get, set))
 
@@ -818,26 +1051,18 @@ class Mesh:
         face : list[int] or list[Vertex]
             Combinatorial face definition.
         *args
-            Variable number of :class:`Vertex` or :class:`int` arguments.
+            Variable number of :class:`Vertex` or :class:`int` arguments
+            that are interpreted as vertex identifiers.
         **kwargs
-            Attribute name and value pairs.
-
-        Raises
-        ------
-        NonManifoldError
-            If topological problems occur.
-        IndexError
-            If the given vertex indices are out of bounds.
-        ValueError
-            If the given arguments do not define a valid face.
+            Arbitrary number of attribute name and value pairs.
 
         Returns
         -------
         Face
             The newly created :class:`Face` instance.
 
-        Note
-        ----
+        Notes
+        -----
         See :meth:`~Mesh.add_vertex` for a detailed discussion of `kwargs`.
         """
         # Number of vertices of the face, same as the number of edges
@@ -956,7 +1181,6 @@ class Mesh:
             # name 'key' if it exists, i.e., for managed attributes we
             # set the same value as done in the previous loop (could be
             # avoided with an if-condition).
-            # if key not in (attr for _, attr, _ in self._fattr):
             setattr(f, key, value)
 
         return f
@@ -974,7 +1198,7 @@ class Mesh:
             Name of the data block.
         attr : str
             Name of face attribute.
-        data : list or dict or ~numpy.ndarray
+        data : list or dict or ndarray
             Data object.
         default : object, optional
             Immutable default face attribute value.
@@ -984,47 +1208,47 @@ class Mesh:
         ValueError
             If a data block of the same name already exists.
 
-        Note
-        ----
+        Notes
+        -----
         See :meth:`~Mesh.add_vertex_data` for an example.
         """
 
-        def get(self):
-            # self refers to a face instance
-            return getattr(self._halfedge._origin._mesh, private_name)[self]
+        def get(face):
+            return getattr(face.halfedge.origin._mesh, private_name)[face]
 
-        def get_data(self):
-            # self refers to a mesh instance
-            return getattr(self, private_name)
+        def set(face, value):
+            getattr(face.halfedge.origin._mesh, private_name)[face] = value
 
-        def set(self, value):
-            getattr(self._halfedge._origin._mesh, private_name)[self] = value
+        def get_data(mesh):
+            return getattr(mesh, private_name)
 
-        def set_data(self, value):
-            setattr(self, private_name, value)
+        def set_data(mesh, value):
+            setattr(mesh, private_name, value)
 
-        def del_data(self):
-            for i, (data_name, _, _) in enumerate(self._fattr):
+        def del_data(mesh):
+            for i, (data_name, _, _) in enumerate(mesh._fattr):
                 if data_name == private_name:
-                    del self._fattr[i]
+                    del mesh._fattr[i]
 
-            delattr(self, private_name)
+            delattr(mesh, private_name)
 
-        # The hidden name for direct access of the attribute data block.
-        # Make sure to not unintentionally overwrite existing data.
-        private_name = '_' + name
-
-        if hasattr(self, private_name):
-            raise ValueError(f"data block '{name}' already exists")
+        # if hasattr(self, private_name):
+        #     raise ValueError(f"data block '{name}' already exists")
 
         # if hasattr(Face, attr):
         #     raise ValueError(f"face attribute '{attr}' already in use")
 
-        setattr(self, private_name, data)
+        # The hidden name for direct access of the attribute data block. Do
+        # not unintentionally overwrite existing data.
+        setattr(self, (private_name := '_' + name), data)
 
-        # Store name and type of attribute. Memory management functions
-        # need this information.
-        self._fattr.append((private_name, attr, default))
+        # Store name and type of attribute. Memory management functions need
+        # this information.
+        for i, (data_name, _, _) in enumerate(self._fattr):
+            if data_name == private_name:
+                self._fattr[i] = private_name, attr, default
+        else:
+            self._fattr.append((private_name, attr, default))
 
         # Attribute access via properties. One global property bound to
         # the mesh and local properties bound to faces.
@@ -1055,54 +1279,115 @@ class Mesh:
             If a data block of same name already exists or the
             data block is not a dictionary instance.
 
-        Note
-        ----
+        Notes
+        -----
         See :meth:`~Mesh.add_vertex_data` for an example.
         """
         if not isinstance(data, dict):
             raise ValueError("data block has to be of type 'dict'")
 
-        def get(self):
-            # self refers to a halfedge instance
-            return getattr(self._origin._mesh, private_name)[self]
+        def get(halfedge):
+            return getattr(halfedge._origin._mesh, private_name)[halfedge]
 
-        def get_data(self):
-            # self refers to a mesh instance
-            return getattr(self, private_name)
+        def set(halfedge, value):
+            getattr(halfedge._origin._mesh, private_name)[halfedge] = value
 
-        def set(self, value):
-            getattr(self._origin._mesh, private_name)[self] = value
+        def get_data(mesh):
+            return getattr(mesh, private_name)
 
-        def set_data(self, value):
-            setattr(self, private_name, value)
+        def set_data(mesh, value):
+            setattr(mesh, private_name, value)
 
-        def del_data(self):
-            for i, (data_name, _, _) in enumerate(self._hattr):
+        def del_data(mesh):
+            for i, (data_name, _, _) in enumerate(mesh._hattr):
                 if data_name == private_name:
-                    del self._hattr[i]
+                    del mesh._hattr[i]
 
-            delattr(self, private_name)
+            delattr(mesh, private_name)
 
-        # The hidden name for direct access of the attribute data block.
-        # Make sure not to unintentionally overwrite existing data.
-        private_name = '_' + name
-
-        if hasattr(self, private_name):
-            raise ValueError(f"data block '{name}' already exists")
+        # if hasattr(self, private_name):
+        #     raise ValueError(f"data block '{name}' already exists")
 
         # if hasattr(Halfedge, attr):
         #     raise ValueError(f"halfedge attribute '{attr}' already in use")
 
-        setattr(self, private_name, data)
+        # The hidden name for direct access of the attribute data block. Do
+        # not unintentionally overwrite existing data.
+        setattr(self, (private_name := '_' + name), data)
 
-        # Store name and type of attribute. Memory management functions
-        # need this information.
-        self._hattr.append((private_name, attr, default))
+        # Store name and type of attribute. Memory management functions need
+        # this information.
+        for i, (data_name, _, _) in enumerate(self._hattr):
+            if data_name == private_name:
+                self._hattr[i] = private_name, attr, default
+        else:
+            self._hattr.append((private_name, attr, default))
 
         # Attribute access via properties. One global property bound to
         # the mesh and local properties bound to halfedges.
         setattr(self.__class__, name, property(get_data, set_data, del_data))
         setattr(Halfedge, attr, property(get, set))
+
+    def boundaries(self, vertices=True, ccw=True):
+        """ Extract boundary components.
+
+        By default, boundary curves are returned in counterclockwise
+        orientation, i.e., positively oriented with respect to the mesh
+        orientation.
+
+        Parameters
+        ----------
+        vertices : bool, optional
+            If :obj:`True` boundaries are represented as lists of boundary
+            vertices. Alternatively, if :obj:`False`, boundary curves are
+            represented as lists of halfedges.
+        ccw : bool, optional
+            Pass :obj:`False` to reverse the orientation of boundary loops.
+
+        Returns
+        -------
+        list[list[Vertex|Halfedge]]
+            Boundary components. Empty for closed meshes.
+        """
+        boundaries = []
+        visited_edges = set()
+
+        for halfedge in self.halfedges.values():
+            # Find a boundary halfedge that has not been visited before.
+            # The corresponding boundary component has not been traced yet.
+            if halfedge.boundary and halfedge not in visited_edges:
+                component = []
+                h = halfedge
+
+                # Sanity check. Should be removed later or turned off by
+                # running Python with the '-O' command line option.
+                assert h.pair not in visited_edges
+
+                # The current halfedge h belongs to an undiscovered boundary
+                # component. We follow the .prev/.next pointers until we
+                # reach h again.
+                while True:
+                    if vertices:
+                        component.append(h.target)
+                    else:
+                        component.append(h.pair if ccw else h)
+
+                    # Mark current edges as visited and advance to next edge
+                    # according to ccw value.
+                    visited_edges.add(h)
+                    h = h.prev if ccw else h.next
+
+                    if h is halfedge:
+                        break
+
+                    # There is a topological problem if hh or its pair have
+                    # been visited before!
+                    assert h not in visited_edges
+                    assert h.pair not in visited_edges
+
+                boundaries.append(component)
+
+        return boundaries
 
     def clear(self):
         """ Clear all mesh items.
@@ -1110,8 +1395,8 @@ class Mesh:
         The memory occupied by the coordinate array is garbage collected
         once no further references or views of it remain.
 
-        Note
-        ----
+        Notes
+        -----
         Data blocks are cleared by calling the data block's own
         :func:`~object.clear` method.
         """
@@ -1131,7 +1416,7 @@ class Mesh:
                 try:
                     data.clear()
                 except AttributeError:
-                    obj._array_clear(data)
+                    _array_clear(data)
 
     def clean(self):
         """ Garbage collection.
@@ -1139,8 +1424,8 @@ class Mesh:
         Removes all deleted mesh items from the respective containers.
         Previously obtained vertex and face indices may become invalid.
 
-        Note
-        ----
+        Notes
+        -----
         Use sparingly.
         """
         assert len(self._points) == len(self._verts)
@@ -1156,8 +1441,14 @@ class Mesh:
                 # The first assignment has no effect on data for an empty
                 # list of indices, resize will then set the length of the
                 # first axis of data to zero.
-                data[:len(idx), ...] = data[idx, ...]
-                data.resize(shape, refcheck=False)
+
+                # data[:len(idx), ...] = data[idx, ...]
+                # data.resize(shape, refcheck=False)
+
+                data[:len(idx)] = data[idx]
+                data.resize((len(idx), *data.shape[1:]), refcheck=False)
+            else:
+                raise TypeError(f"not supported: {type(data)}")
 
         # Invalidate all attributes of vertices to be removed from the mesh.
         # This should prevent accidental access by triggering assertions and
@@ -1296,8 +1587,8 @@ class Mesh:
         Mesh
             Copy of the mesh.
 
-        Note
-        ----
+        Notes
+        -----
         User defined vertex, face, and halfedge instance attributes are
         copied using :func:`copy.copy`.
         """
@@ -1383,8 +1674,8 @@ class Mesh:
         del_isolated_verts : bool, optional
             Mark isolated vertices for deletion.
 
-        Note
-        ----
+        Notes
+        -----
         The deleted face is not removed from the mesh's face container
         immediately. It is marked as deleted and removed from the face
         container when calling :meth:`clean`.
@@ -1434,8 +1725,8 @@ class Mesh:
             boundary. For interior `halfedge`, this is equal to the
             face to its right.
 
-        Note
-        ----
+        Notes
+        -----
         This operation may create *dangling (half)edges*, i.e., halfedges
         where ``h.pair`` equals ``h.next``.
         """
@@ -1542,8 +1833,8 @@ class Mesh:
 
         return face
 
-    def collapse_halfedge(self, halfedge, point=None, del_target=True, *,
-                          check=True):
+    def _collapse_halfedge(self, halfedge, point=None, del_target=True,
+                           *, check=True):
         """ Perform edge collapse.
 
         Collapse `halfedge` into its :attr:`~Halfedge.origin` vertex. By
@@ -1573,8 +1864,8 @@ class Mesh:
             :obj:`None` in case of failure (the latter behavior requires
             ``check=True``).
 
-        Note
-        ----
+        Notes
+        -----
         It is assumed that the applicability of an edge collapse has been
         checked for explicitly via :attr:`~Halfedge.collapsible` when
         skipping the test.
@@ -1685,6 +1976,333 @@ class Mesh:
 
         return halfedge._origin
 
+    def collapse_halfedge(self, halfedge, point=None, pull=True):
+        """ Perform edge collapse.
+
+        .. versionchanged:: 1.1.0
+
+        Collapse `halfedge` into one of its vertices. The other vertex is
+        marked as deleted.
+
+        Parameters
+        ----------
+        halfedge : Halfedge
+            Halfedge to be contracted.
+        point : array_like, optional
+            Coordinates of collapse location.
+        pull : bool, optional
+            If :obj:`True` `halfedge` is collapsed to its origin vertex,
+            otherwise to its target.
+
+        Returns
+        -------
+        Vertex
+            Reference to the vertex that `halfedge` was collapsed to.
+
+        Warnings
+        --------
+        The caller is responsible to check the collapsibility of an edge
+        before using this method. Trying to collapse a non-collapsible edge
+        leads to undefined behavior and is likely to break the halfedge
+        data structure.
+        """
+
+        # def _prepare_loop(h):
+        #     # The length of a face defining loop of halfedges. For a
+        #     # boundary halfedge this is the length of the boundary.
+        #     loop_len = h._compute_loop_len()
+
+        #     # If the face to the left is a triangle it will disappear
+        #     # during the halfedge collapse operation.
+        #     if loop_len == 3:
+        #         # There has to be a face, otherwise the edge cannot be
+        #         # collapsed because of topological problems.
+        #         h._face._deleted = True
+
+        #         # The vertex opposite the halfedge. Ensure its outgoing
+        #         # halfedge is valid after the collapse.
+        #         v = h._next._target
+        #         v._halfedge = h._next._pair
+
+        #         # Remove halfedges of the interior edge loop from the
+        #         # halfedge container.
+        #         self._pop_halfedge(h._prev)
+        #         self._pop_halfedge(h._next)
+
+        #     # Remove halfedge from halfedge dictionary. Sets its status
+        #     # to deleted.
+        #     self._pop_halfedge(h)
+
+        #     # Lazy property management. This could go inside an else
+        #     # block (no effect for triangular faces).
+        #     if h._face is not None:
+        #         h._face._valence = None
+
+        #     return loop_len
+
+        # def _glue(h):
+        #     # Glue previous and next halfedge of h, removing the triangle
+        #     # left of h.
+        #     h._prev._pair._pair = h._next._pair
+        #     h._next._pair._pair = h._prev._pair
+
+        def prepare_loop(h):
+            # Take care of the face (if any) to the left of h. If this is a
+            # triangle it gets deleted. In the process some of its halfedges
+            # are glued.
+            if h.face is not None:
+                # If the face to the left is a triangle it will disappear
+                # during the halfedge collapse operation.
+                if len(h.face) == 3:
+                    # The vertex opposite the halfedge. Ensure its outgoing
+                    # halfedge is valid after the collapse.
+                    h.next.target._halfedge = h.next.pair
+                    h.face._deleted = True
+
+                    # Glue previous and next halfedge of h, combinatorially
+                    # removing the triangle left of h.
+                    h.prev.pair._pair = h.next.pair
+                    h.next.pair._pair = h.prev.pair
+
+                    # Remove halfedges of the interior edge loop from the
+                    # halfedge container. This marks them as deleted.
+                    self._pop_halfedge(h.prev)
+                    self._pop_halfedge(h.next)
+                else:
+                    # There is a face but it is of valence greater than three.
+                    # Valence of this face is reduced by one by skipping h in
+                    # the face defining loop of halfedges.
+                    h.prev._next = h.next
+                    h.next._prev = h.prev
+
+                # Lazy property management. This could go inside an else
+                # block (no effect for triangular faces).
+                h.face._valence = None
+            else:
+                # There is no face to the left. Skip the halfedge h in the
+                # boundary defining loop of halfedges. If this loop has only
+                # three halfedges with run into a topological problem. The
+                # halfedge is not collapsible in this case!
+                h.prev._next = h.next
+                h.next._prev = h.prev
+
+            # Remove halfedge from the halfedge dictionary. This also sets
+            # its status to deleted.
+            self._pop_halfedge(h)
+
+        # Early exit if halfedge cannot be collapsed. Return None value to
+        # signal failure. Non-trivial collapsibility test has to be done
+        # before calling this method.
+        if halfedge.deleted:
+            return None
+
+        # Use the opposite, non-boundary halfedge and invert the collapse
+        # direction.
+        if halfedge.face is None:
+            halfedge = halfedge.pair
+            pull = not pull
+
+        assert not halfedge.deleted
+        assert halfedge.face is not None
+
+        # lt_len = prepare_loop(halfedge)
+        # rt_len = prepare_loop(halfedge._pair)
+
+        # The edge spanned by halfedge is collapsed to the vertex u. The
+        # vertex v becomes unused and can be marked as deleted.
+        if pull:
+            u = halfedge.origin
+            v = halfedge.target
+
+            # for h in v._hiter():
+            #     if h is not halfedge._pair:
+            #         if lt_len > 3 or h is not halfedge._next:
+            #             self._set_origin(h, u)
+
+            #         if rt_len > 3 or h._pair is not halfedge._pair._prev:
+            #             self._set_target(h._pair, u)
+        else:
+            u = halfedge.target
+            v = halfedge.origin
+
+            # for h in v._hiter():
+            #     if h is not halfedge:
+            #         if lt_len > 3 or h._pair is not halfedge._prev:
+            #             self._set_target(h._pair, u)
+
+            #         if rt_len > 3 or h is not halfedge._pair._next:
+            #             self._set_origin(h, u)
+
+        u._halfedge = halfedge.prev.pair
+
+        # Collect incident halfedges before making changes to the halfedge
+        # attributes. Iterators will only work again after all such changes
+        # are complete.
+        halfedges = [(h, h.pair) for h in v._hiter()]
+
+        prepare_loop(halfedge.pair)
+        prepare_loop(halfedge)
+
+        # If a halfedge starting at vertex v was marked as deleted by
+        # prepare_loop(), its origin has to be set to u, analogously set u
+        # as target for halfedges ending at v.
+        for vw, wv in halfedges:
+            if not vw._deleted:
+                self._set_origin(vw, u)
+
+            if not wv._deleted:
+                self._set_target(wv, u)
+
+        # u._halfedge = halfedge._prev._pair
+        v._deleted = True
+
+        # Now either glue two halfedges together to delete a neighboring
+        # triangle or skip a halfedge if case of larger face valence.
+        # if lt_len == 3:
+        #     glue(halfedge)
+        # else:
+        #     halfedge._prev._next = halfedge._next
+        #     halfedge._next._prev = halfedge._prev
+
+        # if rt_len == 3:
+        #     glue(halfedge._pair)
+        # else:
+        #     halfedge._pair._prev._next = halfedge._pair._next
+        #     halfedge._pair._next._prev = halfedge._pair._prev
+
+        # For consistency of the hds state, the set of outgoing halfedges
+        # of v has to be empty, no matter if we mark it as deleted or not.
+        assert not self._vhout[v]
+
+        # Move vertex u to its new location. Can raise ValueError if point
+        # could not be broadcast to the correct point shape.
+        if point is not None:
+            u.point = point
+
+        return u
+
+    def __collapse_halfedge(self, halfedge, point=None, pull=True):
+        """
+        """
+
+        def prepare_left(h):
+
+            if h.face is not None:
+                if len(h.face) == 3:
+                    prev = h.prev
+                    pair = h.next.pair
+
+                    h.face._valence = None
+                    h.face._deleted = True
+                    h.next.target._halfedge = prev
+
+                    prev._prev = pair.prev
+                    prev._next = pair.next
+                    prev._face = pair.face
+                    prev.face._halfedge = prev
+
+                    pair.prev._next = prev
+                    pair.next._prev = prev
+
+                    self._pop_halfedge(h)
+                    self._pop_halfedge(pair.pair)
+                    self._pop_halfedge(pair)
+                else:
+                    h.face._valence = None
+                    h.prev._next = h.next
+                    h.next._prev = h.prev
+            else:
+                h.prev._next = h.next
+                h.next._prev = h.prev
+
+        def prepare_right(h):
+
+            if h._face is not None:
+                if len(h.face) == 3:
+                    next = h.next
+                    pair = h.prev.pair
+
+                    h.face._deleted = True
+                    h.face._valence = None
+                    h.next.target._halfedge = next.pair
+
+                    next._next = pair.next
+                    next._prev = pair.prev
+                    next._face = pair.face
+                    next.face._halfedge = next
+
+                    pair.next._prev = next
+                    pair.prev._next = next
+
+                    self._pop_halfedge(h)
+                    self._pop_halfedge(pair.pair)
+                    self._pop_halfedge(pair)
+                else:
+                    h.face._valence = None
+                    h.prev._next = h.next
+                    h.next._prev = h.prev
+            else:
+                    h.prev._next = h.next
+                    h.next._prev = h.prev
+
+        # Early exit if halfedge cannot be collapsed. Return None value to
+        # signal failure.
+        if halfedge.deleted:
+            assert halfedge not in self.halfedges.values()
+            return None
+
+        # Does not work for boundary edges... lots of special cases are not
+        # handled correctly.
+        assert halfedge.face is not None
+
+        # Use the opposite, non-boundary halfedge and invert the collapse
+        # direction.
+        if halfedge.face is None:
+            halfedge = halfedge.pair
+            pull = not pull
+
+        assert not halfedge.deleted
+        assert halfedge.face is not None
+
+        # The edge spanned by halfedge is collapsed to the vertex u. The
+        # vertex v becomes unused and can be marked as deleted.
+        if pull:
+            u = halfedge.origin
+            u._halfedge = halfedge.prev.pair
+
+            v = halfedge.target
+            halfedges = [h for h in v._hiter()]
+
+            prepare_right(halfedge.pair)
+            prepare_left(halfedge)
+        else:
+            u = halfedge.target
+            u._halfedge = halfedge.next
+
+            v = halfedge.origin
+            halfedges = [h for h in v._hiter()]
+
+            prepare_left(halfedge.pair)
+            prepare_right(halfedge)
+
+        for h in halfedges:
+            if not h.deleted:
+                self._set_origin(h, u)
+                self._set_target(h.pair, u)
+
+        v._deleted = True
+
+        # For consistency of the hds state, the set of outgoing halfedges
+        # of v has to be empty, no matter if we mark it as deleted or not.
+        assert not self._vhout[v]
+
+        # Move vertex u to its new location. Can raise ValueError if point
+        # could not be broadcast to the correct point shape.
+        if point is not None:
+            u.point = point
+
+        return u
+
     def flip_halfedge(self, halfedge, *, check=True):
         """ Flip halfedge.
 
@@ -1703,12 +2321,16 @@ class Mesh:
             The halfedge resulting from the edge flip or :obj:`None` in
             case of failure (the latter behavior requires ``check=True``).
 
-        Note
-        ----
+        Notes
+        -----
         It is assumed that the applicability of an edge flip has been checked
         explicitly via :attr:`~Halfedge.flippable` when skipping the test.
         Unchecked edge flipping results in undefined behavior.
         """
+        # Improvement: geometric degeneracy check for flipped triangles.
+        # Use a vertex normal vector field to identifiy orientation flips.
+        # Such a check could be done here or in the flippable property of
+        # a halfedge.
         if halfedge._deleted or (check and not halfedge.flippable):
             return None
 
@@ -1779,8 +2401,8 @@ class Mesh:
             The newly inserted halfedge. The face to its left is equal
             to `face`.
 
-        Note
-        ----
+        Notes
+        -----
         This method cannot be used to split off parts of a mesh's
         boundary. Use :meth:`~Mesh.add_face` for that.
         """
@@ -1851,17 +2473,17 @@ class Mesh:
     def split_halfedge(self, halfedge, point=None, triangulate=True):
         """ Split halfedge.
 
-        Subdivides an edge by inserting a new vertex. The resulting
-        polygonal faces to the left and right of the edge are
-        triangulated on request.
+        Subdivides `halfedge` by inserting a new vertex at location
+        `point`. The resulting polygonal faces to the left and right of
+        the subdivided edge are triangulated on request.
 
         Parameters
         ----------
         halfedge : Halfedge
             Halfedge to split.
         point : array_like, optional
-            Coordinates of the inserted vertex. By default the halfedges'
-            :attr:`~Halfedge.midpoint` is used.
+            Coordinates of the new vertex. By default
+            :attr:`~Halfedge.midpoint` of `halfedge` is used.
         triangulate : bool, optional
             Triangle fan like triangulation of neighboring faces.
 
@@ -1869,6 +2491,13 @@ class Mesh:
         -------
         Vertex
             The newly inserted vertex.
+
+        Notes
+        -----
+        Combinatorially, the halfedges resulting from the split can be
+        accessed as ``halfedge`` and ``halfedge.next`` when this method
+        terminates. Note that ``halfedge.pair`` references a different
+        halfedge after the split.
         """
         assert not halfedge._deleted
 
@@ -1877,7 +2506,7 @@ class Mesh:
             point = halfedge.midpoint
 
         # Get the original endpoints of the halfedge. Add the new point
-        # as a vertex of the mesh.
+        # as a vertex of the mesh ...
         u = halfedge._origin
         v = self.add_vertex(point)
         w = halfedge._target
@@ -1913,7 +2542,7 @@ class Mesh:
         self._halfs[w, v] = halfedge._pair
 
         # Take care of the combinatorial attributes of halfedge and its
-        # pair. Since one of their endpoints changed ...
+        # pair. Since one of their endpoints changed.
         halfedge._pair._pair = h
         halfedge._pair._target = v
         halfedge._pair._next = hh
@@ -1930,69 +2559,16 @@ class Mesh:
 
         return v
 
-    @classmethod
-    def from_grid(cls, *arr, triangulate=False, order='C', name=None):
-        """ Alternative constructor.
-
-        Construct mesh from grid data. A quadrilateral mesh with `mn`
-        faces is generated from coordinate arrays of shape `(m, n)`.
-
-        Parameters
-        ----------
-        *arr : ~numpy.ndarray, shape (m, n)
-            Arbitrary number of coordinate arrays.
-        triangulate : bool, optional
-            Triangulate quadrilateral faces.
-        order : str, optional
-            Flatten coordinate arrays in row-major mode 'C' or
-            column-major mode 'F'.
-        name : str, optional
-            Name tag.
-
-        Returns
-        -------
-        Mesh
-            Mesh instance.
-        """
-        match order:
-            case 'C':
-                m, n = arr[0].shape
-            case 'F':
-                n, m = arr[0].shape
-            case _:
-                raise ValueError(f"invalid order argument {order}")
-
-        def face(m, n):
-            for major_idx in range(m - 1):
-                ofs = major_idx * n
-
-                for j in range(n - 1):
-                    if triangulate:
-                        yield [ofs + j, ofs + j + 1, ofs + j + n + 1]
-                        yield [ofs + j, ofs + j + n + 1, ofs + j + n]
-                    else:
-                        yield [ofs + j, ofs + j + 1,
-                               ofs + j + n + 1, ofs + j + n]
-
-        # Passing only a single coordinate array results in a vertex
-        # coordinate array of shape (mn, 1). The empty dimension can be
-        # removed using np.squeeze().
-        arrays = tuple(a.reshape(-1, order=order) for a in arr)
-        points = np.stack(arrays, axis=-1)
-        faces = [f for f in face(m, n)]
-
-        return cls(points, faces, name=name)
-
-    def _add_attr_values(self, key, *args, **kwargs):
+    def _add_attr_values(self, item, *args, **kwargs):
         """ Add attribute values.
 
-        Extend data block by a value provided as keyword argument
-        or the by the default value of the data block.
+        Extend data block by a value provided as keyword argument or by
+        the default value of the data block.
 
         Parameters
         ----------
-        key : Vertex or Halfedge or Face
-            The mesh item.
+        item : Vertex or Halfedge or Face
+            Mesh item instance
         *args : list
             List of data block descriptors.
         **kwargs : dict
@@ -2005,9 +2581,12 @@ class Mesh:
             if isinstance(data, list):
                 data.append(value)
             elif isinstance(data, dict):
-                data[key] = value
+                data[item] = value
             elif isinstance(data, np.ndarray):
-                obj._array_append(data, value)
+                _array_append(data, value)
+            else:
+                raise TypeError(
+                    f"data block has invalid type '{type(data).__name__}'")
 
     def _add_halfedge(self, v, w, **kwargs):
         """ Create and add new halfedge.
@@ -2039,8 +2618,8 @@ class Mesh:
         Halfedge
             Halfedge pointing from `v` to `w`.
 
-        Note
-        ----
+        Notes
+        -----
         If the opposite halfedge is already mapped, its :attr:`~Halfedge.pair`
         attribute is set accordingly. This is an internal helper function for
         face creation.
@@ -2093,7 +2672,6 @@ class Mesh:
                 # This calls the setter method of a property with the name
                 # 'key' if it exists (guard with if-condition to prevent
                 # setting the value of managed attributes again).
-                # if key not in (attr for _, attr, _ in self._hattr):
                 setattr(h, key, value)
 
         v._deleted = False
@@ -2120,45 +2698,45 @@ class Mesh:
             halfedge data structure or erroneous code, e.g. trying to remove
             a halfedge twice.
 
-        Note
-        ----
+        Notes
+        -----
         Combinatorial halfedge attributes are neither invalidated nor changed
-        in any way.
+        in any way by this method.
         """
         assert not h._deleted
+
+        v = h._origin
+        w = h._target
+
+        assert self._halfs[v, w] is h
+
+        # Remove the halfedge from the dictionary that holds all halfedges.
+        # Also remove it from the set of outgoing halfedges of its origin.
+        # The latter will raise KeyError is not a member of this set. Note
+        # that .discard() would not raise an exception in this case.
+        del self._halfs[v, w]
+        self._vhout[v].remove(h)
 
         # In case there are external references to this halfedge we set its
         # deleted flag. In this way user code can check if a halfedge is
         # still valid without searching through the halfedge container.
         h._deleted = True
 
-        v = h._origin
-        w = h._target
-
-        # Remove the halfedge from the dictionary that holds all halfedges.
-        # Also remove it from the set of outgoing halfedges of its origin.
-        # Both operations can a KeyError if the halfedge is not present.
-        del self._halfs[v, w]
-        self._vhout[v].remove(h)
-
     def _push_halfedge(self, h):
         """ Add halfedge to halfedge container.
 
         (Re)insert existing halfedge into the dictionary of all halfedges.
+        This method should only be applied to halfedges that have previously
+        been removed by :meth:`_pop_halfedge`.
 
         Parameters
         ----------
         h : Halfedge
             Halfedge to be re-inserted.
-
-        Note
-        ----
-        This method should **only** be applied to halfedges that have
-        previously been removed by :meth:`_pop_halfedge`.
         """
         assert h._deleted
 
-        # Assumes that h has been removed by _pop_halfedge. Undo all the
+        # Assumes that h has been removed by _pop_halfedge(). Undo all the
         # changes that were made in said function.
         v = h._origin
         w = h._target
@@ -2166,10 +2744,10 @@ class Mesh:
         assert (v, w) not in self._halfs
         assert h not in self._vhout[v]
 
-        h._deleted = False
-
         self._halfs[v, w] = h
         self._vhout[v].add(h)
+
+        h._deleted = False
 
     def _set_origin(self, h, v):
         """ Set halfedge origin vertex.
@@ -2179,11 +2757,14 @@ class Mesh:
         Parameters
         ----------
         h : Halfedge
-            Valid mesh halfedge.
+            Valid halfedge of a mesh, i.e., `h` may not be marked as
+            deleted.
         v : Vertex
-            Origin vertex, different from ``h.target``.
+            New origin vertex. Has to be different from both vertices
+            of `h`.
         """
         assert not h._deleted
+        assert not v._deleted
 
         u = h._origin
         w = h._target
@@ -2192,13 +2773,13 @@ class Mesh:
         assert h not in self._vhout[v]
         assert (v, w) not in self._halfs
 
+        h._origin = v
+
         self._vhout[u].remove(h)
         self._vhout[v].add(h)
 
         del self._halfs[u, w]
         self._halfs[v, w] = h
-
-        h._origin = v
 
     def _set_target(self, h, v):
         """ Set halfedge target vertex.
@@ -2208,11 +2789,14 @@ class Mesh:
         Parameters
         ----------
         h : Halfedge
-            Valid mesh halfedge.
+            Valid halfedge of a mesh, i.e., `h` may not be marked as
+            deleted.
         v : Vertex
-            Target vertex, different from ``h.origin``.
+            New target vertex. Has to be different from both vertices
+            of `h`.
         """
         assert not h._deleted
+        assert not v._deleted
 
         u = h._origin
         w = h._target
@@ -2220,10 +2804,10 @@ class Mesh:
         assert v is not u
         assert (u, v) not in self._halfs
 
+        h._target = v
+
         del self._halfs[u, w]
         self._halfs[u, v] = h
-
-        h._target = v
 
     def _set_vertices(self, h, v, w):
         """ Set halfedge vertices.
@@ -2481,8 +3065,8 @@ class Vertex:
     parent : Mesh, optional
         The parent mesh object.
 
-    Note
-    ----
+    Notes
+    -----
     In addition to :attr:`index`, implementations of the special functions
     :meth:`~object.__int__` and :meth:`~object.__index__` are provided.
     The latter makes it possible to use vertex instances as list indices.
@@ -2496,7 +3080,6 @@ class Vertex:
 
         # Initialize internal state attributes.
         self._deleted = False
-        self._flags = flags.VertexFlag(0)
 
     def __repr__(self):
         return f'Vertex({self._idx})'
@@ -2506,9 +3089,6 @@ class Vertex:
             point = self.point
         except AttributeError:
             point = '[None]'
-
-        if self._flags:
-            return f'v {self._idx} {point} {self._flags}'
 
         return f'v {self._idx} {point}'
 
@@ -2538,6 +3118,10 @@ class Vertex:
         """
         return self._idx
 
+    # def __lt__(self, other):
+    #     return id(self) < id(other)
+    #     # return int(self) < int(other)
+
     def __bool__(self):
         return True
 
@@ -2564,11 +3148,11 @@ class Vertex:
 
         Returns
         -------
-        ~numpy.ndarray
+        ndarray
             Array of vertex coordinates.
 
-        Note
-        ----
+        Notes
+        -----
         If no copy is requested (or implied by data type conversion) the
         returned value is a view of the mesh's vertex coordinate array.
         """
@@ -2580,9 +3164,7 @@ class Vertex:
         """ Vertex index.
 
         Position of the vertex in the list :attr:`~Mesh.vertices` of all
-        mesh vertices. Same as ``int(self)``.
-
-        :type: int
+        mesh vertices.
         """
         return self._idx
 
@@ -2590,13 +3172,11 @@ class Vertex:
     def point(self):
         """ Vertex coordinates.
 
-        Read and write access to vertex coordinates. View of the
-        vertex coordinate array. Requires a valid parent mesh.
+        Read and write access to vertex coordinates. This is a view (a
+        row) of the vertex coordinate array. Requires a valid parent mesh.
 
-        :type: ~numpy.ndarray
-
-        Note
-        ----
+        Notes
+        -----
         This attribute can be set from any :term:`array_like` vertex
         coordinate representation. Coordinates are assigned to the
         corresponding row of the parent mesh's coordinate array. In
@@ -2608,19 +3188,19 @@ class Vertex:
     def point(self, value):
         self._mesh._points[self._idx, ...] = value
 
-    @property
-    def flags(self):
-        """ Vertex flags.
+    # @property
+    # def flags(self):
+    #     """ Vertex flags.
 
-        Read and write access to vertex flags.
+    #     Read and write access to vertex flags.
 
-        :type: VertexFlag
-        """
-        return self._flags
+    #     :type: VertexFlag
+    #     """
+    #     return self._flags
 
-    @flags.setter
-    def flags(self, value):
-        self._flags = value
+    # @flags.setter
+    # def flags(self, value):
+    #     self._flags = value
 
     @property
     def halfedge(self):
@@ -2628,8 +3208,6 @@ class Vertex:
 
         A halfedge that starts at the vertex or :obj:`None` for isolated
         vertices.
-
-        :type: Halfedge
         """
         assert not self._deleted
         return self._halfedge
@@ -2640,8 +3218,6 @@ class Vertex:
 
         The number of adjacent vertices, equivalent to the number of
         incident edges -- also called the valence of a vertex.
-
-        :type: int
         """
         assert not self._deleted
         assert self._manifold
@@ -2656,10 +3232,8 @@ class Vertex:
         vertices as deleted when they do no longer contribute to a mesh's
         combinatorics.
 
-        :type: bool
-
-        Note
-        ----
+        Notes
+        -----
         Calling :meth:`~Mesh.clean` removes all deleted vertices from the
         vertex container of a mesh.
         """
@@ -2671,8 +3245,6 @@ class Vertex:
 
         A vertex is defined to be a boundary vertex if it is incident to
         a boundary halfedge.
-
-        :type: bool
         """
         assert not self._deleted
         return any(h.boundary for h in self._hiter())
@@ -2686,11 +3258,9 @@ class Vertex:
         not linked to any other mesh items and form their own connected
         component.
 
-        :type: bool
-
-        Note
-        ----
-        Isolated vertices are treated as **manifold** vertices. Their
+        Notes
+        -----
+        Isolated vertices are treated as manifold vertices. Their
         presence does not influence the halfedge data structure
         functionality negatively.
         """
@@ -2714,8 +3284,6 @@ class Vertex:
 
         Isolated vertices are considered manifold vertices as they
         don't break the halfedge structure.
-
-        :type: bool
         """
         assert not self._deleted
 
@@ -2765,8 +3333,8 @@ class Vertex:
         int
             Vertex degree.
 
-        Note
-        ----
+        Notes
+        -----
         This is an internal function only used for debugging. To access
         the vertex degree always use :attr:`degree`.
         """
@@ -2870,13 +3438,11 @@ class Halfedge:
 
     Parameters
     ----------
-    origin : Vertex
-        Origin vertex of the halfedge.
-    target : Vertex
-        Target vertex of the halfedge.
+    origin, target : Vertex
+        Origin and target vertex of the halfedge.
 
-    Note
-    ----
+    Notes
+    -----
     As halfedges are stored in a dictionary and not in a list, they do not
     have a canonical index value but a key that is formed by the pair of
     origin and target vertex.
@@ -2892,16 +3458,11 @@ class Halfedge:
         self._face = None
 
         self._deleted = False
-        self._flags = flags.HalfedgeFlag(0)
 
     def __repr__(self):
         return f'Halfedge({repr(self._origin)}, {repr(self._target)})'
 
     def __str__(self):
-        if self._flags:
-            return (f'h ({self._origin._idx}, {self._target._idx})' +
-                    f' {self._flags}')
-
         return f'h ({self._origin._idx}, {self._target._idx})'
 
     def __bool__(self):
@@ -2930,7 +3491,7 @@ class Halfedge:
 
     #     Returns
     #     -------
-    #     ~numpy.ndarray
+    #     ndarray
     #         Coordinates of halfedge direction vector.
     #     """
     #     return self.vector
@@ -2998,8 +3559,6 @@ class Halfedge:
     @property
     def origin(self):
         """ Halfedge origin vertex.
-
-        :type: Vertex
         """
         assert not self._deleted
         return self._origin
@@ -3007,8 +3566,6 @@ class Halfedge:
     @property
     def target(self):
         """ Halfedge target vertex.
-
-        :type: Vertex
         """
         assert not self._deleted
         return self._target
@@ -3017,9 +3574,7 @@ class Halfedge:
     def vector(self):
         """ Halfedge direction vector.
 
-        The vector ``self.target.point - self.origin.point``.
-
-        :type: ~numpy.ndarray
+        The vector ``target.point - origin.point``.
         """
         assert not self._deleted
         return self._target.point - self._origin.point
@@ -3028,9 +3583,7 @@ class Halfedge:
     def midpoint(self):
         """ Halfedge midpoint.
 
-        The point ``0.5 * (self.origin.point + self.target.point)``.
-
-        :type: ~numpy.ndarray
+        The point ``0.5 * (origin.point + target.point)``.
         """
         assert not self._deleted
         return 0.5 * (self._origin.point + self._target.point)
@@ -3040,8 +3593,6 @@ class Halfedge:
         """ Successor halfedge.
 
         Next halfedge in a face defining halfedge loop.
-
-        :type: Halfedge
         """
         assert not self._deleted
         return self._next
@@ -3051,8 +3602,6 @@ class Halfedge:
         """ Predecessor halfedge.
 
         Previous halfedge in a face defining halfedge loop.
-
-        :type: Halfedge
         """
         assert not self._deleted
         return self._prev
@@ -3062,8 +3611,6 @@ class Halfedge:
         """ Opposite halfedge.
 
         Halfedge pointing in the opposite direction.
-
-        :type: Halfedge
         """
         assert not self._deleted
         return self._pair
@@ -3074,25 +3621,23 @@ class Halfedge:
 
         The face to left of the halfedge or :py:obj:`None` in case of
         a boundary halfedge.
-
-        :type: Face
         """
         assert not self._deleted
         return self._face
 
-    @property
-    def flags(self):
-        """ Halfedge flags.
+    # @property
+    # def flags(self):
+    #     """ Halfedge flags.
 
-        Read and write access to halfedge flags.
+    #     Read and write access to halfedge flags.
 
-        :type: HalfedgeFlag
-        """
-        return self._flags
+    #     :type: HalfedgeFlag
+    #     """
+    #     return self._flags
 
-    @flags.setter
-    def flags(self, value):
-        self._flags = value
+    # @flags.setter
+    # def flags(self, value):
+    #     self._flags = value
 
     @property
     def deleted(self):
@@ -3102,10 +3647,8 @@ class Halfedge:
         render halfedges as deleted when they do no longer contribute
         to a mesh's combinatorics.
 
-        :type: bool
-
-        Note
-        ----
+        Notes
+        -----
         The halfedge dictionary :attr:`~Mesh.halfedges` of a mesh will
         never contain deleted halfedges.
         """
@@ -3117,27 +3660,23 @@ class Halfedge:
 
         A halfedge is called a boundary halfedge if its :attr:`face`
         attribute evaluates to :obj:`None`.
-
-        :type: bool
         """
         assert not self._deleted
         return self._face is None
 
     @property
-    def collapsible(self):
+    def _collapsible(self):
         """ Topological state.
 
-        A edge joining non-boundary vertices of a **triangle mesh** is
-        collapsible if the neighborhoods of :attr:`origin` and :attr:`target`
-        vertex intersect in the two vertices opposite the query edge. The
-        test tries to handle meshes with higher valence faces but may not
-        always give a correct answer.
+        A edge joining non-boundary vertices of a triangle mesh is
+        collapsible if the 1-ring vertex neighborhoods of :attr:`origin`
+        and :attr:`target` vertex intersect in the two vertices opposite
+        the query edge. The test tries to handle meshes with higher
+        valence faces but may not always give a correct answer.
 
-        :type: bool
-
-        Note
-        ----
-        For technical reasons, **boundary halfedges** are always classified
+        Notes
+        -----
+        For technical reasons, boundary halfedges are always classified
         as non-collapsible.
         """
 
@@ -3158,16 +3697,16 @@ class Halfedge:
 
             return True
 
-        # Test makes no sense for deleted halfedges, they are not part
-        # of valid mesh combinatorics.
+        # Test makes no sense for deleted halfedges, they are not part of
+        # valid mesh combinatorics.
         if self._deleted or self._face is None:
             return False
 
         v = self._origin
         w = self._target
 
-        # This should never be a problem for pure triangle meshes but
-        # can happen for general polygonal meshes.
+        # This should never be a problem for pure triangle meshes but can
+        # happen for general polygonal meshes.
         v_faces = {x for x in v._fiter()} - {self._face, self._pair._face}
         w_faces = {x for x in w._fiter()} - {self._face, self._pair._face}
 
@@ -3225,13 +3764,121 @@ class Halfedge:
         return False
 
     @property
+    def collapsible(self):
+        """ Topological state.
+
+        .. versionchanged:: 1.1.0
+
+        An edge joining non-boundary vertices of a triangle mesh is
+        collapsible if the 1-ring vertex neighborhoods of :attr:`origin`
+        and :attr:`target` vertex intersect in the two vertices opposite
+        the query edge, see [1]_ for more details.
+
+        Notes
+        -----
+        The test tries to handle meshes with higher valence faces but may
+        not always give a correct answer in this case.
+
+        References
+        ----------
+        .. [1] Tamal K. Dey et al.: *Topology Preserving Edge Contraction*,
+               ????.
+        """
+        # New version of _collapsible test that does not automatically
+        # reject boundary edges as non-collapsible but uses the pair for
+        # testing instead.
+
+        def one_sided_check(h):
+            assert h._face is not None
+            assert h._pair._face is None
+
+            if h._pair._compute_loop_len() == 3:
+                # The adjacent boundary loop has only three faces.
+                # Collapsing the halfedge would change the topology.
+                return False
+
+            if len(h._face) == 3:
+                if v_neigh.intersection(w_neigh) == {h._next._target}:
+                    return True
+
+                return False
+
+            return True
+
+        # Test makes no sense for deleted halfedges, they are not part of
+        # valid mesh combinatorics.
+        if self._deleted:
+            return False
+
+        h = self._pair if self._face is None else self
+
+        assert not h._deleted
+        assert h._face is not None
+
+        v = h._origin
+        w = h._target
+
+        # This should never be a problem for pure triangle meshes but can
+        # happen for general polygonal meshes.
+        v_faces = {x for x in v._fiter()} - {h._face, h._pair._face}
+        w_faces = {x for x in w._fiter()} - {h._face, h._pair._face}
+
+        if v_faces.intersection(w_faces):
+            return False
+
+        # Collect neighbors in a set to compute one-ring intersection.
+        v_neigh = {x for x in v._viter() if x is not w}
+        w_neigh = {x for x in w._viter() if x is not v}
+
+        if h._pair._face is None:
+            return one_sided_check(h)
+
+        # Interior edge that connects boundaries is not collapsible.
+        # Result would be a non-manifold mesh.
+        if v.boundary and w.boundary:
+            return False
+
+        if len(h._face) == 3:
+            p = h._next._target
+
+            if len(h._pair._face) == 3:
+                q = h._pair._next._target
+
+                if p is q:
+                    return False
+
+                if v_neigh == w_neigh:
+                    return False
+
+                # Triangular faces to the left and right. One rings of
+                # endpoints have to intersect in the vertices opposite
+                # the query edge.
+                if v_neigh.intersection(w_neigh) == {p, q}:
+                    return True
+            else:
+                # Triangular face to the left and n-gon to the right.
+                if v_neigh.intersection(w_neigh) == {p}:
+                    return True
+        else:
+            # Triangular face to the right and n-gon to the left.
+            if len(h._pair._face) == 3:
+                q = h._pair._next._target
+
+                if v_neigh.intersection(w_neigh) == {q}:
+                    return True
+
+            # There are n-gons to the left and to the right of the
+            # query edge.
+            return True
+
+        return False
+
+    @property
     def flippable(self):
         """ Topological state.
 
         A non-boundary edge of a triangle mesh can be flipped if the
         vertices opposite the edge are not adjacent.
-
-        :type: bool
         """
         if self._deleted or self._face is None or self._pair._face is None:
             return False
@@ -3348,6 +3995,40 @@ class Halfedge:
             h = h._prev._pair
 
 
+class _Edge:
+
+    def __init__(self, halfedge):
+        self._halfedge = halfedge
+
+    def __getitem__(self, index):
+        """ Vertex access.
+        """
+        assert not self.deleted
+
+        if index == 0:
+            return self._halfedge._origin
+        elif index == 1:
+            return self._halfedge._target
+
+        raise IndexError(f'index {index} out of range(0, 2)')
+
+    @property
+    def deleted(self):
+        """ Internal state.
+        """
+        # The halfedges making up the edge should not have different
+        # status. Such cases probably indicate a problem
+        assert self._halfedge._deleted == self._halfedge._pair._deleted
+        return self._halfedge._deleted
+
+    @property
+    def boundary(self):
+        """ Topological state.
+        """
+        assert not self.deleted
+        return self._halfedge.boundary or self._halfedge._pair.boundary
+
+
 class Face:
     """ Face base class.
 
@@ -3359,12 +4040,12 @@ class Face:
     index : int
         Face index.
 
-
+    Examples
+    --------
     The vertices of a face can be visited in several ways. Using
     :meth:`~m3sh.hds.Face.__len__` and :meth:`~m3sh.hds.Face.__getitem__`
 
     .. code-block:: python
-       :linenos:
 
         for i in range(len(f)):
             print(f[i])
@@ -3372,13 +4053,10 @@ class Face:
     is equivalent to using :meth:`~m3sh.hds.Face.__iter__`
 
     .. code-block:: python
-       :linenos:
 
         for v in f:
             print(v)
 
-    Note
-    ----
     The latter is much more efficient and preferred.
     """
 
@@ -3392,18 +4070,13 @@ class Face:
 
         # Initialize internal state attributes.
         self._deleted = False
-        self._flags = flags.FaceFlag(0)
 
     def __repr__(self):
         return f'Face({self._idx})'
 
     def __str__(self):
-        face = '[None]' if self._deleted else str([int(v) for v in self])
-
-        if self._flags:
-            return f'f {self._idx} {face} {self._flags}'
-
-        return f'f {self._idx} {face}'
+        face = '[]' if self._deleted else str([int(v) for v in self])
+        return f"f {self._idx} {face}"
 
     def __index__(self):
         """ Face index.
@@ -3428,6 +4101,10 @@ class Face:
             Face index.
         """
         return self._idx
+
+    # def __lt__(self, other):
+    #     return id(self) < id(other)
+    #     # return int(self) < int(other)
 
     def __len__(self):
         """ Face valence.
@@ -3474,7 +4151,7 @@ class Face:
 
         Returns
         -------
-        ~numpy.ndarray
+        ndarray
             Array of vertex coordinates.
         """
         return np.array([v.point for v in self], dtype=dtype, copy=copy)
@@ -3554,33 +4231,29 @@ class Face:
         """ Face index.
 
         Position of the face in the list :attr:`~Mesh.faces` of all
-        faces, same as ``int(self)``.
-
-        :type: int
+        faces.
         """
         return self._idx
 
-    @property
-    def flags(self):
-        """ Face flags.
+    # @property
+    # def flags(self):
+    #     """ Face flags.
 
-        Read and write access to face flags.
+    #     Read and write access to face flags.
 
-        :type: FaceFlag
-        """
-        return self._flags
+    #     :type: FaceFlag
+    #     """
+    #     return self._flags
 
-    @flags.setter
-    def flags(self, value):
-        self._flags = value
+    # @flags.setter
+    # def flags(self, value):
+    #     self._flags = value
 
     @property
     def halfedge(self):
         """ Incident halfedge.
 
         One of the incident halfedges.
-
-        :type: Halfedge
         """
         assert not self._deleted
         return self._halfedge
@@ -3589,9 +4262,7 @@ class Face:
     def valence(self):
         """ Face valence.
 
-        Number of incident vertices. Same as ``len(self)``.
-
-        :type: int
+        Number of incident vertices.
         """
         return len(self)
 
@@ -3603,10 +4274,8 @@ class Face:
         faces as deleted when they do no longer contribute to a mesh's
         combinatorics.
 
-        :type: bool
-
-        Note
-        ----
+        Notes
+        -----
         Calling :meth:`~Mesh.clean` removes all deleted faces from the
         face container of a mesh.
         """
@@ -3620,11 +4289,9 @@ class Face:
         edges is a boundary edge (an edge is a boundary edge if one of
         its two halfedges has this property).
 
-        :type: bool
-
-        Note
-        ----
-        A face only incident with boundary vertices is **not** classified
+        Notes
+        -----
+        A face only incident with boundary vertices is not classified
         as a boundary face.
         """
         return any(h.pair.boundary for h in self._hiter())
@@ -3634,10 +4301,29 @@ class Face:
         """ Face barycenter.
 
         Arithmetic mean of vertex coordinates.
-
-        :type: ~numpy.ndarray
         """
         return sum(v.point for v in self) / len(self)
+
+    # @property
+    # def normal(self):
+    #     """ Face normal vector.
+    #     """
+    #     return self._normal
+
+    # @property
+    # def _normal(self):
+    #     # Accessing the halfedge property will check whether the
+    #     # face is marked as deleted.
+    #     halfedge = self.halfedge
+
+    #     u0, u1, u2 = halfedge.vector
+    #     v0, v1, v2 = halfedge.next.vector
+
+    #     print('func prop called')
+
+    #     return np.array([u1*v2 - u2*v1,
+    #                      u2*v0 - u0*v2,
+    #                      u0*v1 - u1*v0])
 
     def _compute_valence(self):
         """
@@ -3690,6 +4376,7 @@ class Face:
         """
         assert not self._deleted
         assert self._halfedge is not None
+        assert not self._halfedge._deleted
 
         h = self._halfedge
 
@@ -3770,3 +4457,161 @@ class NonManifoldError(Exception):
     """
 
     pass
+
+
+def _array_append(array, item):
+    """ Resize and append to array.
+
+    Passing :obj:`None` as `item` will **not** initialize the newly
+    added array entries. The `array` argument cannot be :obj:`None`
+    in this case.
+
+    Parameters
+    ----------
+    array : ndarray or None
+        Array object to be augmented. A new array of shape
+        ``(1, *item.shape)`` will be created if :obj:`None`.
+    item : array_like or None
+        Item to be added as new element of the first axis. The
+        shapes ``array.shape[1:]`` and ``item.shape`` have to agree.
+
+    Raises
+    ------
+    ValueError
+        In case of dimension mismatch.
+
+    Returns
+    -------
+    ndarray
+        Reference to the enlarged array. This is a new array if the
+        input array argument was :obj:`None`.
+    """
+    if isinstance(array, np.ndarray):
+        if item is not None:
+            if array[-1].shape != np.shape(item):
+                msg = f'cannot add item with shape {np.shape(item)}'
+                raise ValueError(msg)
+
+        arr_shape = list(array.shape)
+        arr_shape[0] += 1
+
+        array.resize(arr_shape, refcheck=False)
+    else:
+        array = np.empty((1, *np.shape(item)))
+
+    # Assign to the 'free' space at the end of the extended array.
+    # The assignment itself should not trigger any exceptions.
+    if item is not None:
+        array[-1, ...] = item
+
+    return array
+
+
+def _array_clear(array):
+    """ Collapse first axis of array.
+
+    Parameters
+    ----------
+    array : ndarray
+        Array with at least two axes.
+
+    Returns
+    -------
+    ndarray
+        The resized array.
+    """
+    arr_shape = list(array.shape)
+    arr_shape[0] = 0
+
+    array.resize(arr_shape, refcheck=False)
+
+    return array
+
+
+# def _merge(points, faces, radius=1e-3):
+#     """ Distance based vertex merging.
+
+#     Merging may yield a non-manifold complex.
+
+#     Parameters
+#     ----------
+#     points : array_like
+#         Vertex coordinates.
+#     faces : list
+#         Face definitions.
+#     radius : float
+#         Distance threshold.
+
+#     Returns
+#     -------
+#     faces : list
+#         Updated faces definitions.
+#     """
+#     # For each point p, find the indices of all points that are in a
+#     # radius r ball with center p.
+#     kdtree = sp.KDTree(points)
+#     idx = kdtree.query_ball_tree(kdtree, radius)
+
+#     # Assumes that each vertex of a face is defined as a v/vt/vn tuple
+#     # as read directly from an object file.
+#     return [[(min(idx[v]), vt, vn) for v, vt, vn in f] for f in faces]
+
+
+def _orientation(up, forward):
+    """ Coordinate transformation.
+
+    Compute rotation that maps the given up direction to the z-axis of
+    the world coordinate system and the forward direction to the y-axis.
+
+    Parameters
+    ----------
+    up : str
+        Mapped to world z-direction.
+    forward : str
+        Mapped to world y-direction.
+
+    Raises
+    ------
+    ValueError
+        If `up` and `forward` values are invalid.
+
+    Returns
+    -------
+    ndarray
+        Matrix of shape (3, 3) that maps model coordinates to world
+        coordinates given the `up` and `foward` vectors.
+    """
+    up_sign = -1 if '-' in up else 1
+    fw_sign = -1 if '-' in forward else 1
+
+    if 'x' in up:
+        z = np.array([up_sign, 0, 0])
+    elif 'y' in up:
+        z = np.array([0, up_sign, 0])
+    elif 'z' in up:
+        z = np.array([0, 0, up_sign])
+    else:
+        raise ValueError(f"up vector {up!r} is invalid.")
+
+    if 'x' in forward:
+        y = np.array([fw_sign, 0, 0])
+    elif 'y' in forward:
+        y = np.array([0, fw_sign, 0])
+    elif 'z' in forward:
+        y = np.array([0, 0, fw_sign])
+    else:
+        raise ValueError(f"forward vector {forward!r} is invalid.")
+
+    x = np.linalg.cross(y, z)
+
+    # Data type should be integer...
+    print(x.dtype)
+
+    if x.dot(x) < 0.5:
+        raise ValueError(f"{up!r} and {forward!r} cannot be used " +
+                        "together as up and forward vectors.")
+
+    # Stacking the computed vectors as rows of matrix will create a
+    # permutation matrix (rotation) that preserves the handedness of
+    # the coordinate system.
+    return np.stack((x, y, z))

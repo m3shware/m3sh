@@ -1,10 +1,14 @@
-{{ name | escape | underline }}
+.. raw:: html
+
+   <div class="prename">{{ module }}.</div>
+   <div class="empty"></div>
+
+{{ name }}
+{{ underline }}
 
 .. currentmodule:: {{ module }}
  
 .. autoclass:: {{ objname }}
-   :show-inheritance:
-   :no-inherited-members:
     
    {% block attributes %}
    {% if attributes %}
@@ -25,7 +29,7 @@
  
    .. autosummary::
       :toctree: 
-      :template: function.rst
+      :template: method.rst
    {% for item in methods %}
       ~{{ name }}.{{ item }}
    {%- endfor %}

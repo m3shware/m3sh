@@ -50,6 +50,19 @@
    {% endif %}
    {% endblock %}
 
+   {% block mixins %}
+   {% if mixins %}
+   .. rubric:: Mixins
+
+   .. autosummary::
+      :toctree:
+      :template: class-toc-vtk.rst
+   {% for item in mixins %}
+      {{ item }}
+   {%- endfor %}
+   {% endif %}
+   {% endblock %}
+
    {% block exceptions %}
    {% if exceptions %}
    .. rubric:: Exceptions
