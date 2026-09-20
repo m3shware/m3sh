@@ -1,6 +1,6 @@
 # m3sh - a mutable halfedge mesh data structure
 
-![mesh](/docs/source/figures/dragon_full.png "Halfedge mesh representation")
+![mesh](/docs/source/_static/dragon_full.png "Halfedge mesh representation")
 
 A pure Python implementation of a generic halfedge data structure for
 orientable 2-manifold meshes - the discrete analogue of orientable surfaces
