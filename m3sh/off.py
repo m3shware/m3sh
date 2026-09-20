@@ -20,7 +20,7 @@
 
 """ Object file format input/output.
 
-.. version-added:: 1.1.0
+.. versionadded:: 1.1.0
 """
 
 from pathlib import Path

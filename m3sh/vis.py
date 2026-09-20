@@ -25,6 +25,11 @@ see e.g. [1]_ for an introduction. This is not meant as a full featured set of
 visualization routines but should serve as a quick and convenient way to
 achieve basic visualization tasks.
 
+.. important::
+   Visualization is under active development. Provided functionality changes
+   rapidly and backwards compatibility is not a design goal! Documentation
+   may not always be accurate!
+
 Example
 -------
 This module can be used as a stand-alone OBJ file viewer:
@@ -451,7 +456,7 @@ def _pick(x, y, prop, *, iren=None):
 def rgb(*spec, char=False):
     """ Get color by name.
 
-    .. version-added:: 1.1.0
+    .. versionadded:: 1.1.0
 
     Parameters
     ----------
@@ -484,7 +489,7 @@ def rgb(*spec, char=False):
 def rgba(name, char=False):
     """ Get color by name.
 
-    .. version-added:: 1.1.0
+    .. versionadded:: 1.1.0
 
     Parameters
     ----------
@@ -1059,7 +1064,7 @@ def display(message, x=0.05, y=0.95, size=14, color=colors.white,
 def edges(mesh, width=1, color=colors.black):
     """ Mesh edge visualization.
 
-    .. version-added:: 1.1.0
+    .. versionadded:: 1.1.0
 
     Parameters
     ----------
@@ -1137,7 +1142,7 @@ def frame(origin, x, y, z=None, size=1.0, radius=0.025, resolution=6,
 def graph(graph, style=None, width=4, color=colors.black):
     """ Graph visualization.
 
-    .. version-added:: 1.1.0
+    .. versionadded:: 1.1.0
 
     Experimental support for graph plotting. The `graph` parameter
     is described in more detail in SciPy's :mod:`~scipy.sparse.csgraph`
@@ -4352,7 +4357,7 @@ class PolyData(PropertyMixin, MapperMixin, Prop):
                tolerance=0.0001):
         """ Data item labels.
 
-        .. version-added:: 1.1.0
+        .. versionadded:: 1.1.0
 
         Display labels at the vertices or cell centers of an object. This
         is costly when many items are visible!

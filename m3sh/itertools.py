@@ -68,6 +68,8 @@ Let :math:`K` be a simplicial complex. The (open) star of a simplex
 
    \operatorname{st}(\sigma) = \{ \tau \in K | \sigma \subset \tau \}
 
+...
+
 The link operator
 ~~~~~~~~~~~~~~~~~
 The link is defined as the boundary of the star
@@ -76,6 +78,8 @@ The link is defined as the boundary of the star
 
    \operatorname{lnk}(\sigma) = \overline{\operatorname{st}(\sigma)}
         \setminus \operatorname{st}(\sigma)
+
+...
 
 References
 ----------

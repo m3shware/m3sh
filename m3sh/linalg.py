@@ -171,7 +171,7 @@ def clamp(x, lo, hi):
 def cramer(A, b):
     r""" Cramer's rule.
 
-    .. version-added:: 1.1.0
+    .. versionadded:: 1.1.0
 
     Solve the system :math:`Ax = b` using Cramer's rule. NumPy's general
     purpose method :func:`~numpy.linalg.solve` is faster.

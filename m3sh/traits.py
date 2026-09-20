@@ -1231,7 +1231,7 @@ def planarity_scores(mesh, denom=None, offset=0.0):
 def plane_equation(face):
     r""" Equation of face plane.
 
-    .. version-added:: 1.1.0
+    .. versionadded:: 1.1.0
 
     Computes the coefficient vector :math:`\mathbf{h} = (\mathbf{n}, c)
     \in \mathbb{R}^3 \times \mathbb{R}` of the Hessian normal form of the
