@@ -332,7 +332,7 @@ def dihedral_angles(mesh, normals=None, degrees=False):
     return angles
 
 
-def vertex_normal(vertex):
+def vertex_normal(vertex, weight=None):
     """ Vertex normal.
 
     Compute vertex normal as average of triangle normals. Assumes that
@@ -342,6 +342,8 @@ def vertex_normal(vertex):
     ----------
     vertex : Vertex
         Vertex of a mesh.
+    weight : {None, 'nelson'}
+        Weighting scheme, see [1]_.
 
     Returns
     -------
@@ -358,6 +360,11 @@ def vertex_normal(vertex):
     For non-triangular meshes, incident triangles are defined by the
     planes spanned by consecutive edges in a counter-clockwise traversal
     of incident edges.
+
+    References
+    ----------
+    .. [1] Max Nelson: *Weights for Computing Vertex Normals from Facet
+           Normals*, Journal of Graphics Tools 4 (2):1-6, 1999.
     """
     # Accessing the point property of a deleted vertex does not trigger
     # an assertion error.
@@ -366,11 +373,18 @@ def vertex_normal(vertex):
 
     normal = np.zeros_like(vertex.point)
 
-    # The vertex is not isolated, hence this iterator cannot be empty.
-    for h in vertex._hiter():
-        if h.face is not None:
-            normal += linalg.unit_inplace(linalg.cross(h.prev.vector,
-                                                       h.vector))
+    if weight == 'nelson':
+        for h in vertex._hiter():
+            if h.face is not None:
+                u = h.prev.vector
+                v = h.vector
+
+                normal += linalg.cross(u, v) / (u.dot(u) * v.dot(v))
+    else:
+        for h in vertex._hiter():
+            if h.face is not None:
+                normal += linalg.unit_inplace(
+                    linalg.cross(h.prev.vector, h.vector))
 
     return linalg.unit_inplace(normal)
 
@@ -982,6 +996,51 @@ def face_area(face):
         raise NotImplementedError('triangular face required')
 
     return 0.5 * linalg.norm(vector)
+
+
+def face_frame(face, normal=None, axis=None):
+    """ Canonical frame of a face.
+
+    .. versionadded:: 1.1.0
+
+    The canonical frame of a face is formed by the unit vector parallel
+    to its first halfedge (the one accessible as ``face.halfedge``) as
+    x-direction, the face normal vector as z-direction, and a third vector
+    as y-direction such that (x, y, z) becomes a positively oriented
+    orthogonal basis.
+
+    Parameters
+    ----------
+    face : Face
+        Triangular (or planar) face of a mesh.
+    normal : ndarray, shape (3,), optional
+        The face normal is computed on the fly if not specified. The
+        direction of `normal` should be consistent with the orientation
+        of `face`. This is recommended but not required.
+    axis : {-2, -1, None}
+        Format of returned values.
+
+    Returns
+    -------
+    x, y, z : ndarray, shape (3,)
+        Default return values if axis evaluates to :obj:`None`. Three
+        perpendicular unit vectors that form a positvely oriented frame.
+        Otherwise a matrix of shape (3, 3) is returned with basis
+        vectors as rows if `axis` evaluates to -1 or as columns if `axis`
+        has value -2.
+    """
+    x = linalg.unit(face.halfedge.vector)
+    z = face_normal(face) if normal is None else np.asarray(normal)
+    y = linalg.cross(z, x)
+
+    # Put the vector as rows of a matrix, i.e., last dimension defines
+    # vectors, or put them as columns.
+    if axis == -1:
+        return np.array((x, y, z))
+    elif axis == -2:
+        return np.column_stack((x, y, z))
+
+    return x, y, z
 
 
 # def curvature(mesh, normals=None):
