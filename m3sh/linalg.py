@@ -23,6 +23,9 @@
 Basic vector math, linear algebra, and trigonometric functions. Many
 functions are convenience functions that wrap NumPy functionality or
 provide basic operations from analytic geometry.
+
+References
+----------
 """
 
 import math
@@ -38,7 +41,8 @@ def affine_map(p, q):
     Parameters
     ----------
     p, q : array_like, shape (n+1, n)
-        Two sequences of n+1 points in general position.
+        Two sequences of n+1 points in general position. Points are
+        stored as row vectors!
 
     Returns
     -------
@@ -77,6 +81,10 @@ def angle(u, v, up=None, degrees=False):
     angle : float
         Angle in degrees or radians.
 
+    See Also
+    --------
+    math.degrees, math.radians
+
     Notes
     -----
     If the `up` vector is defined the sign of the angle is determined
@@ -96,6 +104,62 @@ def angle(u, v, up=None, degrees=False):
         angle *= -1.0
 
     return angle
+
+
+def coc_mat(A, B, onb=False):
+    r""" Change of coordinates matrix.
+
+    Compute the change of coordinates matrix :math:`C` that maps coordinates
+    of :math:`\mathbf{x}` in the representation :math:`\mathbf{x} = \sum x_i
+    \mathbf{a}_i` to the coordinates in the representation :math:`\mathbf{x}
+    = \sum \bar{x}_i \mathbf{b}_i`, i.e.,
+
+    .. math::
+
+       \left(\begin{array}{c}
+            \bar{x}_1 \\
+            \vdots \\
+            \bar{x}_k
+       \end{array}\right) = C \left(\begin{array}{c}
+            x_1 \\
+            \vdots \\
+            x_k
+       \end{array}\right).
+
+    Parameters
+    ----------
+    A, B : ndarray, shape (n, k), n >= k
+        Basis vectors are given by the columns of `A` and `B`. Consequently
+        both matrices must have rank k, i.e., columns are linearly
+        independent. If k < n, column spans of `A` and `B` must coincide.
+    onb : bool, optional
+        Set to :obj:`True` if the columns of `B` form an orthonormal
+        system.
+
+    Returns
+    -------
+    C : ndarray, shape (k, k)
+        Change of coordinates matrix.
+
+    Notes
+    -----
+    The j-th column :math:`\mathbf{c}_j` of :math:`C` holds the coordinates
+    of :math:`\mathbf{a}_j` with respect to the columns of :math:`B`:
+
+    .. math::
+
+       \mathbf{a}_j = \sum_i c_{ij} \mathbf{b}_i,
+
+    equivalently :math:`A = BC`. In particular, when the columns of :math:`B`
+    form an orthonormal system, the entries of :math:`C` are given as
+    :math:`c_{ij} = \langle \mathbf{b}_i, \mathbf{a}_j \rangle` which is
+    just the orthogonal projection of :math:`\mathbf{a}_j` onto
+    :math:`\mathbf{b}_i`.
+    """
+    if onb:
+        return B.T @ A
+
+    return np.linalg.lstsq(B, A)[0]
 
 
 def cotan(u, v):
@@ -173,8 +237,8 @@ def cramer(A, b):
 
     .. versionadded:: 1.1.0
 
-    Solve the system :math:`Ax = b` using Cramer's rule. NumPy's general
-    purpose method :func:`~numpy.linalg.solve` is faster.
+    Solve the system :math:`A\mathbf{x} = \mathbf{b}` using Cramer's rule.
+    NumPy's general purpose method :func:`~numpy.linalg.solve` is faster.
 
     Parameters
     ----------
@@ -194,8 +258,8 @@ def cramer(A, b):
     not checked.
     """
     def det3(a, b, c):
-        return (a[0]*b[1]*c[2] + b[0]*c[1]*a[2] + c[0]*a[1]*b[2]
-                - a[2]*b[1]*c[0] - b[2]*c[1]*a[0] - c[2]*a[1]*b[0])
+        return (  a[0]*b[1]*c[2] + b[0]*c[1]*a[2] + c[0]*a[1]*b[2]
+                - a[2]*b[1]*c[0] - b[2]*c[1]*a[0] - c[2]*a[1]*b[0] )
 
     a0, a1, a2 = A.T
 
@@ -362,19 +426,44 @@ def unit_inplace(u):
     return u
 
 
+def perp(u, v):
+    """ Common perpendicular.
+
+    .. versionadded:: 1.1.0
+
+    Parameters
+    ----------
+    u, v : array_like, shape (3,)
+        Vectors in 3-space.
+
+    Returns
+    -------
+    n : ndarray, shape (3,)
+        A unit length vector orthogonal to `u` and `v`. If `u` and
+        `v` and linearly independent, this vector is parallel to
+        the cross product vector.
+    """
+    return np.linalg.svd(np.array((u, v)))[-1][-1, :]
+
+
 def rank(A):
     """ Matrix rank.
 
-    Alternative implementation of NumPy's :func:`~numpy.linalg.matrix_rank`.
+    Compute the rank of `A` using singular value decomposition.
 
     Parameters
     ----------
     A : ndarray, shape (m, n)
         Matrix without any shape restriction.
 
+    Returns
+    -------
+    rank : float
+        Rank of matrix `A`.
+
     See Also
     --------
-    :func:`~scipy.linalg.null_space`
+    scipy.linalg.null_space, numpy.linalg.matrix_rank
     """
     s = np.linalg.svd(A)[1]
     m, n = A.shape
@@ -387,7 +476,7 @@ def rotate(x, axis, phi, sin_phi=None):
     r""" Rotate vector about axis.
 
     A rotation is defined by an oriented axis vector of unit length and
-    an oriented angle. The corresponding rotation can be performed via
+    an oriented angle. The corresponding rotation can be computed via
     Rodrigues' rotation formula:
 
     .. math::
@@ -402,19 +491,16 @@ def rotate(x, axis, phi, sin_phi=None):
 
     Parameters
     ----------
-    x : ndarray, shape (3, )
-        Vector to be rotated.
-    axis : ndarray, shape (3, )
-        Unit length axis vector.
+    x, axis : ndarray, shape (3,)
+        Vector to be rotated and unit length axis vector.
     phi : float
-        Rotation angle in radians or the value :math:`\cos(\varphi)`,
-        see notes.
+        Rotation angle in radians or the value :math:`\cos(\varphi)`.
     sin_phi : float, optional
         The value :math:`\sin(\varphi)`.
 
     Returns
     -------
-    x_rot : ndarray
+    x_rot : ndarray, shape (3,)
         The rotated vector.
 
     See Also
@@ -424,9 +510,8 @@ def rotate(x, axis, phi, sin_phi=None):
     Notes
     -----
     Computation of :math:`\sin(\varphi)` can be avoid by providing this
-    value as the optional argument `sin_phi`. In this case `phi` is
-    assumed to hold :math:`\cos(\varphi)` and no trigonometric functions
-    are evaluated.
+    value as an optional argument. In this case `phi` is assumed to hold
+    :math:`\cos(\varphi)` and no trigonometric functions are evaluated.
     """
     if sin_phi is not None:
         cphi = phi
@@ -446,8 +531,12 @@ def rotation(u, v, axis):
     Computes the values :math:`\cos(\varphi)` and :math:`\sin(\varphi)`
     of the rotation about `axis` that aligns the vectors `u` and `v` in
     the sense that `u` and `v` become parallel and point in the same
-    direction. This assumes that `u` and `v` are orthogonal to `axis`.
-    If this is not the case the vectors are first projected onto
+    direction, i.e.,
+
+    >>> v = mu * rotate(u, axis, *rotation(u, v, axis))
+
+    for some :math:`\mu > 0`. This assumes that `u` and `v` are orthogonal
+    to `axis`. If this is not the case the vectors are first projected onto
     the plane perpendicular to `axis`.
 
     Parameters
@@ -460,24 +549,12 @@ def rotation(u, v, axis):
 
     Returns
     -------
-    cos_phi : float
-        Cosine of rotation angle.
-    sin_phi : float
-        Sine of rotation angle.
+    cos_phi, sin_phi : float
+        Cosine and sine of rotation angle.
 
     See Also
     --------
-    rotate
-
-    Notes
-    -----
-    Assume that vectors :math:`\mathbf{u}` and :math:`\mathbf{v}` are
-    orthogonal to :math:`\mathbf{a}`. If this is not the case set
-    :math:`\mathbf{x} = \mathbf{x} - \mathbf{a}\mathbf{a}^T \mathbf{x}`
-    for :math:`\mathbf{x} \in \{ \mathbf{u}, \mathbf{v} \}`. There is
-    :math:`\mu > 0` such that
-
-    >>> v = mu * rotate(u, a, *rotation(u, v, a))
+    rotation_mat, rotate, perp
     """
     # Projection of u and v into the plane orthogonal to axis. The axis
     # vector may not be in the span of u and v.
@@ -501,6 +578,38 @@ def rotation(u, v, axis):
     return cos_alpha, sin_alpha
 
 
+def rotation_mat(u, v, axis=None):
+    """ Rotation matrix.
+
+    Rotation matrix from two vectors and rotation axis.
+
+    Parameters
+    ----------
+    u, v : ndarray, shape (3,)
+        Non-zero vectors in 3-space.
+    axis : ndarray, shape (3,), optional
+        Unit length vector in 3-space not contained in the span
+        of `u` and `v`.
+
+    Returns
+    -------
+    R : ndarray, shape (3, 3)
+        Rotation matrix.
+
+    See Also
+    --------
+    rotation, rotate
+    """
+    if axis is None:
+        axis = perp(u, v)
+
+    cos_alpha, sin_alpha = rotation(u, v, axis)
+
+    return (cos_alpha * np.eye(3)
+            + (1.0 - cos_alpha) * np.linalg.outer(axis, axis)
+            + sin_alpha * cross_mat(axis))
+
+
 def rotation_from_quaternion(a):
     """ Rotation matrix.
 
@@ -513,7 +622,7 @@ def rotation_from_quaternion(a):
 
     Returns
     -------
-    A : ndarray, shape (3, 3)
+    R : ndarray, shape (3, 3)
         Rotation matrix.
 
     References
