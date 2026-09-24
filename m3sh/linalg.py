@@ -61,7 +61,7 @@ def affine_map(p, q):
 
 
 def angle(u, v, up=None, degrees=False):
-    """ Angle between vectors.
+    r""" Angle between vectors.
 
     Angle between vectors `u` and `v` in radians. To obtain an oriented
     angle the `up` vector has to be specified. If specified, `up` must
@@ -79,7 +79,8 @@ def angle(u, v, up=None, degrees=False):
     Returns
     -------
     angle : float
-        Angle in degrees or radians.
+        Angle in radians in the range :math:`[0, \pi]` if `up` is not
+        specified, otherwise in :math:`[-\pi, \pi]`.
 
     See Also
     --------
