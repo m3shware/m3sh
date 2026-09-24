@@ -947,58 +947,49 @@ class Mesh:
     def add_vertex_data(self, name, attr, data, default=None):
         """ Add vertex data.
 
-        The `data` object has to allow access to vertex data using
-        index notation. The data block as a whole can be accessed via
-        ``self.name`` and the value ``data[v]`` as ``v.attr``.
+        Add a data block as mesh attribute and make it accessible on a
+        per vertex level. The `data` object has to allow access to data
+        items using index notation.
 
         Parameters
         ----------
-        name : str
-            Name of the data block.
-        attr : str
-            Name of vertex attribute.
+        name, attr : str
+            Name of the data block and name of vertex attribute. The data
+            block as a whole can be accessed as ``mesh.name`` and the
+            value ``data[v]`` as ``v.attr``.
         data : list or dict or ndarray
             Data object.
         default : object, optional
             Immutable default vertex attribute value.
 
-        Raises
-        ------
-        ValueError
-            If a data block of the same name already exists.
-
-
-        To add a vector field (one vector per vertex) to a mesh we can
-        do the following:
-
-        .. code-block:: python
-           :linenos:
-
-            # Allocate data block of appropriate size and type.
-            vecs = np.array_like(mesh.points)
-
-            # Compute values for each vertex of the mesh.
-            for v in mesh.vertices:
-                vecs[v] = ...
-
-            # Add the data block to the mesh. The vecs array can now be
-            # accessed as mesh.vecs (we could have used any other name).
-            mesh.add_vertex_data('vecs', 'vec', vecs)
-            print(mesh.vecs is vecs)
-
-            # Rows of the data block can now be accessed locally just
-            # like the rows of the vertex coordinate array.
-            for v in mesh.vertices:
-                print(v.vec == vecs[v])
-
-
         Notes
         -----
         A mutable `default` value has the same drawbacks as mutable
         default function arguments.
+
+        Examples
+        --------
+        Add a vector field (one vector per vertex) to a mesh. Allocate and
+        fill data block:
+
+        >>> vecs = np.zeros_like(mesh.points)
+
+        Add the data block to the mesh. The vecs array can now be accessed
+        as ``mesh.vecs`` (we could have used any other name).
+
+        >>> mesh.add_vertex_data('vecs', 'vec', vecs)
+        >>> mesh.vecs is vecs
+        True
+
+        Rows of the data block can now be accessed locally just like the
+        rows of the vertex coordinate array:
+
+        >>> for v in mesh.vertices:
+        >>>     print(v.vec)
         """
 
         def get(vertex):
+            assert not vertex._deleted
             return getattr(vertex._mesh, private_name)[vertex]
 
         def set(vertex, value):
@@ -1188,32 +1179,24 @@ class Mesh:
     def add_face_data(self, name, attr, data, default=None):
         """ Add face data.
 
-        The `data` object has to allow access to face data using
-        index notation. The data block as a whole can be accessed via
-        ``self.name`` and the value ``data[f]`` as ``f.attr``.
+        Add a data block as mesh attribute and make it accessible on a
+        per face level. The `data` object has to allow access to data
+        items using index notation.
 
         Parameters
         ----------
-        name : str
-            Name of the data block.
-        attr : str
-            Name of face attribute.
+        name, attr : str
+            Name of the data block and name of face attribute. The data
+            block as a whole can be accessed as ``mesh.name`` and the
+            value ``data[f]`` as ``f.attr``.
         data : list or dict or ndarray
             Data object.
         default : object, optional
             Immutable default face attribute value.
-
-        Raises
-        ------
-        ValueError
-            If a data block of the same name already exists.
-
-        Notes
-        -----
-        See :meth:`~Mesh.add_vertex_data` for an example.
         """
 
         def get(face):
+            assert not face._deleted
             return getattr(face.halfedge.origin._mesh, private_name)[face]
 
         def set(face, value):
@@ -1258,35 +1241,26 @@ class Mesh:
     def add_halfedge_data(self, name, attr, data, default=None):
         """ Add halfedge data.
 
-        The `data` object has to allow access to halfedge data using
-        index notation. The data block as a whole can be accessed via
-        ``self.name`` and the value ``data[h]`` as ``h.attr``.
+        Add a data block as mesh attribute and make it accessible on a
+        per halfedge level. The `data` object has to allow access to data
+        items using index notation.
 
         Parameters
         ----------
-        name : str
-            Name of the data block.
-        attr : str
-            Name of halfedge attribute.
+        name, attr : str
+            Name of the data block and name of halfedge attribute. The data
+            block as a whole can be accessed as ``mesh.name`` and the
+            value ``data[h]`` as ``h.attr``.
         data : dict
             Data object.
         default : object, optional
             Immutable default halfedge attribute value.
-
-        Raises
-        ------
-        ValueError
-            If a data block of same name already exists or the
-            data block is not a dictionary instance.
-
-        Notes
-        -----
-        See :meth:`~Mesh.add_vertex_data` for an example.
         """
         if not isinstance(data, dict):
             raise ValueError("data block has to be of type 'dict'")
 
         def get(halfedge):
+            assert not halfedge._deleted
             return getattr(halfedge._origin._mesh, private_name)[halfedge]
 
         def set(halfedge, value):
