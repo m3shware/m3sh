@@ -23,6 +23,13 @@
 Convenience functions to compute common and often used geometric mesh
 traits like normals (see, e.g., [1]_) and curvature (see [2]_).
 
+.. important::
+
+   Functions defined in this module are only applicable to meshes in
+   Euclidean 3-space, i.e., meshes with vertex coordinate array of
+   shape (n, 3). They cannot be applied to 2-manifold meshes embedded
+   in higher dimensional space.
+
 Example
 -------
 Face normals of a mesh can be computed as
@@ -68,14 +75,14 @@ def area(mesh):
 
     Parameters
     ----------
-    mesh : Mesh
-        Triangle mesh instance.
+    mesh : Mesh or iterable
+        An iterable that produces mesh faces.
 
     Returns
     -------
     area : float
-        Surface area. This value is meaningless if `mesh` has polygonal
-        faces with valence greater than three.
+        Surface area. Raises :class:`NotImplementedError` if `mesh`
+        contains non-triangular faces.
 
     See Also
     --------
@@ -84,12 +91,12 @@ def area(mesh):
     area = 0.0
 
     # Use the face iterator of a mesh. It skips all faces that are marked
-    # as deleted.
-    for f in mesh._fiter():
-        area += linalg.norm(linalg.cross(f.halfedge.vector,
-                                         f.halfedge.next.vector))
+    # as deleted. Not that mesh could also be a list or other iterable
+    # producing face instances.
+    for f in mesh:
+        area += face_area(f)
 
-    return 0.5 * area
+    return area
 
 
 def axis_angles(mesh, normals=None):
@@ -180,7 +187,7 @@ def cotan_weight(halfedge, boundary=np.nan, clamp=False):
 
     Returns
     -------
-    float
+    cot : float
         Cotangent value. This value is negative if the opposite angle
         is obtuse. For halfedges incident to degenerate triangles (zero
         area) this value can be :obj:`~numpy.inf` or :obj:`~numpy.nan`
@@ -688,10 +695,10 @@ def vertex_angle(vertex):
     return angle
 
 
-def vertex_area_mixed(vertex):
+def _vertex_area_mixed(vertex):
     """ Mixed vertex area.
 
-    Mixed area assigned to `vertex` as defined in [1]_.
+    The mixed vertex area as defined in [1]_.
 
     Parameters
     ----------
@@ -706,7 +713,7 @@ def vertex_area_mixed(vertex):
     References
     ----------
     .. [1] M. Meyer et al.: *Discrete differential-geometry operators for
-           triangulated 2-manifolds*. In: HC. Hege, K. Polthier (eds)
+           triangulated 2-manifolds*, in: HC. Hege, K. Polthier (eds)
            *Visualization and Mathematics III*, 2003.
     """
     cotan = lambda x: 1.0 / math.tan(x)
@@ -731,7 +738,7 @@ def vertex_area_mixed(vertex):
         if angle_a < max and angle_b < max and angle_c < max:
             area += 0.125 * (
                 linalg.norm_sqrd(b - a) * cotan(angle_c)
-              + linalg.norm_sqrd(c - a) * cotan(angle_b))
+                + linalg.norm_sqrd(c - a) * cotan(angle_b))
         elif angle_a > max:
             area += 0.5 * face_area
         else:
@@ -741,9 +748,9 @@ def vertex_area_mixed(vertex):
 
 
 def vertex_area(vertex):
-    """ Mixed vertex area.
+    """ Vertex area.
 
-    The mixed area assigned to `vertex` as defined in [1]_.
+    The mixed vertex area as defined in [1]_.
 
     Parameters
     ----------
@@ -753,16 +760,16 @@ def vertex_area(vertex):
     Returns
     -------
     area : float
-        Area assigned to `vertex`. Isolated vertices and vertices
-        marked as deleted are assigned :obj:`~numpy.nan` as area.
+        Isolated vertices have zero area, vertices marked as deleted
+        are assigned :obj:`~numpy.nan` as area.
 
     References
     ----------
     .. [1] M. Meyer et al.: *Discrete differential-geometry operators for
-           triangulated 2-manifolds*. In: HC. Hege, K. Polthier (eds)
+           triangulated 2-manifolds*, in: HC. Hege, K. Polthier (eds)
            *Visualization and Mathematics III*, 2003.
     """
-    if vertex.deleted or vertex.isolated:
+    if vertex.deleted:
         return np.nan
 
     area = 0.0
@@ -788,10 +795,6 @@ def vertex_area(vertex):
             else:
                 area += 0.25 * face_area(h.face)
 
-    # Remove test and assertion later!
-    assert abs(area - vertex_area_mixed(vertex)) < 1e-12
-    # print(f"{abs(area - vertex_area_mixed(vertex)):.6e}")
-
     return area
 
 
@@ -809,7 +812,8 @@ def vertex_areas(mesh, weights=None):
     -------
     area : ndarray
         An array of length n, where n denotes the number of vertices
-        of `mesh` (including vertices marked as deleted).
+        of `mesh`. Deleted vertices are assigned :obj:`~numpy.nan` as
+        area while isolated vertices have zero area.
 
     See Also
     --------
@@ -819,7 +823,7 @@ def vertex_areas(mesh, weights=None):
     a = np.full(len(mesh.vertices), np.nan)
 
     for v in mesh._viter():
-        a[v] = np.nan if v.isolated else 0.0
+        a[v] = 0.0
 
         for h in v._hiter():
             if not h.boundary:
@@ -972,8 +976,7 @@ def _halfedge_rotation(self):
 def face_area(face):
     """ Area of triangular face.
 
-    Compute the area of a triangle. Faces marked as deleted are assigned
-    :obj:`~numpy.nan` as area.
+    Compute the area of a triangle.
 
     Parameters
     ----------
@@ -988,7 +991,8 @@ def face_area(face):
     Returns
     -------
     area : float
-        Face area.
+        Face area. Faces marked as deleted are assigned :obj:`~numpy.nan`
+        as area.
 
     See Also
     --------
@@ -997,16 +1001,18 @@ def face_area(face):
     Notes
     -----
     For non-triangular faces, an ad-hoc fan-like triangulation would still
-    give a wrong result for a non-planar and/or non-convex faces.
+    give wrong results for non-planar and/or non-convex faces.
 
     Examples
     --------
     Use a list comprehension to compute the area for all faces of a mesh:
 
     >>> areas = [face_area(f) for f in mesh.faces]
-
-
     """
+    # A face_areas() function is currently not provided because of the
+    # exception raised by this function. One could keep the behavior of this
+    # function and add a face_areas() function that returns nan values in
+    # case of an error.
     if face.deleted:
         return np.nan
 
@@ -1014,7 +1020,7 @@ def face_area(face):
         halfedge = face.halfedge
         vector = linalg.cross(halfedge.vector, halfedge.next.vector)
     else:
-        raise NotImplementedError('triangular face required')
+        raise NotImplementedError('undefined for non-triangular face')
 
     return 0.5 * linalg.norm(vector)
 

@@ -164,7 +164,7 @@ def coc_mat(A, B, onb=False):
 
 
 def cotan(u, v):
-    r""" Cotangent between vectors.
+    r""" Cotangent value.
 
     Computes :math:`\operatorname{cotan}(\alpha) =
     \mathbf{u}^T \mathbf{v} / \| \mathbf{u} \times \mathbf{v} \|` where
