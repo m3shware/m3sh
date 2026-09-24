@@ -49,7 +49,7 @@ References
 .. [1] S. Jin, R. Lewis, and D. West: *A comparison of algorithms for
        vertex normal computation*, The Visual Computer 21, 2005.
 .. [2] M. Meyer et al.: *Discrete differential-geometry operators for
-       triangulated 2-manifolds*. In: HC. Hege, K. Polthier (eds)
+       triangulated 2-manifolds*, in HC. Hege, K. Polthier (eds)
        *Visualization and Mathematics III*, 2003.
 """
 
@@ -335,6 +335,8 @@ def dihedral_angles(mesh, normals=None, degrees=False):
 def vertex_normal(vertex, weight=None):
     """ Vertex normal.
 
+    .. versionchanged:: 1.1.0 Add `weight` argument.
+
     Compute vertex normal as average of triangle normals. Assumes that
     vertex coordinates live in Euclidean 3-space.
 
@@ -342,8 +344,8 @@ def vertex_normal(vertex, weight=None):
     ----------
     vertex : Vertex
         Vertex of a mesh.
-    weight : {None, 'nelson'}
-        Weighting scheme, see [1]_.
+    weight : {None, 'angle', 'area', 'nelson'}, optional
+        Weighting scheme, see [1]_ and [2]_.
 
     Returns
     -------
@@ -358,13 +360,15 @@ def vertex_normal(vertex, weight=None):
     Notes
     -----
     For non-triangular meshes, incident triangles are defined by the
-    planes spanned by consecutive edges in a counter-clockwise traversal
+    planes spanned by neighboring edges in a counter-clockwise traversal
     of incident edges.
 
     References
     ----------
-    .. [1] Max Nelson: *Weights for Computing Vertex Normals from Facet
-           Normals*, Journal of Graphics Tools 4 (2):1-6, 1999.
+    .. [1] M. Nelson: *Weights for computing vertex normals from facet
+           normals*, Journal of Graphics Tools 4 (2):1-6, 1999.
+    .. [2] S. Jin, R. Lewis, and D. West: *A comparison of algorithms for
+           vertex normal computation*, The Visual Computer 21, 2005.
     """
     # Accessing the point property of a deleted vertex does not trigger
     # an assertion error.
@@ -378,8 +382,17 @@ def vertex_normal(vertex, weight=None):
             if h.face is not None:
                 u = h.prev.vector
                 v = h.vector
-
                 normal += linalg.cross(u, v) / (u.dot(u) * v.dot(v))
+    elif weight == 'area':
+        for h in vertex._hiter():
+            if h.face is not None:
+                normal += linalg.cross(h.prev.vector, h.vector)
+    elif weight == 'angle':
+        for h in vertex._hiter():
+            if h.face is not None:
+                u = h.vector
+                v = h.prev.pair.vector
+                normal += linalg.angle(u, v) * linalg.cross(u, v)
     else:
         for h in vertex._hiter():
             if h.face is not None:
@@ -389,8 +402,10 @@ def vertex_normal(vertex, weight=None):
     return linalg.unit_inplace(normal)
 
 
-def vertex_normals(mesh, broadcast=False):
+def vertex_normals(mesh, weight=None, broadcast=False):
     """ Vertex normals.
+
+    .. versionchanged:: 1.1.0 Add `weight` argument.
 
     Compute vertex normals as average of face normals.
 
@@ -398,12 +413,17 @@ def vertex_normals(mesh, broadcast=False):
     ----------
     mesh : Mesh
         A mesh instance.
+    weight : {None, 'angle', 'area', 'nelson'}, optional
+        Weighting scheme. Weights are only used if `broadcast` evaluates
+        to :obj:`False`.
     broadcast : bool, optional
-        Broadcast or gather face normals.
+        Broadcast (outer loop visits faces) or gather (outer loop visits
+        vertices) face normals. For non-triangle meshes it is strongly
+        recommended to disable broadcasting.
 
     Returns
     -------
-    normals, ndarray, shape (n, 3)
+    normals : ndarray, shape (n, 3)
         Unit length normal vectors for a mesh with n vertices.
 
     See Also
@@ -419,15 +439,16 @@ def vertex_normals(mesh, broadcast=False):
     if broadcast:
         # Outer loop runs over faces. Each face broadcasts is normal vector
         # to each incident vertex. This is typically faster since face
-        # normals are only computed once.
+        # normals are only computed once. Weights are not supported.
         normals = np.zeros_like(mesh.points)
         normals[[v.deleted or v.isolated for v in mesh.vertices]] = np.nan
 
         # This loop only visits faces not marked as deleted. Deleted or
         # isolated vertices are not visited by the inner loop.
         for f in mesh:
+            # This vector may not be well defined for non-triangular faces,
+            # can be zero or have wrong orientation.
             normal = face_normal(f)
-
             for v in f:
                 normals[v] += normal
 
@@ -436,7 +457,7 @@ def vertex_normals(mesh, broadcast=False):
     else:
         # Outer loop runs over vertices. Gather normals of incident faces
         # to compute the vertex normal.
-        return np.array([vertex_normal(v) for v in mesh.vertices])
+        return np.array([vertex_normal(v, weight) for v in mesh.vertices])
 
 
 def mean_curvature_vector(vertex):
@@ -1161,8 +1182,8 @@ def face_normal(face):
             # For non-convex faces some normals computed in this way point
             # to the wrong side. For a flat star neighborhood this sum may
             # even average to the zero vector.
-            vector += linalg.unit_inplace(linalg.cross(h.vector,
-                                                       h.next.vector))
+            vector += linalg.unit_inplace(
+                linalg.cross(h.vector, h.next.vector))
 
     # Note that division by zero produces a runtime warning. Divison of
     # nan by nan results in nan and does not show a warning.
@@ -1199,9 +1220,6 @@ def face_normals(mesh):
     # the lists [f for f in mesh] and [f for f in mesh.faces] are different!
     # The first list omits deleted faces.
     return np.array([face_normal(f) for f in mesh.faces])
-
-
-
 
 
 def planarity_score(face, denom=None):
