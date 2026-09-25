@@ -48,6 +48,7 @@ from pathlib import Path
 from datetime import datetime
 from time import perf_counter
 from copy import copy
+from collections import defaultdict
 
 import numpy as np
 
@@ -463,7 +464,7 @@ class Mesh:
 
         See Also
         --------
-        m3sh.obj.read : low-level read function, can read non-manifold data
+        m3sh.obj.read : Low-level read function, can read non-manifold data.
 
         Warnings
         --------
@@ -775,6 +776,17 @@ class Mesh:
             print(f"\t\u2514\u2500 dimension {points.shape[-1]}")
 
         return cls(points, [f for f in face(m, n)], name=name)
+
+    @classmethod
+    def _from_soup(cls, points, faces):
+
+        start = perf_counter()
+        occ = _OrientedComponents(faces).components
+        print(perf_counter() - start)
+
+        print(f"number of oriented components: {len(occ)}")
+
+        return cls()
 
     @classmethod
     def read(cls, filename, *args, quiet=False):
@@ -4504,6 +4516,68 @@ class NonManifoldError(Exception):
     """
 
     pass
+
+
+class _UnionFind:
+
+    def __init__(self, size):
+        self._parent = list(range(size))
+        self._rank = [0] * size
+
+    def find(self, i):
+        if self._parent[i] != i:
+            self._parent[i] = self.find(self._parent[i])
+
+        return self._parent[i]
+
+    def union(self, i, j):
+        root_i = self.find(i)
+        root_j = self.find(j)
+
+        if root_i != root_j:
+            if self._rank[i] < self._rank[j]:
+                self._parent[root_i] = root_j
+            elif self._rank[i] > self._rank[j]:
+                self._parent[root_j] = root_i
+            else:
+                self._parent[root_j] = root_i
+                self._rank[root_i] += 1
+
+    def connected(self, i, j):
+        return self.find(i) == self.find(j)
+
+
+class _OrientedComponents:
+
+    def __init__(self, faces):
+        map = defaultdict(list)
+
+        for i, face in enumerate(faces):
+            valence = len(face)
+
+            for j in range(valence):
+                halfedge = (face[j], face[(j+1) % valence])
+                map[halfedge].append(i)
+
+        dsu = _UnionFind(len(faces))
+
+        for halfedge, comp in map.items():
+            pair = (halfedge[1], halfedge[0])
+
+            for f in map.get(pair, []):
+                for g in comp:
+                    dsu.union(f, g)
+
+        comps = defaultdict(list)
+
+        for i, _ in enumerate(faces):
+            comps[dsu.find(i)].append(i)
+
+        self._components = list(comps.values())
+
+    @property
+    def components(self):
+        return self._components
 
 
 # def _array_append(array, item):
