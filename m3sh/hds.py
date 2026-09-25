@@ -88,19 +88,49 @@ class Mesh:
 
     See Also
     --------
-    from_OBJ : read from Wavefront OBJ file
-    from_OFF : read from OFF (Object File Format) file
-    from_grid : convert grid data to quadrilateral mesh
+    from_OBJ : Read from Wavefront OBJ file.
+    from_OFF : Read from OFF (Object File Format) file.
+    from_grid : Convert grid data to quadrilateral mesh.
 
     Notes
     -----
     If neither `points` nor `faces` is specified, an empty mesh is created.
     You may specify `points` and omit `faces` but not the other way around.
-
-    Examples
-    --------
-    *Convex hull ...*
     """
+
+    # Examples
+    # --------
+    # Compute and visualize the convex hull of a point set in 3-space. First
+    # create a random set of points (or load a point set from file):
+
+    # >>> import numpy as np
+    # >>> rng = np.random.default_rng()
+    # >>> points = rng.random((50, 3))
+
+    # Compute the facets of the convex hull:
+
+    # >>> from scipy.spatial import ConvexHull
+    # >>> hull = ConvexHull(points)
+
+    # Build a mesh representation. The mesh uses all points as vertices. Most
+    # of them will be isolated as they are not vertices of the convex hull. We
+    # can get rid of those vertices by cleaning the mesh.
+
+    # >>> from m3sh.hds import Mesh
+    # >>> mesh = Mesh(points, hull.simplices)
+    # >>> mesh.clean()
+
+    # Display the mesh
+
+    # >>> from m3sh import vis
+    # >>> polyhedron = vis.mesh(mesh)
+    # >>> polyhedron.opacity = 0.7
+    # >>> polyhedron.edges()
+
+    # and the original point set
+
+    # >>> vis.scatter(points)
+    # >>> vis.show()
 
     def __init__(self, points=None, faces=None, *, name=None):
         # If there are faces defined, a corresponding sequence of vertex
@@ -962,11 +992,6 @@ class Mesh:
         default : object, optional
             Immutable default vertex attribute value.
 
-        Notes
-        -----
-        A mutable `default` value has the same drawbacks as mutable
-        default function arguments.
-
         Examples
         --------
         Add a vector field (one vector per vertex) to a mesh. Allocate and
@@ -981,8 +1006,7 @@ class Mesh:
         >>> mesh.vecs is vecs
         True
 
-        Rows of the data block can now be accessed locally just like the
-        rows of the vertex coordinate array:
+        Rows of the data block can now be accessed by dot notation:
 
         >>> for v in mesh.vertices:
         >>>     print(v.vec)
@@ -1007,12 +1031,6 @@ class Mesh:
                     del mesh._vattr[i]
 
             delattr(mesh, private_name)
-
-        # if hasattr(self, private_name):
-        #     raise ValueError(f"data block '{name}' already exists")
-
-        # if hasattr(Vertex, attr):
-        #     raise ValueError(f"vertex attribute '{attr}' already in use")
 
         # The hidden name for direct access of the attribute data block. Do
         # not unintentionally overwrite existing data.
@@ -1065,15 +1083,15 @@ class Mesh:
         # different. If this test is passed there still need to be at
         # least three vertices. Duplicate coordinates are not a problem.
         if len(set(face)) != n:
-            raise ValueError('face contains duplicate vertices')
+            raise ValueError(f"face {face} contains duplicate vertices")
 
         if n < 3:
-            raise ValueError('face has less than three vertices')
+            raise ValueError(f"face {face} has less than three vertices")
 
         # Check consistency pre-conditions on vertex attributes. Failing
         # indicates an invalid halfedge data structure.
-        for k in range(n):
-            v = self._verts[face[k]]
+        for k in face:
+            v = self._verts[k]
 
             assert not v._deleted or not self._vhout[v]
             assert v._halfedge is not None or not self._vhout[v]
@@ -1081,7 +1099,8 @@ class Mesh:
         f = Face(len(self._faces))          # new face object
         edge_loop = []                      # halfedge loop around face
 
-        # Dry run.
+        # Dry run. Raising an error at this point will leave the halfedge
+        # data structure intact!
         for k in range(n):
             v = self._verts[face[k]]
             w = self._verts[face[(k + 1) % n]]
@@ -1215,12 +1234,6 @@ class Mesh:
 
             delattr(mesh, private_name)
 
-        # if hasattr(self, private_name):
-        #     raise ValueError(f"data block '{name}' already exists")
-
-        # if hasattr(Face, attr):
-        #     raise ValueError(f"face attribute '{attr}' already in use")
-
         # The hidden name for direct access of the attribute data block. Do
         # not unintentionally overwrite existing data.
         setattr(self, (private_name := '_' + name), data)
@@ -1256,15 +1269,13 @@ class Mesh:
         default : object, optional
             Immutable default halfedge attribute value.
         """
-        if not isinstance(data, dict):
-            raise ValueError("data block has to be of type 'dict'")
 
         def get(halfedge):
             assert not halfedge._deleted
-            return getattr(halfedge._origin._mesh, private_name)[halfedge]
+            return getattr(halfedge.origin._mesh, private_name)[halfedge]
 
         def set(halfedge, value):
-            getattr(halfedge._origin._mesh, private_name)[halfedge] = value
+            getattr(halfedge.origin._mesh, private_name)[halfedge] = value
 
         def get_data(mesh):
             return getattr(mesh, private_name)
@@ -1279,11 +1290,10 @@ class Mesh:
 
             delattr(mesh, private_name)
 
-        # if hasattr(self, private_name):
-        #     raise ValueError(f"data block '{name}' already exists")
-
-        # if hasattr(Halfedge, attr):
-        #     raise ValueError(f"halfedge attribute '{attr}' already in use")
+        # Halfedges have no __index__ method. They can only be used to look
+        # up values in a dictionary!
+        if not isinstance(data, dict):
+            raise ValueError("data block has to be of type 'dict'")
 
         # The hidden name for direct access of the attribute data block. Do
         # not unintentionally overwrite existing data.
@@ -1392,15 +1402,19 @@ class Mesh:
                 except AttributeError:
                     _array_clear(data)
 
-    def clean(self):
+    def clean(self, purge_isolated=True):
         """ Garbage collection.
 
         Removes all deleted mesh items from the respective containers.
-        Previously obtained vertex and face indices may become invalid.
 
-        Notes
-        -----
-        Use sparingly.
+        Parameters
+        ----------
+        purge_isolated : bool, optional
+            Delete and remove isolated vertices in the process.
+
+        Warnings
+        --------
+        Previously obtained vertex and face indices become invalid.
         """
         assert len(self._points) == len(self._verts)
 
@@ -1428,6 +1442,9 @@ class Mesh:
         # This should prevent accidental access by triggering assertions and
         # raising exceptions by references outside the mesh instance.
         for v in self._verts:
+            if purge_isolated and v.isolated:
+                self.delete_vertex(v)
+
             if v._deleted:
                 del self._vhout[v]
                 v._invalidate()
@@ -1575,65 +1592,81 @@ class Mesh:
 
         Parameters
         ----------
-        vertex : Vertex or int
-            Vertex identifier.
-        fill : str, optional
-            Pass 'tri' to triangulate the hole or 'ngon'
-            to turn it into a polygonal face.
+        vertex : Vertex
+            Vertex instance.
 
-        Raises
-        ------
-        NonManifoldError
-            If vertex deletion was not possible.
+            .. versionchanged:: 1.1.0 No longer accepts integer arguments.
+        fill : {None, 'tri', 'ngon'}, optional
+            Pass 'tri' to triangulate the hole or 'ngon' to turn it into
+            a polygonal face.
 
-        Returns
-        -------
-        Face or list[Face]
-            The faces used to patch the hole. :obj:`None` if hole
-            filling was not requested.
+            .. versionchanged:: 1.1.0 Hole filling is currently disabled.
         """
+        # Returns
+        # -------
+        # Face or list[Face]
+        #     The faces used to patch the hole or :obj:`None` if hole
+        #     filling was not requested.
+
         v = self._verts[vertex]
+
+        if (v is not vertex) or (vertex._mesh is not self):
+            raise ValueError("'vertex' does not belong to this mesh")
+
+        # This should either be turned into a warning or a return statement
+        # when the method is complete.
         assert not v._deleted
 
         if v.isolated:
             v._deleted = True
-        elif not v._manifold:
-            if fill is not None:
-                raise NonManifoldError('cannot fill hole formed by ' +
-                                       'deleting a non-manifold vertex')
-
+        else:
             # Collect all faces incident with vertex v. Use _vhout[v] to
             # to treat non-manifold vertices correctly.
             faces = [h.face for h in self._vhout[v] if h.face is not None]
 
             for f in faces:
                 self.delete_face(f, del_isolated_verts=True)
-        else:
-            boundary = v.boundary
 
-            while not v._deleted:
-                h = v._halfedge
-                left = h.face
-                right = h.pair.face
+        if fill is not None:
+            raise NotImplementedError('hole filling disabled')
 
-                while True:
-                    next = h.next
-                    self.delete_halfedge(h, del_isolated_verts=True)
+        # elif not v._manifold:
+        #     if fill is not None:
+        #         raise NonManifoldError('cannot fill hole formed by ' +
+        #                                'deleting a non-manifold vertex')
 
-                    if next.face is left and next.pair.face is right:
-                        h = next
-                    else:
-                        break
+        #     # Collect all faces incident with vertex v. Use _vhout[v] to
+        #     # to treat non-manifold vertices correctly.
+        #     faces = [h.face for h in self._vhout[v] if h.face is not None]
 
-            if fill is None:
-                if not boundary:
-                    self.delete_face(right, del_isolated_verts=True)
-            else:
-                if not boundary:
-                    if fill == 'tri':
-                        raise NotImplementedError('fill method missing')
-                else:
-                    raise NotImplementedError('fill method missing')
+        #     for f in faces:
+        #         self.delete_face(f, del_isolated_verts=True)
+        # else:
+        #     boundary = v.boundary
+
+        #     while not v._deleted:
+        #         h = v._halfedge
+        #         left = h.face
+        #         right = h.pair.face
+
+        #         while True:
+        #             next = h.next
+        #             self.delete_halfedge(h, del_isolated_verts=True)
+
+        #             if next.face is left and next.pair.face is right:
+        #                 h = next
+        #             else:
+        #                 break
+
+        #     if fill is None:
+        #         if not boundary:
+        #             self.delete_face(right, del_isolated_verts=True)
+        #     else:
+        #         if not boundary:
+        #             if fill == 'tri':
+        #                 raise NotImplementedError('fill method missing')
+        #         else:
+        #             raise NotImplementedError('fill method missing')
 
     def delete_face(self, face, del_isolated_verts=True):
         """ Delete face.
