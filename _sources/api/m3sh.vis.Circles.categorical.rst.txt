@@ -1,0 +1,11 @@
+.. raw:: html
+
+   <div class="prename">m3sh.vis.Circles.</div>
+   <div class="empty"></div>
+
+categorical
+============================
+
+.. currentmodule:: m3sh.vis
+
+.. automethod:: Circles.categorical

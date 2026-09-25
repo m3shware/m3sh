@@ -1,0 +1,11 @@
+.. raw:: html
+
+   <div class="prename">m3sh.vis.Spheres.</div>
+   <div class="empty"></div>
+
+lookuptable
+============================
+
+.. currentmodule:: m3sh.vis
+
+.. automethod:: Spheres.lookuptable

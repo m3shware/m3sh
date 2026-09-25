@@ -1,0 +1,11 @@
+.. raw:: html
+
+   <div class="prename">m3sh.vis.Arrows.</div>
+   <div class="empty"></div>
+
+scale
+=====================
+
+.. currentmodule:: m3sh.vis
+
+.. autoattribute:: Arrows.scale

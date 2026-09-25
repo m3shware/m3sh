@@ -1,0 +1,11 @@
+.. raw:: html
+
+   <div class="prename">m3sh.hds.Mesh.</div>
+   <div class="empty"></div>
+
+add_halfedge_data
+===============================
+
+.. currentmodule:: m3sh.hds
+
+.. automethod:: Mesh.add_halfedge_data

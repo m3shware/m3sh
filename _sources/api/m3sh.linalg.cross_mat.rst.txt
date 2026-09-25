@@ -1,0 +1,11 @@
+.. raw:: html
+
+   <div class="prename">m3sh.linalg.</div>
+   <div class="empty"></div>
+
+cross_mat
+=====================
+
+.. currentmodule:: m3sh.linalg
+
+.. autofunction:: cross_mat

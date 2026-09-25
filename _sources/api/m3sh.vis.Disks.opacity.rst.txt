@@ -1,0 +1,11 @@
+.. raw:: html
+
+   <div class="prename">m3sh.vis.Disks.</div>
+   <div class="empty"></div>
+
+opacity
+======================
+
+.. currentmodule:: m3sh.vis
+
+.. autoattribute:: Disks.opacity

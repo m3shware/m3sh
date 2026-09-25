@@ -1,0 +1,11 @@
+.. raw:: html
+
+   <div class="prename">m3sh.traits.</div>
+   <div class="empty"></div>
+
+laplace_matrix
+==========================
+
+.. currentmodule:: m3sh.traits
+
+.. autofunction:: laplace_matrix

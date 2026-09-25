@@ -1,0 +1,11 @@
+.. raw:: html
+
+   <div class="prename">m3sh.vis.Cones.</div>
+   <div class="empty"></div>
+
+name
+===================
+
+.. currentmodule:: m3sh.vis
+
+.. autoattribute:: Cones.name

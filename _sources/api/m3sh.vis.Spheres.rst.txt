@@ -1,0 +1,52 @@
+.. raw:: html
+
+   <div class="prename">m3sh.vis.</div>
+   <div class="empty"></div>
+
+Spheres
+================
+
+.. currentmodule:: m3sh.vis
+ 
+.. autoclass:: Spheres
+    
+   
+   
+   .. rubric:: Attributes
+ 
+   .. autosummary::
+      :toctree:
+      :template: attribute.rst
+   
+      ~Spheres.backface_opacity
+      ~Spheres.bounds
+      ~Spheres.color
+      ~Spheres.interpolation
+      ~Spheres.name
+      ~Spheres.opacity
+      ~Spheres.pickable
+      ~Spheres.prop
+      ~Spheres.scale
+      ~Spheres.visible
+      ~Spheres.wireframe
+   
+   
+ 
+   
+   
+   .. rubric:: Methods
+ 
+   .. autosummary::
+      :toctree: 
+      :template: method.rst
+   
+      ~Spheres.categorical
+      ~Spheres.colorize
+      ~Spheres.index
+      ~Spheres.lookuptable
+      ~Spheres.modified
+      ~Spheres.silhouette
+   
+   
+   
+   

@@ -1,0 +1,11 @@
+.. raw:: html
+
+   <div class="prename">m3sh.vis.LookupTable.</div>
+   <div class="empty"></div>
+
+prop
+=========================
+
+.. currentmodule:: m3sh.vis
+
+.. autoattribute:: LookupTable.prop

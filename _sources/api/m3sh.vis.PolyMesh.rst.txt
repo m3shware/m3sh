@@ -1,0 +1,59 @@
+.. raw:: html
+
+   <div class="prename">m3sh.vis.</div>
+   <div class="empty"></div>
+
+PolyMesh
+=================
+
+.. currentmodule:: m3sh.vis
+ 
+.. autoclass:: PolyMesh
+    
+   
+   
+   .. rubric:: Attributes
+ 
+   .. autosummary::
+      :toctree:
+      :template: attribute.rst
+   
+      ~PolyMesh.backface_color
+      ~PolyMesh.backface_opacity
+      ~PolyMesh.bounds
+      ~PolyMesh.color
+      ~PolyMesh.interpolation
+      ~PolyMesh.mesh
+      ~PolyMesh.name
+      ~PolyMesh.opacity
+      ~PolyMesh.pickable
+      ~PolyMesh.points
+      ~PolyMesh.prop
+      ~PolyMesh.visible
+      ~PolyMesh.wireframe
+   
+   
+ 
+   
+   
+   .. rubric:: Methods
+ 
+   .. autosummary::
+      :toctree: 
+      :template: method.rst
+   
+      ~PolyMesh.categorical
+      ~PolyMesh.colorize
+      ~PolyMesh.contour
+      ~PolyMesh.edges
+      ~PolyMesh.labels
+      ~PolyMesh.lookuptable
+      ~PolyMesh.modified
+      ~PolyMesh.normals
+      ~PolyMesh.texture
+      ~PolyMesh.vectors
+      ~PolyMesh.verts
+   
+   
+   
+   

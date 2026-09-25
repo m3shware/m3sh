@@ -1,0 +1,52 @@
+.. raw:: html
+
+   <div class="prename">m3sh.vis.</div>
+   <div class="empty"></div>
+
+OrientedGlyphs
+=======================
+
+.. currentmodule:: m3sh.vis
+ 
+.. autoclass:: OrientedGlyphs
+    
+   
+   
+   .. rubric:: Attributes
+ 
+   .. autosummary::
+      :toctree:
+      :template: attribute.rst
+   
+      ~OrientedGlyphs.backface_opacity
+      ~OrientedGlyphs.bounds
+      ~OrientedGlyphs.color
+      ~OrientedGlyphs.interpolation
+      ~OrientedGlyphs.name
+      ~OrientedGlyphs.opacity
+      ~OrientedGlyphs.pickable
+      ~OrientedGlyphs.prop
+      ~OrientedGlyphs.scale
+      ~OrientedGlyphs.visible
+      ~OrientedGlyphs.wireframe
+   
+   
+ 
+   
+   
+   .. rubric:: Methods
+ 
+   .. autosummary::
+      :toctree: 
+      :template: method.rst
+   
+      ~OrientedGlyphs.categorical
+      ~OrientedGlyphs.colorize
+      ~OrientedGlyphs.index
+      ~OrientedGlyphs.lookuptable
+      ~OrientedGlyphs.modified
+      ~OrientedGlyphs.silhouette
+   
+   
+   
+   

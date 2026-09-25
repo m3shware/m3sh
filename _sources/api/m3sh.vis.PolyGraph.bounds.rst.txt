@@ -1,0 +1,11 @@
+.. raw:: html
+
+   <div class="prename">m3sh.vis.PolyGraph.</div>
+   <div class="empty"></div>
+
+bounds
+=========================
+
+.. currentmodule:: m3sh.vis
+
+.. autoattribute:: PolyGraph.bounds

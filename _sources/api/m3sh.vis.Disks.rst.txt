@@ -1,0 +1,52 @@
+.. raw:: html
+
+   <div class="prename">m3sh.vis.</div>
+   <div class="empty"></div>
+
+Disks
+==============
+
+.. currentmodule:: m3sh.vis
+ 
+.. autoclass:: Disks
+    
+   
+   
+   .. rubric:: Attributes
+ 
+   .. autosummary::
+      :toctree:
+      :template: attribute.rst
+   
+      ~Disks.backface_opacity
+      ~Disks.bounds
+      ~Disks.color
+      ~Disks.interpolation
+      ~Disks.name
+      ~Disks.opacity
+      ~Disks.pickable
+      ~Disks.prop
+      ~Disks.scale
+      ~Disks.visible
+      ~Disks.wireframe
+   
+   
+ 
+   
+   
+   .. rubric:: Methods
+ 
+   .. autosummary::
+      :toctree: 
+      :template: method.rst
+   
+      ~Disks.categorical
+      ~Disks.colorize
+      ~Disks.index
+      ~Disks.lookuptable
+      ~Disks.modified
+      ~Disks.silhouette
+   
+   
+   
+   

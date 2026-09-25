@@ -1,0 +1,11 @@
+.. raw:: html
+
+   <div class="prename">m3sh.traits.</div>
+   <div class="empty"></div>
+
+gauss_curvature
+===========================
+
+.. currentmodule:: m3sh.traits
+
+.. autofunction:: gauss_curvature

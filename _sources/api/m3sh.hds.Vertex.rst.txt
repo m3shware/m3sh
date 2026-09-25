@@ -1,0 +1,33 @@
+.. raw:: html
+
+   <div class="prename">m3sh.hds.</div>
+   <div class="empty"></div>
+
+Vertex
+===============
+
+.. currentmodule:: m3sh.hds
+ 
+.. autoclass:: Vertex
+    
+   
+   
+   .. rubric:: Attributes
+ 
+   .. autosummary::
+      :toctree:
+      :template: attribute.rst
+   
+      ~Vertex.boundary
+      ~Vertex.degree
+      ~Vertex.deleted
+      ~Vertex.halfedge
+      ~Vertex.index
+      ~Vertex.isolated
+      ~Vertex.point
+   
+   
+ 
+   
+   
+   

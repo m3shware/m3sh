@@ -1,0 +1,52 @@
+.. raw:: html
+
+   <div class="prename">m3sh.vis.</div>
+   <div class="empty"></div>
+
+Arrows
+===============
+
+.. currentmodule:: m3sh.vis
+ 
+.. autoclass:: Arrows
+    
+   
+   
+   .. rubric:: Attributes
+ 
+   .. autosummary::
+      :toctree:
+      :template: attribute.rst
+   
+      ~Arrows.backface_opacity
+      ~Arrows.bounds
+      ~Arrows.color
+      ~Arrows.interpolation
+      ~Arrows.name
+      ~Arrows.opacity
+      ~Arrows.pickable
+      ~Arrows.prop
+      ~Arrows.scale
+      ~Arrows.visible
+      ~Arrows.wireframe
+   
+   
+ 
+   
+   
+   .. rubric:: Methods
+ 
+   .. autosummary::
+      :toctree: 
+      :template: method.rst
+   
+      ~Arrows.categorical
+      ~Arrows.colorize
+      ~Arrows.index
+      ~Arrows.lookuptable
+      ~Arrows.modified
+      ~Arrows.silhouette
+   
+   
+   
+   

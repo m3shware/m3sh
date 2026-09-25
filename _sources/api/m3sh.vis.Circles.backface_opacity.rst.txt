@@ -1,0 +1,11 @@
+.. raw:: html
+
+   <div class="prename">m3sh.vis.Circles.</div>
+   <div class="empty"></div>
+
+backface_opacity
+=================================
+
+.. currentmodule:: m3sh.vis
+
+.. autoattribute:: Circles.backface_opacity

@@ -1,0 +1,33 @@
+.. raw:: html
+
+   <div class="prename">m3sh.vis.</div>
+   <div class="empty"></div>
+
+Prop
+=============
+
+.. currentmodule:: m3sh.vis
+ 
+.. autoclass:: Prop
+    
+   
+   
+   .. rubric:: Attributes
+ 
+   .. autosummary::
+      :toctree:
+      :template: attribute.rst
+   
+      ~Prop.bounds
+      ~Prop.name
+      ~Prop.pickable
+      ~Prop.prop
+      ~Prop.visible
+   
+   
+ 
+   
+   
+   
+   
+   

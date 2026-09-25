@@ -1,0 +1,55 @@
+.. raw:: html
+
+   <div class="prename">m3sh.vis.</div>
+   <div class="empty"></div>
+
+Circles
+================
+
+.. currentmodule:: m3sh.vis
+ 
+.. autoclass:: Circles
+    
+   
+   
+   .. rubric:: Attributes
+ 
+   .. autosummary::
+      :toctree:
+      :template: attribute.rst
+   
+      ~Circles.backface_opacity
+      ~Circles.bounds
+      ~Circles.color
+      ~Circles.interpolation
+      ~Circles.name
+      ~Circles.opacity
+      ~Circles.pickable
+      ~Circles.prop
+      ~Circles.radius
+      ~Circles.scale
+      ~Circles.style
+      ~Circles.visible
+      ~Circles.width
+      ~Circles.wireframe
+   
+   
+ 
+   
+   
+   .. rubric:: Methods
+ 
+   .. autosummary::
+      :toctree: 
+      :template: method.rst
+   
+      ~Circles.categorical
+      ~Circles.colorize
+      ~Circles.index
+      ~Circles.lookuptable
+      ~Circles.modified
+      ~Circles.silhouette
+   
+   
+   
+   

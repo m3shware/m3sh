@@ -1,0 +1,57 @@
+﻿m3sh.traits
+===========
+
+.. automodule:: m3sh.traits
+
+   
+   
+   
+
+   
+   
+   
+
+   
+   
+   
+   
+   
+   
+   .. rubric:: Functions
+
+   .. autosummary::
+      :toctree:
+      :template: function.rst
+   
+      area
+      axis_angles
+      cotan_weight
+      cotan_weights
+      diameter
+      dihedral_angle
+      dihedral_angles
+      edge_stats
+      face_area
+      face_frame
+      face_normal
+      face_normals
+      gauss_curvature
+      gauss_curvatures
+      laplace_matrix
+      mean_curvature
+      mean_curvature_vector
+      mean_curvature_vectors
+      mean_curvatures
+      planarity_score
+      planarity_scores
+      plane_equation
+      principal_curvature
+      smooth
+      smooth_
+      vertex_angle
+      vertex_area
+      vertex_areas
+      vertex_normal
+      vertex_normals
+   
+   

@@ -1,0 +1,11 @@
+.. raw:: html
+
+   <div class="prename">m3sh.vis.</div>
+   <div class="empty"></div>
+
+silhouette
+===================
+
+.. currentmodule:: m3sh.vis
+
+.. autofunction:: silhouette

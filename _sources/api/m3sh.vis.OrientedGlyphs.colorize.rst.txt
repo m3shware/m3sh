@@ -1,0 +1,11 @@
+.. raw:: html
+
+   <div class="prename">m3sh.vis.OrientedGlyphs.</div>
+   <div class="empty"></div>
+
+colorize
+================================
+
+.. currentmodule:: m3sh.vis
+
+.. automethod:: OrientedGlyphs.colorize

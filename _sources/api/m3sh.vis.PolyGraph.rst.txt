@@ -1,0 +1,54 @@
+.. raw:: html
+
+   <div class="prename">m3sh.vis.</div>
+   <div class="empty"></div>
+
+PolyGraph
+==================
+
+.. currentmodule:: m3sh.vis
+ 
+.. autoclass:: PolyGraph
+    
+   
+   
+   .. rubric:: Attributes
+ 
+   .. autosummary::
+      :toctree:
+      :template: attribute.rst
+   
+      ~PolyGraph.backface_color
+      ~PolyGraph.backface_opacity
+      ~PolyGraph.bounds
+      ~PolyGraph.color
+      ~PolyGraph.interpolation
+      ~PolyGraph.name
+      ~PolyGraph.opacity
+      ~PolyGraph.pickable
+      ~PolyGraph.points
+      ~PolyGraph.prop
+      ~PolyGraph.visible
+      ~PolyGraph.wireframe
+   
+   
+ 
+   
+   
+   .. rubric:: Methods
+ 
+   .. autosummary::
+      :toctree: 
+      :template: method.rst
+   
+      ~PolyGraph.categorical
+      ~PolyGraph.colorize
+      ~PolyGraph.edges
+      ~PolyGraph.labels
+      ~PolyGraph.lookuptable
+      ~PolyGraph.modified
+      ~PolyGraph.verts
+   
+   
+   
+   
