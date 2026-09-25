@@ -84,7 +84,7 @@ class Mesh:
         attribute of a mesh.
     name : str, optional
         Name tag. Defaults to the string 'None' if not specified. Can be
-        queried later using the :attr:`name` property.
+        queried and changed later using the :attr:`name` property.
 
     See Also
     --------
@@ -143,7 +143,7 @@ class Mesh:
         start = perf_counter()
 
         if points is not None:
-            self._points = np.atleast_2d(points)
+            self._points = np.asarray(points)
             self._verts = [Vertex(i, parent=self)
                            for i in range(len(points))]
 
@@ -275,7 +275,7 @@ class Mesh:
     @points.setter
     def points(self, value):
         # This is inconsistent. In __init__ we use atleast_2d to convert
-        # array_like data to ndarray.
+        # array_like data to ndarray... changed on September 25, 2026.
         self._points = np.asarray(value)
 
     @property
@@ -927,8 +927,8 @@ class Mesh:
     def add_vertex(self, point, *args, **kwargs):
         """ Create and add new vertex.
 
-        The first point added to a mesh determines the dimensionality
-        of all mesh vertices.
+        The first vertex added to a mesh determines the dimensionality
+        of the embedding space.
 
         Parameters
         ----------
@@ -936,7 +936,7 @@ class Mesh:
             Vertex coordinates.
         *args
             Variable number of scalars that are interpreted as vertex
-            coordinates.
+            coordinates, see example.
         **kwargs
             Arbitrary number of attribute name and value pairs.
 
@@ -952,10 +952,34 @@ class Mesh:
         when the data block was added, or by using a value provided as
         keyword argument. Values specified as keyword arguments that don't
         fit this pattern are added as ordinary instance attributes.
+
+        Examples
+        --------
+        The statement
+
+        >>> mesh.add_vertex([1.0, 2.0, 3.0])
+
+        is equivalent to
+
+        >>> mesh.add_vertex(1.0, 2.0, 3.0)
         """
-        # Append to (or create) the array of all vertex coordinates.
         point = [point, *args] if len(args) else point
-        self._points = _array_append(self._points, point)
+        point = np.asarray(point)
+
+        # This is the old version to add point coordinates, remove later!
+        # self._points = _array_append(self._points, point)
+
+        if (points := self._points) is not None:
+            shape = points.shape
+
+            # Be aware of broadcasting! Even if shapes don't match the
+            # assignment to points[-1] works if shapes can be broadcast!
+            points = np.resize(points, (shape[0]+1, *shape[1:]))
+            points[-1] = point
+
+            self._points = points
+        else:
+            self._points = np.array([point])
 
         # New vertex object that goes to the end of the list of all
         # vertices.
@@ -1010,6 +1034,13 @@ class Mesh:
 
         >>> for v in mesh.vertices:
         >>>     print(v.vec)
+
+        Special care has to be taken when adding data to an empty mesh.
+        Assume that we want to add data items of a given shape to vertices.
+        An empty data block of type :class:`~numpy.ndarray` of the correct
+        shape can be added via
+
+        >>> mesh.add_vertex_data('some_data', 'data', np.zeros((0, *shape)))
         """
 
         def get(vertex):
@@ -1060,8 +1091,7 @@ class Mesh:
         face : list[int] or list[Vertex]
             Combinatorial face definition.
         *args
-            Variable number of :class:`Vertex` or :class:`int` arguments
-            that are interpreted as vertex identifiers.
+            Variable number of :class:`Vertex` or :class:`int` arguments.
         **kwargs
             Arbitrary number of attribute name and value pairs.
 
@@ -1069,10 +1099,6 @@ class Mesh:
         -------
         Face
             The newly created :class:`Face` instance.
-
-        Notes
-        -----
-        See :meth:`~Mesh.add_vertex` for a detailed discussion of `kwargs`.
         """
         # Number of vertices of the face, same as the number of edges
         # that bound the face.
@@ -1376,13 +1402,9 @@ class Mesh:
     def clear(self):
         """ Clear all mesh items.
 
-        The memory occupied by the coordinate array is garbage collected
-        once no further references or views of it remain.
-
-        Notes
-        -----
-        Data blocks are cleared by calling the data block's own
-        :func:`~object.clear` method.
+        The memory occupied by the coordinate array and other data blocks
+        is garbage collected once no further references or views of it
+        remain.
         """
         self._points = None
 
@@ -1400,7 +1422,11 @@ class Mesh:
                 try:
                     data.clear()
                 except AttributeError:
-                    _array_clear(data)
+                    # The old way of clearing an array in place. Remove!
+                    # _array_clear(data)
+
+                    data = np.resize(data, (0, *data.shape[1:]))
+                    setattr(self, name, data)
 
     def clean(self, purge_isolated=True):
         """ Garbage collection.
@@ -1416,9 +1442,8 @@ class Mesh:
         --------
         Previously obtained vertex and face indices become invalid.
         """
-        assert len(self._points) == len(self._verts)
 
-        def shrink(data, items, idx):
+        def shrink(data, items, idx, name):
             if isinstance(data, list):
                 data[:] = (data[item] for item in items if not item._deleted)
             elif isinstance(data, dict):
@@ -1433,10 +1458,14 @@ class Mesh:
                 # data[:len(idx), ...] = data[idx, ...]
                 # data.resize(shape, refcheck=False)
 
-                data[:len(idx)] = data[idx]
-                data.resize((len(idx), *data.shape[1:]), refcheck=False)
+                # data[:len(idx)] = data[idx]
+                # data.resize((len(idx), *data.shape[1:]), refcheck=False)
+
+                setattr(self, name, data[idx].copy())
             else:
                 raise TypeError(f"not supported: {type(data)}")
+
+        assert len(self._points) == len(self._verts)
 
         # Invalidate all attributes of vertices to be removed from the mesh.
         # This should prevent accidental access by triggering assertions and
@@ -1461,8 +1490,11 @@ class Mesh:
         shape[0] = len(vidx)
 
         if len(vidx):
-            self._points[:len(vidx), ...] = self._points[vidx, ...]
-            self._points.resize(shape, refcheck=False)
+            # The previous way of shrinking the coordinate array in place.
+            # self._points[:len(vidx), ...] = self._points[vidx, ...]
+            # self._points.resize(shape, refcheck=False)
+
+            self._points = self._points[vidx].copy()
         else:
             self._points = None
 
@@ -1473,8 +1505,8 @@ class Mesh:
                                     (vidx, None, fidx)):
             for name, _, _ in attr:
                 # The nested shrink method relies on the shape variable
-                # set earlier.
-                shrink(getattr(self, name), items, idx)
+                # set earlier. This is no longer true!
+                shrink(getattr(self, name), items, idx, name)
 
         # Update vertex container to skip all unused vertices. Update all
         # vertex indices afterwards.
@@ -1510,8 +1542,8 @@ class Mesh:
         """ In-place mesh copy.
 
         Implements assignment operator like behavior. Performs the same
-        operation as :meth:`copy` but assigns the result to the mesh
-        instance `self`.
+        operation as :meth:`copy` but assigns the result to the calling
+        mesh instance.
 
         Parameters
         ----------
@@ -1539,12 +1571,12 @@ class Mesh:
 
         # Clear data blocks in the target mesh. Some of them may have already
         # been removed from the source mesh.
-        for attr_type in (self._vattr, self._hattr, self._fattr):
-            for private_name, _, _ in attr_type:
+        for attr in (self._vattr, self._hattr, self._fattr):
+            for private_name, _, _ in attr:
                 delattr(self, private_name)
 
         # Shallow copies of lists that hold tuples (immutable, no point
-        # making a deep copy).
+        # in making a deep copy).
         self._vattr = mesh._vattr.copy()
         self._hattr = mesh._hattr.copy()
         self._fattr = mesh._fattr.copy()
@@ -1567,11 +1599,7 @@ class Mesh:
         """ Return mesh copy.
 
         Duplicate combinatorics, vertex coordinates, and data blocks of a
-        mesh. Data blocks are copied using the data object's
-        :meth:`~object.copy` method. For data blocks of type :class:`list`
-        and :class:`dict` this results in shallow copies. Data of type
-        :class:`~numpy.ndarray` won't share data buffers with data blocks
-        of the copy.
+        mesh.
 
         Returns
         -------
@@ -1580,8 +1608,13 @@ class Mesh:
 
         Notes
         -----
+        Data blocks are copied using the data object's :meth:`~object.copy`
+        method. For data blocks of type :class:`list` and :class:`dict` this
+        results in shallow copies and deep copies for data of type
+        :class:`~numpy.ndarray`.
+
         User defined vertex, face, and halfedge instance attributes are
-        copied using :func:`copy.copy`.
+        copied using Python's built-in :func:`~copy.copy` function.
         """
         return self.__class__().clone(self)
 
@@ -2590,7 +2623,14 @@ class Mesh:
             elif isinstance(data, dict):
                 data[item] = value
             elif isinstance(data, np.ndarray):
-                _array_append(data, value)
+                shape = data.shape
+
+                # Be aware of broadcasting! Even if shapes don't match the
+                # assignment to data[-1] works if shapes can be broadcast!
+                data = np.resize(data, (shape[0]+1, *shape[1:]))
+                data[-1] = value
+
+                setattr(self, name, data)
             else:
                 raise TypeError(
                     f"data block has invalid type '{type(data).__name__}'")
@@ -3163,8 +3203,8 @@ class Vertex:
         If no copy is requested (or implied by data type conversion) the
         returned value is a view of the mesh's vertex coordinate array.
         """
-        return np.array(self._mesh._points[self._idx, ...],
-                        dtype=dtype, copy=copy)
+        return np.array(
+            self._mesh._points[self._idx], dtype=dtype, copy=copy)
 
     @property
     def index(self):
@@ -3189,11 +3229,11 @@ class Vertex:
         corresponding row of the parent mesh's coordinate array. In
         particular, NumPy's :term:`broadcast` rules apply.
         """
-        return self._mesh._points[self._idx, ...]
+        return self._mesh._points[self._idx]
 
     @point.setter
     def point(self, value):
-        self._mesh._points[self._idx, ...] = value
+        self._mesh._points[self._idx] = value
 
     # @property
     # def flags(self):
@@ -4466,73 +4506,77 @@ class NonManifoldError(Exception):
     pass
 
 
-def _array_append(array, item):
-    """ Resize and append to array.
+# def _array_append(array, item):
+#     """ Resize and append to array.
 
-    Passing :obj:`None` as `item` will **not** initialize the newly
-    added array entries. The `array` argument cannot be :obj:`None`
-    in this case.
+#     .. deprecated:: 1.1.0
 
-    Parameters
-    ----------
-    array : ndarray or None
-        Array object to be augmented. A new array of shape
-        ``(1, *item.shape)`` will be created if :obj:`None`.
-    item : array_like or None
-        Item to be added as new element of the first axis. The
-        shapes ``array.shape[1:]`` and ``item.shape`` have to agree.
+#     Passing :obj:`None` as `item` will **not** initialize the newly
+#     added array entries. The `array` argument cannot be :obj:`None`
+#     in this case.
 
-    Raises
-    ------
-    ValueError
-        In case of dimension mismatch.
+#     Parameters
+#     ----------
+#     array : ndarray or None
+#         Array object to be augmented. A new array of shape
+#         ``(1, *item.shape)`` will be created if :obj:`None`.
+#     item : array_like or None
+#         Item to be added as new element of the first axis. The
+#         shapes ``array.shape[1:]`` and ``item.shape`` have to agree.
 
-    Returns
-    -------
-    ndarray
-        Reference to the enlarged array. This is a new array if the
-        input array argument was :obj:`None`.
-    """
-    if isinstance(array, np.ndarray):
-        if item is not None:
-            if array[-1].shape != np.shape(item):
-                msg = f'cannot add item with shape {np.shape(item)}'
-                raise ValueError(msg)
+#     Raises
+#     ------
+#     ValueError
+#         In case of dimension mismatch.
 
-        arr_shape = list(array.shape)
-        arr_shape[0] += 1
+#     Returns
+#     -------
+#     ndarray
+#         Reference to the enlarged array. This is a new array if the
+#         input array argument was :obj:`None`.
+#     """
+#     if isinstance(array, np.ndarray):
+#         if item is not None:
+#             if array[-1].shape != np.shape(item):
+#                 msg = f'cannot add item with shape {np.shape(item)}'
+#                 raise ValueError(msg)
 
-        array.resize(arr_shape, refcheck=False)
-    else:
-        array = np.empty((1, *np.shape(item)))
+#         arr_shape = list(array.shape)
+#         arr_shape[0] += 1
 
-    # Assign to the 'free' space at the end of the extended array.
-    # The assignment itself should not trigger any exceptions.
-    if item is not None:
-        array[-1, ...] = item
+#         array.resize(arr_shape, refcheck=False)
+#     else:
+#         array = np.empty((1, *np.shape(item)))
 
-    return array
+#     # Assign to the 'free' space at the end of the extended array.
+#     # The assignment itself should not trigger any exceptions.
+#     if item is not None:
+#         array[-1] = item
+
+#     return array
 
 
-def _array_clear(array):
-    """ Collapse first axis of array.
+# def _array_clear(array):
+#     """ Collapse first axis of array.
 
-    Parameters
-    ----------
-    array : ndarray
-        Array with at least two axes.
+#     .. deprecated:: 1.1.0
 
-    Returns
-    -------
-    ndarray
-        The resized array.
-    """
-    arr_shape = list(array.shape)
-    arr_shape[0] = 0
+#     Parameters
+#     ----------
+#     array : ndarray
+#         Array with at least two axes.
 
-    array.resize(arr_shape, refcheck=False)
+#     Returns
+#     -------
+#     ndarray
+#         The resized array.
+#     """
+#     arr_shape = list(array.shape)
+#     arr_shape[0] = 0
 
-    return array
+#     array.resize(arr_shape, refcheck=False)
+
+#     return array
 
 
 # def _merge(points, faces, radius=1e-3):
