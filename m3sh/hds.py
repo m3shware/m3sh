@@ -48,7 +48,7 @@ from pathlib import Path
 from datetime import datetime
 from time import perf_counter
 from copy import copy
-from collections import defaultdict
+from collections import defaultdict, deque
 
 import numpy as np
 
@@ -177,13 +177,27 @@ class Mesh:
         self._faces = []
 
         if faces is not None:
-            for face in faces:
-                self.add_face(face)
+            # Possibly re-oriented face definitions and a list of lists
+            # that describes the components of the mesh.
+            faces, components = _oriented_components(faces)
+
+            for component in components:
+                for face in (faces[i] for i in component):
+                    self.add_face(face)
 
             # Typically one does not expect isolated vertices in a mesh
             # that does define faces. Such vertices might be artifacts.
             if any(v.isolated for v in self._verts):
                 print('there are isolated vertices')
+
+        # if faces is not None:
+        #     for face in faces:
+        #         self.add_face(face)
+
+        #     # Typically one does not expect isolated vertices in a mesh
+        #     # that does define faces. Such vertices might be artifacts.
+        #     if any(v.isolated for v in self._verts):
+        #         print('there are isolated vertices')
 
         # Vertex neighborhood iterators will not work properly in the
         # presence of non-manifold vertices.
@@ -779,12 +793,8 @@ class Mesh:
 
     @classmethod
     def _from_soup(cls, points, faces):
-
-        start = perf_counter()
-        occ = _OrientedComponents(faces).components
-        print(perf_counter() - start)
-
-        print(f"number of oriented components: {len(occ)}")
+        # If given a soup of polygons we can try to merge vertex coordinates
+        # by distance, then extract a connected mesh...
 
         return cls()
 
@@ -4548,6 +4558,8 @@ class _UnionFind:
 
 
 class _OrientedComponents:
+    # This is a veriant where components are only grown as long as the
+    # orientation of neighboring triangles matches...
 
     def __init__(self, faces):
         map = defaultdict(list)
@@ -4578,6 +4590,126 @@ class _OrientedComponents:
     @property
     def components(self):
         return self._components
+
+
+def _oriented_components(faces):
+    """ Extract components.
+
+    Extract connected components. If possible, faces of each component are
+    re-oriented consistently.
+
+    Parameters
+    ----------
+    faces : list[list[int]] or array_like
+        List of combinatorial face definitions, not changed during the
+        course of the algorithm.
+
+    Returns
+    -------
+    faces : list[list[int]] or array_like
+        Combinatorial faces definitions.
+    components : list[list[int]]
+        Faces grouped by connected component. Faces are identified by their
+        index in the `faces` list.
+
+    Notes
+    -----
+    Component extraction works for arbitray topology, even non-manifold
+    topology. Since this is considered a pre-processing step for halfedge
+    mesh construction, non-manifold configurations raise an error.
+
+    Even for manifold topology, a consistent orientation might not exist.
+    Such situation are not flagged by this function, they are discovered
+    when instantiating a halfedge mesh.
+    """
+    # Map edges (sorted pairs of vertex indices) to index of incident faces.
+    # This does not take orientation of faces (edge direction) into account.
+    # In parallel, build a representation that stores each face as a set of
+    # oriented pairs of vertex indices.
+    map = defaultdict(list)
+    faces_ = list()
+
+    for fidx, face in enumerate(faces):
+        valence = len(face)
+        face_ = set()
+
+        for i in range(valence):
+            origin = face[i]
+            target = face[(i+1) % valence]
+
+            # The edge of the face in its original orientation (a halfedge).
+            # Used later when building a consistent orientation.
+            face_.add((origin, target))
+
+            # Undirected edges of the mesh are assigned the incident faces.
+            # There can be at most two such faces, otherwise this cannot be
+            # manifold. This is checked later when the mapping is complete.
+            if target < origin:
+                origin, target = target, origin
+
+            map[(origin, target)].append(fidx)
+
+        # The alternative representation of a face as a list of pairs that
+        # describe oriented edges.
+        faces_.append(face_)
+
+    dsu = _UnionFind(len(faces))
+
+    for (origin, target), incident_fidx in map.items():
+        if len(incident_fidx) > 2:
+            raise NonManifoldError(
+                f"edge ({origin}, {target}) has more than 2 incident faces")
+
+        fidx = incident_fidx[0]
+
+        for idx in incident_fidx[1:]:
+            dsu.union(fidx, idx)
+
+    components = defaultdict(list)
+
+    for fidx, _ in enumerate(faces):
+        components[dsu.find(fidx)].append(fidx)
+
+    components = list(components.values())
+
+    # The property oriented (if possible) faces. This is an array is the
+    # input was an array (deep copy) and a list (shallow copy) otherwise.
+    faces_oriented = faces.copy()
+
+    for component in components:
+        fidx_queue = deque()
+        fidx_queue.append(component[0])
+
+        # Start from a face of a connected component and try to assign a
+        # consistent orientation to all faces.
+        while fidx_queue:
+            fidx = fidx_queue.popleft()
+            face_ = faces_[fidx]
+
+            for i, j in face_:
+                origin, target = i, j
+
+                # Need the edge without orientation to look up the indices
+                # of incident faces.
+                if target < origin:
+                    origin, target = target, origin
+
+                # At this points it is guaranteed that there are at most
+                # two incident faces, the one corresponding to fidx and one
+                # more. The face with index fidx determines the orientation
+                # of the other.
+                for idx in map.pop((origin, target), []):
+                    if idx != fidx:
+                        # Note that because of map.pop() there is not way
+                        # to got back from face idx to face fidx when idx
+                        # is popped from the fidx_queue later!
+                        fidx_queue.append(idx)
+
+                        if (i, j) in faces_[idx]:
+                            faces_oriented[idx] = faces_oriented[idx][::-1]
+                            faces_[idx] = {(w, v) for (v, w) in faces_[idx]}
+
+    return faces_oriented, components
 
 
 # def _array_append(array, item):
@@ -4653,33 +4785,33 @@ class _OrientedComponents:
 #     return array
 
 
-# def _merge(points, faces, radius=1e-3):
-#     """ Distance based vertex merging.
+def _merge(points, faces, radius=1e-3):
+    """ Distance based vertex merging.
 
-#     Merging may yield a non-manifold complex.
+    Merging may yield a non-manifold complex.
 
-#     Parameters
-#     ----------
-#     points : array_like
-#         Vertex coordinates.
-#     faces : list
-#         Face definitions.
-#     radius : float
-#         Distance threshold.
+    Parameters
+    ----------
+    points : array_like
+        Vertex coordinates.
+    faces : list
+        Face definitions.
+    radius : float
+        Distance threshold.
 
-#     Returns
-#     -------
-#     faces : list
-#         Updated faces definitions.
-#     """
-#     # For each point p, find the indices of all points that are in a
-#     # radius r ball with center p.
-#     kdtree = sp.KDTree(points)
-#     idx = kdtree.query_ball_tree(kdtree, radius)
+    Returns
+    -------
+    faces : list
+        Updated faces definitions.
+    """
+    # For each point p, find the indices of all points that are in a
+    # radius r ball with center p.
+    kdtree = sp.KDTree(points)
+    idx = kdtree.query_ball_tree(kdtree, radius)
 
-#     # Assumes that each vertex of a face is defined as a v/vt/vn tuple
-#     # as read directly from an object file.
-#     return [[(min(idx[v]), vt, vn) for v, vt, vn in f] for f in faces]
+    # Assumes that each vertex of a face is defined as a v/vt/vn tuple
+    # as read directly from an object file.
+    return [[(min(idx[v]), vt, vn) for v, vt, vn in f] for f in faces]
 
 
 def _orientation(up, forward):
