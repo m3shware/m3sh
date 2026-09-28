@@ -1422,7 +1422,7 @@ def quiver(points, vectors, scale=1.0, radius=0.025, resolution=6,
     edges = ((i, i+n) for i in range(n))
 
     pl = PolyGraph((np.append(origins, targets, axis=0), edges))
-    pl.edges(width=size)
+    pl.edges(width=scale)
     pl.color = color
 
     add(pl)
@@ -3668,6 +3668,8 @@ class OrientedGlyphs(PropertyMixin, MapperMixin, GlyphMixin, Prop):
         Glyph source object.
     xform : vtkTransform
         Source transformation.
+    name : str, optional
+        Name of array attribute.
 
     Notes
     -----
@@ -3676,7 +3678,7 @@ class OrientedGlyphs(PropertyMixin, MapperMixin, GlyphMixin, Prop):
     storage).
     """
 
-    def __init__(self, points, vectors, source, src_xform):
+    def __init__(self, points, vectors, source, src_xform, *, name=None):
         if isinstance(points, Prop):
             points = points._vtk_polydata
 
@@ -3692,6 +3694,8 @@ class OrientedGlyphs(PropertyMixin, MapperMixin, GlyphMixin, Prop):
             self._vtk_glyph.SetSourceConnection(source.GetOutputPort())
             self._vtk_glyph.OrientOn()
             self._vtk_glyph.SetVectorModeToUseVector()
+            self._vtk_glyph.SetInputArrayToProcess(
+                1, 0, 0, vtk.vtkDataObject.FIELD_ASSOCIATION_POINTS, str(name))
 
             # This allows scaling by the global scale factor but does not
             # use local scale factors associated with individual points.
@@ -3704,11 +3708,14 @@ class OrientedGlyphs(PropertyMixin, MapperMixin, GlyphMixin, Prop):
                 self._vtk_glyph.SetSourceTransform(src_xform)
         else:
             if isinstance(points, vtk.vtkPolyData):
-                vectors = np.asarray(vectors)
-                points.GetPointData().SetVectors(numpy_to_vtk(vectors))
-
-                self._vectors = vectors
                 self._vtk_polydata = points
+                self._vectors = np.asarray(vectors)
+
+                array = numpy_to_vtk(self._vectors)
+                array.SetName(str(name))
+
+                # points.GetPointData().SetVectors(numpy_to_vtk(vectors))
+                points.GetPointData().AddArray(array)
             else:
                 self._points = np.asarray(points)
                 self._vectors = np.asarray(vectors)
@@ -3719,8 +3726,12 @@ class OrientedGlyphs(PropertyMixin, MapperMixin, GlyphMixin, Prop):
                 self._vtk_polydata = vtk.vtkPolyData()
                 self._vtk_polydata.SetPoints(points)
 
+                array = numpy_to_vtk(self._vectors)
+                array.SetName(str(name))
+
                 pointdata = self._vtk_polydata.GetPointData()
-                pointdata.SetVectors(numpy_to_vtk(self._vectors))
+                # pointdata.SetVectors(numpy_to_vtk(self._vectors))
+                pointdata.AddArray(array)
 
             # Note: put glyphs on the GPU by using vtkGlyph3DMapper. This
             # requires changes further down the pipeline...
@@ -3730,6 +3741,8 @@ class OrientedGlyphs(PropertyMixin, MapperMixin, GlyphMixin, Prop):
             self._vtk_glyph.SetSourceConnection(source.GetOutputPort())
             self._vtk_glyph.OrientOn()
             self._vtk_glyph.SetVectorModeToUseVector()
+            self._vtk_glyph.SetInputArrayToProcess(
+                1, 0, 0, vtk.vtkDataObject.FIELD_ASSOCIATION_POINTS, str(name))
 
             # This allows scaling by the global scale factor but does not
             # use local scale factors associated with individual points.
@@ -3852,11 +3865,13 @@ class Spheres(PropertyMixin, MapperMixin, GlyphMixin, Prop):
 
 
 class Arrows(OrientedGlyphs):
+    """ Arrow shaped glyph.
+    """
 
     def __init__(self, points, vectors, shaft_radius=0.025, tip_radius=0.05,
-                 tip_length=0.5, resolution=6):
+                 tip_length=0.5, resolution=6, *, name=None):
         source = self._arrow(shaft_radius, tip_radius, tip_length, resolution)
-        super().__init__(points, vectors, *source)
+        super().__init__(points, vectors, *source, name=name)
 
     @staticmethod
     def _arrow(shaft_radius=0.025, tip_radius=0.05, tip_length=0.5,
@@ -5250,7 +5265,8 @@ class PolyMesh(PolyData):
         self._normals = normals
         self._vtk_polydata.GetPointData().SetNormals(numpy_to_vtk(normals))
 
-    def vectors(self, items, vectors, scale=1.0, color=colors.cornflower):
+    def vectors(self, items, vectors, scale=1.0, color=colors.cornflower, *,
+                id=None):
         """ Visualize vectors.
 
         Vectors can be assigned to vertices or faces of a mesh. In the
@@ -5269,6 +5285,8 @@ class PolyMesh(PolyData):
             the `vectors` array is not changed in any way.
         color : array_like, shape (3,), optional
             RGB color triplet.
+        id : str, optional
+            Vector field identifier.
 
         Returns
         -------
@@ -5283,19 +5301,24 @@ class PolyMesh(PolyData):
             if vectors.shape != (len(mesh.vertices), 3):
                 raise ValueError()
 
-            polydata.GetPointData().SetVectors(numpy_to_vtk(vectors))
+            # polydata.GetPointData().SetVectors(numpy_to_vtk(vectors))
             points = polydata
         elif items == 'cells':
             if vectors.shape != (len(mesh.faces), 3):
                 raise ValueError()
 
-            polydata.GetCellData().SetVectors(numpy_to_vtk(vectors))
+            array = numpy_to_vtk(vectors)
+            array.SetName(str(id))
+
+            # polydata.GetCellData().SetVectors(numpy_to_vtk(vectors))
+            polydata.GetCellData().AddArray(array)
+
             points = vtk.vtkCellCenters()
             points.SetInputData(polydata)
         else:
             raise ValueError()
 
-        arrows = Arrows(points, vectors)
+        arrows = Arrows(points, vectors, name=str(id))
         arrows.scale = scale
         arrows.color = color
 
