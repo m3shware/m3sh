@@ -25,19 +25,19 @@ see e.g. [1]_ for an introduction. This is not meant as a full featured set of
 visualization routines but should serve as a quick and convenient way to
 achieve basic visualization tasks.
 
-.. important::
-   Visualization is under active development. Provided functionality changes
-   rapidly and backwards compatibility is not a design goal! Documentation
-   may not always be accurate!
-
 Example
 -------
 This module can be used as a stand-alone OBJ file viewer:
 
->>> python vis.py file.obj --edges --aabb --silhouette
+>>> python vis.py file.obj --edges --aabb
 
 opens a graphics window and displays the contents of `file.obj`. Omitting all
 arguments except the input file results in basic mesh rendering.
+
+All plotting functions expect 3-d point coordinates. For 2-d points stored as
+rows of a matrix, a third coordinate can be added via:
+
+>>> points = np.insert(points, 2, 0.0, axis=-1)
 
 References
 ----------
@@ -460,7 +460,7 @@ def rgb(*spec, char=False):
 
     Parameters
     ----------
-    name : str
+    *spec
         Name of color, either a web color name or a VTK color name.
     char : bool, optional
         By default color components are unsigned integers ranging from
@@ -503,7 +503,8 @@ def rgba(name, char=False):
     Returns
     -------
     rgba : list
-        A four element list holding RGBA color components.
+        Four element list with RGBA color components. The component
+        type depends on `char`.
     """
     if char:
         return vtk.vtkNamedColors().GetColor4ub(name)
@@ -911,7 +912,7 @@ def colorbar(object, x=0.1, y=0.1, horizontal=False):
     return colorbar
 
 
-def cross(origin, vector, normal, size=1.0, radius=0.025, resolution=6,
+def _cross(origin, vector, normal, size=1.0, radius=0.025, resolution=6,
           red=colors.red, green=colors.green):
     """ Display coordinate system(s).
 
@@ -952,7 +953,7 @@ def cross(origin, vector, normal, size=1.0, radius=0.025, resolution=6,
                               np.tile(grey,  (len(vector), 1)),
                               np.tile(grey,  (len(vector), 1))))
 
-    vf = Arrows(points, vectors, radius, tip_radius=radius, tip_length=0.0,
+    vf = _Arrows(points, vectors, radius, tip_radius=radius, tip_length=0.0,
                 resolution=resolution)
 
     vf.size = size
@@ -1061,7 +1062,7 @@ def display(message, x=0.05, y=0.95, size=14, color=colors.white,
     return Prop(actor)
 
 
-def edges(mesh, width=1, color=colors.black):
+def _edges(mesh, width=1, color=colors.black):
     """ Mesh edge visualization.
 
     .. versionadded:: 1.1.0
@@ -1085,10 +1086,10 @@ def edges(mesh, width=1, color=colors.black):
     graph : general graph visualization
     """
     edges = [(int(h.origin), int(h.target)) for h in mesh._eiter()]
-    return graph((mesh.points, edges), width=width, color=color)
+    return _graph((mesh.points, edges), width=width, color=color)
 
 
-def frame(origin, x, y, z=None, size=1.0, radius=0.025, resolution=6,
+def _frame(origin, x, y, z=None, size=1.0, radius=0.025, resolution=6,
           red=colors.red, green=colors.green, blue=colors.blue):
     """ Display coordinate system(s).
 
@@ -1131,7 +1132,7 @@ def frame(origin, x, y, z=None, size=1.0, radius=0.025, resolution=6,
                                  np.tile(green, (len(vectors)//3, 1)),
                                  np.tile(blue, (len(vectors)//3, 1))))
 
-    vf = Arrows(points, vectors, radius, 2.0 * radius, resolution=resolution)
+    vf = _Arrows(points, vectors, radius, 2.0 * radius, resolution=resolution)
     vf.size = size
     vf.colorize(colors)
 
@@ -1139,7 +1140,7 @@ def frame(origin, x, y, z=None, size=1.0, radius=0.025, resolution=6,
     return vf
 
 
-def graph(graph, style=None, width=4, color=colors.black):
+def _graph(graph, style=None, width=4, color=colors.black):
     """ Graph visualization.
 
     .. versionadded:: 1.1.0
@@ -1168,7 +1169,7 @@ def graph(graph, style=None, width=4, color=colors.black):
     via the :func:`~scipy.sparse.csgraph.csgraph_from_dense` utility
     function.
     """
-    rengraph = PolyGraph(graph)
+    rengraph = _PolyGraph(graph)
     rengraph.color = color
     rengraph.edges(style, width)
 
@@ -1227,7 +1228,7 @@ def mesh(mesh, show_orientation=True, color=colors.snow):
     show_orientation : bool, optional
         Visualize face orientation by assiging a different color to back
         facing faces, i.e., faces whose vertices appear in clockwise
-        orientation.
+        orientation after projection.
     color : array_like, shape (3,), optional
         RGB color intensity triple.
 
@@ -1235,10 +1236,6 @@ def mesh(mesh, show_orientation=True, color=colors.snow):
     -------
     PolyMesh
         Render object instance.
-
-    See Also
-    --------
-    edges : mesh edge visualization
     """
     renmesh = PolyMesh(mesh)
     renmesh.color = color
@@ -1295,30 +1292,23 @@ def _test():
     show()
 
 
-def scatter(points, scale=1.0, style='spheres', color=colors.dim_grey):
+def scatter(points, size=8, style='spheres', color=colors.dim_grey):
     """ Scatter plot.
 
     Point cloud visualization. Each point is represented as a sphere or cube
-    of a given size. For 2-d point clouds a third coordinate has to be added
-    before calling this function:
-
-    >>> points = np.insert(points, 2, 0.0, axis=-1)
+    of a given size.
 
     Parameters
     ----------
     points : array_like, shape (..., 3)
         Stack of point coordinates in 3-space.
-    scale : float, optional
-        Glyph size in object space.
-    style : str, optional
-        Either 'spheres' or 'cubes'.
+    size : int or float, optional
+        Point size in screen space or object space.
+    style : {'points', 'spheres', 'sphere_glyph', 'cube_glyph'}, optional
+        Display style. When displaying glyphs, `size` is the actual diameter
+        in object space. Otherwise `size` is measured in pixels.
     color : array_like, shape (3, ), optional
         Color intensity triplet.
-
-    Returns
-    -------
-    Spheres
-        Sphere congruence prop.
 
     Notes
     -----
@@ -1330,26 +1320,51 @@ def scatter(points, scale=1.0, style='spheres', color=colors.dim_grey):
     # possible ValueError is raised.
     points = np.atleast_2d(points).reshape(-1, 3, copy=False)
 
-    pc = Spheres(points)
-    pc.scale = scale
-    pc.style = style
-    pc.color = color
+    if style == 'points' or style == 'spheres':
+        pts = PolyData(points, verts=range(len(points)))
 
-    add(pc)
-    return pc
+        # pts.prop.GetProperty().SetVertexVisibility(True)
+        # pts.prop.GetProperty().SetVertexColor(color)
+
+        # Vertex visibility still does not work as expected. Just change the
+        # global object color instead. VTK displays all 'cell' definitions of
+        # a polydata using the global object color.
+        pts.prop.GetProperty().SetPointSize(size)
+        pts.prop.GetProperty().SetColor(color)
+
+        if style == 'spheres':
+            pts.prop.GetProperty().SetRenderPointsAsSpheres(True)
+
+        add(pts)
+        return pts
+
+    if style == 'sphere_glyph':
+        source = _sphere_src()
+    elif style == 'cube_glyph':
+        source = _cube_src()
+    else:
+        raise ValueError()
+
+    glyph = VertexGlyph.from_points(points, None, *source, name=None)
+    glyph.scale = size
+    glyph.color = color
+
+    add(glyph)
+    return glyph
 
 
 def splat(points, vectors, scale=1.0, color=colors.snow):
     """ Point splatting.
 
-    Display disk at locations orthogonal to given directions.
+    Display disks centered at `points`. Disks are parallel to the plane
+    orthogonal to `vectors`.
 
     Parameters
     ----------
-    points : array_like
-        Point locations.
-    vectors : array_like
-        Direction vectors.
+    points : array_like, shape (..., 3)
+        Stack of point coordinates.
+    vectors : array_like, shape (..., 3)
+        Plane normal vectors, not necessarily of unit length.
     size : float, optional
         Disk radius.
     color : array_like, shape (3, ), optional
@@ -1358,78 +1373,83 @@ def splat(points, vectors, scale=1.0, color=colors.snow):
     points = np.atleast_2d(points).reshape(-1, 3, copy=False)
     vectors = np.atleast_2d(vectors).reshape(-1, 3, copy=False)
 
-    splats = Disks(points, vectors)
-    splats.scale = scale
-    splats.color = color
+    if len(points) != len(vectors):
+        raise ValueError()
 
-    add(splats)
-    return splats
+    glyph = VertexGlyph.from_points(points, vectors, *_disk_src(), name=None)
+    glyph.scale = scale
+    glyph.color = color
+
+    add(glyph)
+    return glyph
+
+    # splats = Disks(points, vectors)
+    # splats.scale = scale
+    # splats.color = color
+
+    # add(splats)
+    # return splats
 
 
-def quiver(points, vectors, scale=1.0, radius=0.025, resolution=6,
-           arrows=True, color=colors.cornflower):
+def quiver(points, vectors, scale=1.0, color=colors.cornflower):
     """ Quiver plot.
 
-    Display arrows at given locations pointing in given directions. For each
-    point exactly one direction vector has to be given.
+    Display arrows at given point locations.
 
     Parameters
     ----------
     points : array_like, shape (..., 3)
         Stack of point coordinates in 3-space.
     vectors : array_like, shape (..., 3)
-        Stack of vector coordinates in 3-space.
-    size : float, optional
-        Glyph size in object coordinates (global scale factor).
-    radius : float, optional
-        Radius of arrow shaft, scaled by `size`.
-    resolution : int, optional
-        Discretization detail level.
+        Stack of corresponding vector coordinates in 3-space.
+    scale : float, optional
+        Global scale factor applied to each arrow. The length of
+        displayed arrows is given by the 2-norm of corresponding
+        vectors multiplied by the `scale` value.
     color : array_like, optional
         Color specification.
-
-    Returns
-    -------
-    Arrows
-        Vector field prop.
 
     Notes
     -----
     If `array_like` parameters are of type :class:`~numpy.ndarray` their
     data buffer is shared with VTK. Use copies to decouple storage.
-
-    The glyph used to model arrows has unit length. The `radius` argument is
-    an absolute value applied to this glyph. The `size` argument is a global
-    scale factor applied to the glyph, scaling its its length and radius. The
-    detail level of the glyph (how many vertices are used to discretize a
-    circle) can be set via the `resolution` argument.
     """
     points = np.atleast_2d(points).reshape(-1, 3, copy=False)
     vectors = np.atleast_2d(vectors).reshape(-1, 3, copy=False)
 
-    if arrows:
-        vf = Arrows(points, vectors, radius, 2*radius, resolution=resolution)
-        vf.scale = scale
-        vf.color = color
+    if len(points) != len(vectors):
+        raise ValueError()
 
-        add(vf)
-        return vf
+    glyph = VertexGlyph.from_points(points, vectors, *_arrow_src(), name=None)
+    glyph.scale = scale
+    glyph.color = color
 
-    origins = points
-    targets = points + vectors
+    add(glyph)
+    return glyph
 
-    n = len(points)
-    edges = ((i, i+n) for i in range(n))
+    # if arrows:
+    #     vf = Arrows(points, vectors, radius, 2*radius, resolution=resolution)
+    #     vf.scale = scale
+    #     vf.color = color
 
-    pl = PolyGraph((np.append(origins, targets, axis=0), edges))
-    pl.edges(width=scale)
-    pl.color = color
+    #     add(vf)
+    #     return vf
 
-    add(pl)
-    return pl
+    # origins = points
+    # targets = points + vectors
+
+    # n = len(points)
+    # edges = ((i, i+n) for i in range(n))
+
+    # pl = PolyGraph((np.append(origins, targets, axis=0), edges))
+    # pl.edges(width=scale)
+    # pl.color = color
+
+    # add(pl)
+    # return pl
 
 
-def vectors(points, vectors, size=1.0, resolution=6, color=colors.black):
+def _vectors(points, vectors, size=1.0, resolution=6, color=colors.black):
     """ Alternative quiver plot.
     """
     try:
@@ -1440,7 +1460,7 @@ def vectors(points, vectors, size=1.0, resolution=6, color=colors.black):
     points = np.asarray(points)
     radius = 0.025 * size
 
-    vf = Arrows(points, vectors, radius, 2.0 * radius, resolution=resolution)
+    vf = _Arrows(points, vectors, radius, 2.0 * radius, resolution=resolution)
     vf.size = size
     vf.color = color
 
@@ -1456,7 +1476,7 @@ def _tetmesh(points, tets, color=colors.snow):
     return renmesh
 
 
-def contour(mesh, scalars, levels=10, width=2.0, style='-',
+def _contour(mesh, scalars, levels=10, width=2.0, style='-',
             color=(0.0, 0.0, 0.0)):
     """ Contour plot.
 
@@ -1563,7 +1583,7 @@ def contour(mesh, scalars, levels=10, width=2.0, style='-',
     return actor
 
 
-def silhouette(object, width=1, style=None, color=colors.black):
+def _silhouette(object, width=1, style=None, color=colors.black):
     """
     """
     # # Point and face array setup. Vertex coordinates and face definitions are
@@ -1674,7 +1694,7 @@ def silhouette(object, width=1, style=None, color=colors.black):
     return Prop(actor)
 
 
-def _cones(points, vectors, angle=None, radius=None, height=None,
+def _cones_old(points, vectors, angle=None, radius=None, height=None,
           color=colors.snow, double=False, cap=False, resolution=24):
     """ Cone rendering.
 
@@ -1756,7 +1776,7 @@ def _cones(points, vectors, angle=None, radius=None, height=None,
     return conefield
 
 
-def cones(points, vectors, angle=None, radius=None, height=None,
+def _cones(points, vectors, angle=None, radius=None, height=None,
           color=colors.snow, double=False, cap=False, resolution=24):
     """ Cone rendering.
     """
@@ -1798,7 +1818,7 @@ def cones(points, vectors, angle=None, radius=None, height=None,
             if len(height) != len(points):
                 raise ValueError("array shapes don't match")
 
-    cones = Cones(points, vectors, angle, radius, height, double,
+    cones = _Cones(points, vectors, angle, radius, height, double,
                   cap, resolution)
 
     cones.color = color
@@ -1807,7 +1827,7 @@ def cones(points, vectors, angle=None, radius=None, height=None,
     return cones
 
 
-def plot(P, width=2.0, size=6.0, style='-', color=(0.25, 0.25, 0.25)):
+def _plot(P, width=2.0, size=6.0, style='-', color=(0.25, 0.25, 0.25)):
     """ Polyline plotting.
 
     Parameters
@@ -1920,7 +1940,7 @@ def _circle(center, normal, radius):
     return actor, data
 
 
-def cylinder(a, b, radius, opacity=1.0, resolution=64, cap=False,
+def _cylinder(a, b, radius, opacity=1.0, resolution=64, cap=False,
              color=colors.grey):
     """ Cylinder shape.
 
@@ -1969,7 +1989,7 @@ def cylinder(a, b, radius, opacity=1.0, resolution=64, cap=False,
     return tube
 
 
-def sphere(center, radius, opacity=1.0, resolution=24, color=colors.snow):
+def _sphere(center, radius, opacity=1.0, resolution=24, color=colors.snow):
     """ Sphere shape.
 
     Covenience function that displays a sphere with given center and
@@ -2946,12 +2966,12 @@ def _main():
         mesh.pickable = True
 
         # Only for testing, remove later...
-        height = mesh.points[:, 2]
-        mesh.colorize('verts', height, interpolate_scalars=True)
-        mesh.lookuptable(range=(min(height), max(height)))
-        mesh.contour(height, width=4) #, color='scalars')
+        # height = mesh.points[:, 2]
+        # mesh.colorize('verts', height, interpolate_scalars=True)
+        # mesh.lookuptable(range=(min(height), max(height)))
+        # mesh.contour(height, width=4) #, color='scalars')
 
-        colorbar(mesh)
+        # colorbar(mesh)
 
         if args.aabb:
             aabb(mesh, labels='both')
@@ -2959,8 +2979,8 @@ def _main():
         if args.edges:
             mesh.edges(width=1, color=colors.ivory_black)
 
-        if args.silhouette:
-            silhouette(mesh, width=4, color=colors.black)
+        # if args.silhouette:
+        #     silhouette(mesh, width=4, color=colors.black)
 
     def capture(iren, *args, **kwargs):
         if iren.GetControlKey() and iren.GetKeySym().lower() == 's':
@@ -3255,39 +3275,22 @@ class GlyphMixin:
         if len(value) == 1:
             self._vtk_glyph.SetScaling(True)
             self._vtk_glyph.SetScaleFactor(value[0])
-        else:
-            pointdata = self._vtk_polydata.GetPointData()
-            pointdata.SetScalars(numpy_to_vtk(value))
+        elif len(value) == self._vtk_polydata.GetNumberOfPoints():
+            self._scalars = value
+
+            array = numpy_to_vtk(self._scalars)
+            array.SetName('glyph_scale')
+
+            self._vtk_polydata.GetPointData().AddArray(array)
 
             # There is no SetScaleModeToDataScalingOn(), just set the
             # scale mode to scalar or vector to enable it!
+            self._vtk_glyph.SetScaling(True)
             self._vtk_glyph.SetScaleModeToScaleByScalar()
-            self._scalars = value
-
-    # def scalars(self, values):
-    #     """ Scale glyph geometry by scalars.
-
-    #     Parameters
-    #     ----------
-    #     values : array_like
-    #         Per point scale factors.
-
-    #     Notes
-    #     -----
-    #     Scale factors and :attr:`scale` are multiplied to obtain the final
-    #     size of a glyph.
-    #     """
-    #     values = np.asarray(values)
-
-    #     print(values)
-
-    #     pointdata = self._vtk_polydata.GetPointData()
-    #     pointdata.SetScalars(numpy_to_vtk(values))
-
-    #     self._scalars = values
-
-    #     self._vtk_glyph.SetScaling(True)
-    #     self._vtk_glyph.SetScaleModeToScaleByScalar()
+            self._vtk_glyph.SetInputArrayToProcess(
+                0, 0, 0, vtk.vtkDataObject.FIELD_ASSOCIATION_POINTS, 'glyph_scale')
+        else:
+            raise ValueError()
 
     @property
     def color(self):
@@ -3311,7 +3314,7 @@ class GlyphMixin:
             self._colors = colors
 
             colors = numpy_to_vtk(self._colors)
-            colors.SetName('color')
+            colors.SetName('glyph_color')
 
             # This will replaces an array of the same name if present. We
             # use field data because point data scalars are already used
@@ -3320,7 +3323,7 @@ class GlyphMixin:
 
             mapper = self._vtk_prop.GetMapper()
             mapper.SetScalarModeToUsePointFieldData()
-            mapper.SelectColorArray('color')
+            mapper.SelectColorArray('glyph_color')
             mapper.SetScalarVisibility(True)
 
             # Direct colors if the array has 3 components, otherwise
@@ -3333,8 +3336,6 @@ class GlyphMixin:
             raise ValueError()
 
     def silhouette(self, width=1, style=None, color=colors.black):
-        """
-        """
         silhouette = vtk.vtkPolyDataSilhouette()
         silhouette.SetInputConnection(self._vtk_glyph.GetOutputPort())
         silhouette.SetCamera(_renderer.GetActiveCamera())
@@ -3649,7 +3650,191 @@ class _VectorField():
         self._vtk_polydata.GetPointData().Modified()
 
 
-class OrientedGlyphs(PropertyMixin, MapperMixin, GlyphMixin, Prop):
+class VertexGlyph(PropertyMixin, MapperMixin, GlyphMixin, Prop):
+    """ Vertex based glyph.
+    """
+
+    def __init__(self, polydata, vectors, source, xform, *, name):
+        self._points = None
+        self._vectors = None
+
+        self._vtk_glyph = vtk.vtkGlyph3D()
+        self._vtk_glyph.SetInputData(polydata)
+        self._vtk_glyph.SetGeneratePointIds(True)
+        self._vtk_glyph.SetSourceConnection(source.GetOutputPort())
+
+        if xform is not None:
+            self._vtk_glyph.SetSourceTransform(xform)
+
+        if vectors is not None:
+            self._vectors = np.asarray(vectors)
+
+            array = numpy_to_vtk(self._vectors)
+            array.SetName(str(name))
+
+            polydata.GetPointData().AddArray(array)
+
+            self._vtk_glyph.OrientOn()
+            self._vtk_glyph.SetVectorModeToUseVector()
+            self._vtk_glyph.SetInputArrayToProcess(
+                1, 0, 0, vtk.vtkDataObject.FIELD_ASSOCIATION_POINTS, str(name))
+
+            self._vtk_glyph.SetScaling(True)
+            self._vtk_glyph.SetScaleModeToScaleByVector()
+        else:
+            self._vtk_glyph.SetScaling(False)
+
+        self._vtk_polydata = polydata
+
+        mapper = vtk.vtkPolyDataMapper()
+        mapper.SetInputConnection(self._vtk_glyph.GetOutputPort())
+        mapper.SetLookupTable(_generic_lut())
+        mapper.SetUseLookupTableScalarRange(True)
+        mapper.SetScalarVisibility(False)
+
+        actor = vtk.vtkActor()
+        actor.SetMapper(mapper)
+
+        super().__init__(actor)
+
+    @classmethod
+    def from_points(cls, points, vectors, source, xform, *, name):
+        array = np.asarray(points)
+
+        points = vtk.vtkPoints()
+        points.SetData(numpy_to_vtk(array))
+
+        polydata = vtk.vtkPolyData()
+        polydata.SetPoints(points)
+
+        glyph = cls(polydata, vectors, source, xform, name=name)
+        glyph._points = array
+
+        return glyph
+
+
+class CellGlyph(PropertyMixin, MapperMixin, GlyphMixin, Prop):
+    """ Cell based glyph.
+    """
+
+    def __init__(self, polydata, vectors, source, xform, *, name):
+        self._points = None
+        self._vectors = None
+
+        centers = vtk.vtkCellCenters()
+        centers.SetInputData(polydata)
+
+        self._vtk_glyph = vtk.vtkGlyph3D()
+        self._vtk_glyph.SetInputConnection(centers.GetOutputPort())
+        self._vtk_glyph.SetGeneratePointIds(True)
+        self._vtk_glyph.SetSourceConnection(source.GetOutputPort())
+
+        if xform is not None:
+            self._vtk_glyph.SetSourceTransform(xform)
+
+        if vectors is not None:
+            self._vectors = np.asarray(vectors)
+
+            array = numpy_to_vtk(self._vectors)
+            array.SetName(str(name))
+
+            polydata.GetCellData().AddArray(array)
+
+            self._vtk_glyph.OrientOn()
+            self._vtk_glyph.SetVectorModeToUseVector()
+            self._vtk_glyph.SetInputArrayToProcess(
+                1, 0, 0, vtk.vtkDataObject.FIELD_ASSOCIATION_POINTS, str(name))
+
+            self._vtk_glyph.SetScaling(True)
+            self._vtk_glyph.SetScaleModeToScaleByVector()
+        else:
+            self._vtk_glyph.SetScaling(False)
+
+        self._vtk_polydata = polydata
+
+        mapper = vtk.vtkPolyDataMapper()
+        mapper.SetInputConnection(self._vtk_glyph.GetOutputPort())
+        mapper.SetLookupTable(_generic_lut())
+        mapper.SetUseLookupTableScalarRange(True)
+        mapper.SetScalarVisibility(False)
+
+        actor = vtk.vtkActor()
+        actor.SetMapper(mapper)
+
+        super().__init__(actor)
+
+    @property
+    def scale(self):
+        """ Scale property.
+
+        Set and get global scale factor for all glyphs.
+        """
+        # Global scale factor that is multiplied by scalars values if
+        # used to set per point scale factors.
+        return self._vtk_glyph.GetScaleFactor()
+
+    @scale.setter
+    def scale(self, value):
+        value = np.atleast_1d(value)
+
+        # Should scaling of the other type be impcitly disabled when data
+        # of the other type is provided? Currently both scale factors are
+        # multiplied.
+        if len(value) == 1:
+            self._vtk_glyph.SetScaling(True)
+            self._vtk_glyph.SetScaleFactor(value[0])
+        elif len(value) == self._vtk_polydata.GetNumberOfCells():
+            self._scalars = value
+
+            array = numpy_to_vtk(self._scalars)
+            array.SetName('glyph_scale')
+
+            # pointdata = self._vtk_polydata.GetPointData()
+            # pointdata.SetScalars(numpy_to_vtk(value))
+
+            self._vtk_polydata.GetCellData().AddArray(array)
+
+            # There is no SetScaleModeToDataScalingOn(), just set the
+            # scale mode to scalar or vector to enable it!
+            self._vtk_glyph.SetScaling(True)
+            self._vtk_glyph.SetScaleModeToScaleByScalar()
+            self._vtk_glyph.SetInputArrayToProcess(
+                0, 0, 0, vtk.vtkDataObject.FIELD_ASSOCIATION_POINTS, 'glyph_scale')
+        else:
+            raise ValueError()
+
+    def colorize(self, scalars):
+        ncells = self._vtk_polydata.GetNumberOfCells()
+        colors = np.asarray(scalars)
+
+        if colors.shape == (ncells, ) or colors.shape == (ncells, 3):
+            self._colors = colors
+
+            colors = numpy_to_vtk(self._colors)
+            colors.SetName('glyph_color')
+
+            # This will replaces an array of the same name if present. We
+            # use field data because point data scalars are already used
+            # to scale the glyph!
+            self._vtk_polydata.GetCellData().AddArray(colors)
+
+            mapper = self._vtk_prop.GetMapper()
+            mapper.SetScalarModeToUsePointFieldData()
+            mapper.SelectColorArray('glyph_color')
+            mapper.SetScalarVisibility(True)
+
+            # Direct colors if the array has 3 components, otherwise
+            # map the scalars through the lookup table.
+            if self._colors.ndim  == 1:
+                mapper.SetColorModeToMapScalars()
+            else:
+                print('ye')
+                mapper.SetColorModeToDirectScalars()
+        else:
+            raise ValueError()
+
+
+class _OrientedGlyphs(PropertyMixin, MapperMixin, GlyphMixin, Prop):
     """ Glyph base class.
 
     Base class for all simple oriented glyphs. Displays a scaled and
@@ -3765,34 +3950,8 @@ class OrientedGlyphs(PropertyMixin, MapperMixin, GlyphMixin, Prop):
 
         super().__init__(actor)
 
-    # def silhouette(self, width=1, style=None, color=colors.black):
-    #     """
-    #     """
-    #     silhouette = vtk.vtkPolyDataSilhouette()
-    #     silhouette.SetInputConnection(self._vtk_glyph.GetOutputPort())
-    #     silhouette.SetCamera(_renderer.GetActiveCamera())
-    #     silhouette.SetEnableFeatureAngle(False)
-    #     silhouette.SetBorderEdges(True)
 
-    #     mapper = vtk.vtkPolyDataMapper()
-    #     mapper.SetInputConnection(silhouette.GetOutputPort())
-    #     mapper.SetResolveCoincidentTopologyToPolygonOffset()
-
-    #     actor = vtk.vtkActor()
-    #     actor.SetMapper(mapper)
-    #     actor.GetProperty().SetColor(color)
-    #     actor.GetProperty().SetLineWidth(width)
-
-    #     if style == 'lines':
-    #         actor.GetProperty().SetRenderLinesAsTubes(False)
-    #     elif style == 'tubes':
-    #         actor.GetProperty().SetRenderLinesAsTubes(True)
-
-    #     add(actor)
-    #     return Prop(actor)
-
-
-class Spheres(PropertyMixin, MapperMixin, GlyphMixin, Prop):
+class _Spheres(PropertyMixin, MapperMixin, GlyphMixin, Prop):
 
     def __init__(self, points):
         self._points = np.asarray(points)
@@ -3864,7 +4023,7 @@ class Spheres(PropertyMixin, MapperMixin, GlyphMixin, Prop):
     #     self._vtk_glyph.SetSourceConnection(self._source.GetOutputPort())
 
 
-class Arrows(OrientedGlyphs):
+class _Arrows(_OrientedGlyphs):
     """ Arrow shaped glyph.
     """
 
@@ -3888,7 +4047,65 @@ class Arrows(OrientedGlyphs):
         return arrow, None
 
 
-class Circles(OrientedGlyphs):
+def _arrow_src(shaft_radius=0.025, tip_radius=0.05, tip_length=0.5,
+               resolution=10):
+    arrow = vtk.vtkArrowSource()
+
+    arrow.SetTipRadius(tip_radius)
+    arrow.SetTipLength(tip_length)
+    arrow.SetTipResolution(resolution)
+
+    arrow.SetShaftRadius(shaft_radius)
+    arrow.SetShaftResolution(resolution)
+
+    return arrow, None
+
+
+def _arc_src():
+    arc = vtk.vtkArcSource()
+
+    arc.SetCenter(0.0, 0.0, 0.0)
+    arc.SetNormal(1.0, 0.0, 0.0)
+    arc.SetPolarVector(0.0, 1.0, 0.0)
+    arc.SetAngle(360.0)
+    arc.SetUseNormalAndAngle(True)
+    arc.SetResolution(resolution)
+
+    return arc, None
+
+
+def _cube_src():
+    return vtk.vtkCubeSource(), None
+
+
+def _disk_src(inner=0.0, outer=1.0, resolution=36):
+    disk = vtk.vtkDiskSource()
+
+    disk.SetInnerRadius(inner)
+    disk.SetOuterRadius(outer)
+    disk.SetCircumferentialResolution(resolution)
+
+    xform = vtk.vtkTransform()
+    xform.Identity()
+    xform.RotateY(90.0)
+
+    return disk, xform
+
+
+def _sphere_src(center=(0.0, 0.0, 0.0), radius=1.0, meridians=10, circles=10,
+                normals=True):
+    sphere = vtk.vtkSphereSource()
+
+    sphere.SetCenter(center)
+    sphere.SetRadius(radius)
+    sphere.SetThetaResolution(meridians)
+    sphere.SetPhiResolution(circles)
+    sphere.SetGenerateNormals(normals)
+
+    return sphere, None
+
+
+class _Circles(_OrientedGlyphs):
 
     def __init__(self, points, vectors, radius):
         super().__init__(points, vectors, *self._arc())
@@ -3939,7 +4156,7 @@ class Circles(OrientedGlyphs):
             self._vtk_prop.GetProperty().SetRenderLinesAsTubes(False)
 
 
-class Cones(Prop, PropertyMixin):
+class _Cones(Prop, PropertyMixin):
 
     def __init__(self, points, vectors, angle, radius, height, double,
                  cap, resolution):
@@ -4145,7 +4362,7 @@ class Cones(Prop, PropertyMixin):
         return actor
 
 
-class Disks(OrientedGlyphs):
+class _Disks(_OrientedGlyphs):
 
     def __init__(self, points, vectors):
         source = self._disk()
@@ -5265,7 +5482,7 @@ class PolyMesh(PolyData):
         self._normals = normals
         self._vtk_polydata.GetPointData().SetNormals(numpy_to_vtk(normals))
 
-    def vectors(self, items, vectors, scale=1.0, color=colors.cornflower, *,
+    def _vectors(self, items, vectors, scale=1.0, color=colors.cornflower, *,
                 id=None):
         """ Visualize vectors.
 
@@ -5318,9 +5535,60 @@ class PolyMesh(PolyData):
         else:
             raise ValueError()
 
-        arrows = Arrows(points, vectors, name=str(id))
+        arrows = _Arrows(points, vectors, name=str(id))
         arrows.scale = scale
         arrows.color = color
+
+        add(arrows)
+        return arrows
+
+    def vectors(self, items, vectors, scale=1.0, color=colors.cornflower, *,
+                name=None):
+        """ Visualize vectors.
+
+        Vectors can be assigned to vertices or faces of a mesh. In the
+        latter case vectors are attached to face centers.
+
+        Parameters
+        ----------
+        items : {'verts', 'cells'}
+            Attach vectors to verics or cell centers.
+        vectors : array_like, shape (..., 3)
+            Vector field specification. The number of vectors has to match
+            the number of vertices or the number of faces depending on the
+            value of `items`.
+        scale : float, optional
+            Global scale factor. This factor only affects vector display,
+            the `vectors` array is not changed in any way.
+        color : array_like, shape (3,), optional
+            RGB color triplet.
+        name : str, optional
+            Vector field identifier.
+
+        Returns
+        -------
+        Arrows
+            The corresponding wrapper instance.
+        """
+        vectors = np.asarray(vectors)
+
+        if items == 'verts':
+            if vectors.shape != (len(self._mesh.vertices), 3):
+                raise ValueError()
+
+            arrows = VertexGlyph(self._vtk_polydata, vectors, *_arrow_src(),
+                                 name=name)
+        elif items == 'cells':
+            if vectors.shape != (len(self._mesh.faces), 3):
+                raise ValueError()
+
+            arrows = CellGlyph(self._vtk_polydata, vectors, *_arrow_src(),
+                               name=name)
+        else:
+            raise ValueError()
+
+        arrows.color = color
+        arrows.scale = scale
 
         add(arrows)
         return arrows
@@ -5513,7 +5781,7 @@ class PolyMesh(PolyData):
     #     return sum / edges.GetNumberOfCells(), min, max
 
 
-class PolyGraph(PolyData):
+class _PolyGraph(PolyData):
     """ Polygonal graph.
 
     Parameters
