@@ -1,0 +1,45 @@
+﻿m3sh.linalg
+===========
+
+.. automodule:: m3sh.linalg
+
+   
+   
+   
+
+   
+   
+   
+
+   
+   
+   
+   
+   
+   
+   .. rubric:: Functions
+
+   .. autosummary::
+      :toctree:
+      :template: function.rst
+   
+      affine_map
+      angle
+      clamp
+      coc_mat
+      cotan
+      cramer
+      cross
+      cross_mat
+      norm
+      norm_sqrd
+      perp
+      rank
+      rotate
+      rotation
+      rotation_from_quaternion
+      rotation_mat
+      unit
+      unit_inplace
+   
+   

@@ -1,0 +1,41 @@
+.. raw:: html
+
+   <div class="prename">m3sh.obj.</div>
+   <div class="empty"></div>
+
+CSType
+===============
+
+.. currentmodule:: m3sh.obj
+ 
+.. autoclass:: CSType
+    
+   
+   
+   .. rubric:: Attributes
+ 
+   .. autosummary::
+      :toctree:
+      :template: attribute.rst
+   
+      ~CSType.degree
+      ~CSType.domain
+      ~CSType.parameters
+      ~CSType.rational
+      ~CSType.type
+   
+   
+ 
+   
+   
+   .. rubric:: Methods
+ 
+   .. autosummary::
+      :toctree: 
+      :template: method.rst
+   
+      ~CSType.bezier
+      ~CSType.bspline
+      ~CSType.cparray
+   
+   

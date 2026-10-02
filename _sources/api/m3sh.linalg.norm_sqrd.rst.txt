@@ -1,0 +1,11 @@
+.. raw:: html
+
+   <div class="prename">m3sh.linalg.</div>
+   <div class="empty"></div>
+
+norm_sqrd
+=====================
+
+.. currentmodule:: m3sh.linalg
+
+.. autofunction:: norm_sqrd

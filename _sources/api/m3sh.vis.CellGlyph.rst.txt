@@ -1,0 +1,52 @@
+.. raw:: html
+
+   <div class="prename">m3sh.vis.</div>
+   <div class="empty"></div>
+
+CellGlyph
+==================
+
+.. currentmodule:: m3sh.vis
+ 
+.. autoclass:: CellGlyph
+    
+   
+   
+   .. rubric:: Attributes
+ 
+   .. autosummary::
+      :toctree:
+      :template: attribute.rst
+   
+      ~CellGlyph.backface_opacity
+      ~CellGlyph.bounds
+      ~CellGlyph.color
+      ~CellGlyph.name
+      ~CellGlyph.opacity
+      ~CellGlyph.pickable
+      ~CellGlyph.prop
+      ~CellGlyph.scale
+      ~CellGlyph.shading
+      ~CellGlyph.visible
+      ~CellGlyph.wireframe
+   
+   
+ 
+   
+   
+   .. rubric:: Methods
+ 
+   .. autosummary::
+      :toctree: 
+      :template: method.rst
+   
+      ~CellGlyph.categorical
+      ~CellGlyph.colorize
+      ~CellGlyph.index
+      ~CellGlyph.lookuptable
+      ~CellGlyph.modified
+      ~CellGlyph.silhouette
+   
+   
+   
+   

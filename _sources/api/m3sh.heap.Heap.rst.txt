@@ -1,0 +1,37 @@
+.. raw:: html
+
+   <div class="prename">m3sh.heap.</div>
+   <div class="empty"></div>
+
+Heap
+==============
+
+.. currentmodule:: m3sh.heap
+ 
+.. autoclass:: Heap
+    
+   
+   
+   .. rubric:: Attributes
+ 
+   .. autosummary::
+      :toctree:
+      :template: attribute.rst
+   
+      ~Heap.top
+   
+   
+ 
+   
+   
+   .. rubric:: Methods
+ 
+   .. autosummary::
+      :toctree: 
+      :template: method.rst
+   
+      ~Heap.from_list
+      ~Heap.pop
+      ~Heap.push
+   
+   

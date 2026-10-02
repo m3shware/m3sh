@@ -1,0 +1,11 @@
+.. raw:: html
+
+   <div class="prename">m3sh.traits.</div>
+   <div class="empty"></div>
+
+principal_curvature
+===============================
+
+.. currentmodule:: m3sh.traits
+
+.. autofunction:: principal_curvature

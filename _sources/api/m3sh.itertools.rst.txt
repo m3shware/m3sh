@@ -1,0 +1,36 @@
+﻿m3sh.itertools
+==============
+
+.. automodule:: m3sh.itertools
+
+   
+   
+   
+
+   
+   
+   
+
+   
+   
+   
+   
+   
+   
+   .. rubric:: Functions
+
+   .. autosummary::
+      :toctree:
+      :template: function.rst
+   
+      edges
+      faces
+      faces_bfs
+      faces_lnk
+      fdual_bfs
+      halfs
+      verts
+      verts_bfs
+      verts_dij
+   
+   
