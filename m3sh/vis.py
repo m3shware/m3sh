@@ -2064,20 +2064,24 @@ def _app_icon(window, file='m3sh.png'):
 
 
 def _generic_lut(range=(0.0, 1.0), gradient='Brewer Diverging Spectral (11)',
-                 logscale=False, size=128, below=None, above=None, nan=None):
-    """ Generate ordinal lookup table.
+                 size=128, logscale=False, below=None, above=None, nan=None):
+    """ Generate lookup table.
+
+    Generate ordinal or categorical lookup table depending on the `gradient`
+    value.
 
     Parameters
     ----------
     range : (float, float), optional
         The valid range of scalar input.
     gradient : str, optional
-        Name of color gradient or color series.
-    logscale : bool, optional
-        Toggle logarithmic scaling.
+        Name of color gradient or color series. Discrete color series
+        produce ordinal lookup tables.
     size : int, optional
         Number of table values. Has no effect when using a predefined
         discrete color series.
+    logscale : bool, optional
+        Toggle logarithmic scaling.
     below : array_like, shape (3,) or (4,), optional
         RGB(A) color intensities for scalars below table range.
     above : array_like, shape (3,) or (4,), optional
@@ -2146,7 +2150,7 @@ def _generic_lut(range=(0.0, 1.0), gradient='Brewer Diverging Spectral (11)',
     return lut
 
 
-def _tweak_lut(lut, range=None, gradient=None, logscale=None, size=None,
+def _tweak_lut(lut, range=None, gradient=None, size=None, logscale=None,
                **kwargs):
     """ Modify ordinal lookup table.
 
@@ -2161,11 +2165,11 @@ def _tweak_lut(lut, range=None, gradient=None, logscale=None, size=None,
     gradient : str, optional
         Name of color gradient or color series. Smooth color gradients are
         defined by the identifiers 'hot', 'cool', 'jet', and 'grey'.
-    logscale : bool, optional
-        Switch between linear and logarithmic scale.
     size : int, optional
         Size of lookup table, i.e., the number of colors. Has no effect
         when using a predefined discrete color series.
+    logscale : bool, optional
+        Switch between linear and logarithmic scale.
 
     Keyword arguments
     -----------------
@@ -3160,8 +3164,10 @@ class PropertyMixin:
             self.prop.GetProperty().SetRepresentationToSurface()
 
     @property
-    def interpolation(self):
+    def shading(self):
         """ Shading algorithm.
+
+        .. versionadded:: 1.1.0
 
         Set shading to either 'flat', 'gouraud', or 'phong' interpolation.
         Except for flat shading, all shading algorithms require surface
@@ -3169,8 +3175,8 @@ class PropertyMixin:
         """
         return self.prop.GetProperty().GetInterpolationAsString()
 
-    @interpolation.setter
-    def interpolation(self, value):
+    @shading.setter
+    def shading(self, value):
         match value.lower():
             case 'flat':
                 self.prop.GetProperty().SetInterpolationToFlat()
@@ -3184,8 +3190,8 @@ class MapperMixin:
     # Assumes that self._vtk_prop is derived from a class that provides
     # the GetMapper() method.
 
-    def lookuptable(self, range=None, gradient=None, logscale=None,
-                    size=None, **kwargs):
+    def lookuptable(self, range=None, gradient=None, size=None,
+                    logscale=None, **kwargs):
         """ Modify lookup table properties.
 
         An objects' lookup tables determines how entries of a scalar array
@@ -3200,10 +3206,10 @@ class MapperMixin:
             Color scheme identifier. Smooth color gradients are defined
             by the color schemes 'hot', 'cool', 'jet', and 'grey'. Discrete
             color series are defined in the :class:`vtkColorSeries` class.
-        logscale : bool, optional
-            Switch between linear and logarithmic scale.
         size : int, optional
             Size of lookup table.
+        logscale : bool, optional
+            Switch between linear and logarithmic scale.
         below, above, nan : array_like
             Color for scalars out of range and NaN scalars. Colors can be
             specified vy RGB of RGBA values.
@@ -3211,7 +3217,7 @@ class MapperMixin:
         # The current lookup table. Properties are modified according to the
         # given parameters. None values preserve the corresponding property.
         lut = self._vtk_prop.GetMapper().GetLookupTable()
-        _tweak_lut(lut, range, gradient, logscale, size, **kwargs)
+        _tweak_lut(lut, range, gradient, size, logscale, **kwargs)
 
     def categorical(self, values, labels=None, colors=None, **kwargs):
         """ Modify lookup table properties.
@@ -3279,7 +3285,7 @@ class GlyphMixin:
             self._scalars = value
 
             array = numpy_to_vtk(self._scalars)
-            array.SetName('glyph_scale')
+            array.SetName(self._name + '_scale')
 
             self._vtk_polydata.GetPointData().AddArray(array)
 
@@ -3288,7 +3294,8 @@ class GlyphMixin:
             self._vtk_glyph.SetScaling(True)
             self._vtk_glyph.SetScaleModeToScaleByScalar()
             self._vtk_glyph.SetInputArrayToProcess(
-                0, 0, 0, vtk.vtkDataObject.FIELD_ASSOCIATION_POINTS, 'glyph_scale')
+                0, 0, 0, vtk.vtkDataObject.FIELD_ASSOCIATION_POINTS,
+                array.GetName())
         else:
             raise ValueError()
 
@@ -3314,7 +3321,7 @@ class GlyphMixin:
             self._colors = colors
 
             colors = numpy_to_vtk(self._colors)
-            colors.SetName('glyph_color')
+            colors.SetName(self._name + '_color')
 
             # This will replaces an array of the same name if present. We
             # use field data because point data scalars are already used
@@ -3323,7 +3330,7 @@ class GlyphMixin:
 
             mapper = self._vtk_prop.GetMapper()
             mapper.SetScalarModeToUsePointFieldData()
-            mapper.SelectColorArray('glyph_color')
+            mapper.SelectColorArray(colors.GetName())
             mapper.SetScalarVisibility(True)
 
             # Direct colors if the array has 3 components, otherwise
@@ -3657,6 +3664,7 @@ class VertexGlyph(PropertyMixin, MapperMixin, GlyphMixin, Prop):
     def __init__(self, polydata, vectors, source, xform, *, name):
         self._points = None
         self._vectors = None
+        self._name = str(name)
 
         self._vtk_glyph = vtk.vtkGlyph3D()
         self._vtk_glyph.SetInputData(polydata)
@@ -3670,14 +3678,15 @@ class VertexGlyph(PropertyMixin, MapperMixin, GlyphMixin, Prop):
             self._vectors = np.asarray(vectors)
 
             array = numpy_to_vtk(self._vectors)
-            array.SetName(str(name))
+            array.SetName(self._name + '_vector')
 
             polydata.GetPointData().AddArray(array)
 
             self._vtk_glyph.OrientOn()
             self._vtk_glyph.SetVectorModeToUseVector()
             self._vtk_glyph.SetInputArrayToProcess(
-                1, 0, 0, vtk.vtkDataObject.FIELD_ASSOCIATION_POINTS, str(name))
+                1, 0, 0, vtk.vtkDataObject.FIELD_ASSOCIATION_POINTS,
+                array.GetName())
 
             self._vtk_glyph.SetScaling(True)
             self._vtk_glyph.SetScaleModeToScaleByVector()
@@ -3720,6 +3729,7 @@ class CellGlyph(PropertyMixin, MapperMixin, GlyphMixin, Prop):
     def __init__(self, polydata, vectors, source, xform, *, name):
         self._points = None
         self._vectors = None
+        self._name = str(name)
 
         centers = vtk.vtkCellCenters()
         centers.SetInputData(polydata)
@@ -3736,14 +3746,15 @@ class CellGlyph(PropertyMixin, MapperMixin, GlyphMixin, Prop):
             self._vectors = np.asarray(vectors)
 
             array = numpy_to_vtk(self._vectors)
-            array.SetName(str(name))
+            array.SetName(self._name + '_vector')
 
             polydata.GetCellData().AddArray(array)
 
             self._vtk_glyph.OrientOn()
             self._vtk_glyph.SetVectorModeToUseVector()
             self._vtk_glyph.SetInputArrayToProcess(
-                1, 0, 0, vtk.vtkDataObject.FIELD_ASSOCIATION_POINTS, str(name))
+                1, 0, 0, vtk.vtkDataObject.FIELD_ASSOCIATION_POINTS,
+                array.GetName())
 
             self._vtk_glyph.SetScaling(True)
             self._vtk_glyph.SetScaleModeToScaleByVector()
@@ -3787,10 +3798,7 @@ class CellGlyph(PropertyMixin, MapperMixin, GlyphMixin, Prop):
             self._scalars = value
 
             array = numpy_to_vtk(self._scalars)
-            array.SetName('glyph_scale')
-
-            # pointdata = self._vtk_polydata.GetPointData()
-            # pointdata.SetScalars(numpy_to_vtk(value))
+            array.SetName(self._name + '_scale')
 
             self._vtk_polydata.GetCellData().AddArray(array)
 
@@ -3799,7 +3807,8 @@ class CellGlyph(PropertyMixin, MapperMixin, GlyphMixin, Prop):
             self._vtk_glyph.SetScaling(True)
             self._vtk_glyph.SetScaleModeToScaleByScalar()
             self._vtk_glyph.SetInputArrayToProcess(
-                0, 0, 0, vtk.vtkDataObject.FIELD_ASSOCIATION_POINTS, 'glyph_scale')
+                0, 0, 0, vtk.vtkDataObject.FIELD_ASSOCIATION_POINTS,
+                array.GetName())
         else:
             raise ValueError()
 
@@ -3811,7 +3820,7 @@ class CellGlyph(PropertyMixin, MapperMixin, GlyphMixin, Prop):
             self._colors = colors
 
             colors = numpy_to_vtk(self._colors)
-            colors.SetName('glyph_color')
+            colors.SetName(self._name + '_color')
 
             # This will replaces an array of the same name if present. We
             # use field data because point data scalars are already used
@@ -3820,7 +3829,7 @@ class CellGlyph(PropertyMixin, MapperMixin, GlyphMixin, Prop):
 
             mapper = self._vtk_prop.GetMapper()
             mapper.SetScalarModeToUsePointFieldData()
-            mapper.SelectColorArray('glyph_color')
+            mapper.SelectColorArray(colors.GetName())
             mapper.SetScalarVisibility(True)
 
             # Direct colors if the array has 3 components, otherwise
@@ -3828,7 +3837,6 @@ class CellGlyph(PropertyMixin, MapperMixin, GlyphMixin, Prop):
             if self._colors.ndim  == 1:
                 mapper.SetColorModeToMapScalars()
             else:
-                print('ye')
                 mapper.SetColorModeToDirectScalars()
         else:
             raise ValueError()
@@ -4308,7 +4316,7 @@ class _Cones(Prop, PropertyMixin):
         """
         for actor in self._vtk_prop.GetParts():
             lut = actor.GetMapper().GetLookupTable()
-            _tweak_lut(lut, range, gradient, logscale, size, **kwargs)
+            _tweak_lut(lut, range, gradient, size, logscale, **kwargs)
 
     @staticmethod
     def _cone(height, radius, capping=False, resolution=24):
@@ -4352,7 +4360,7 @@ class _Cones(Prop, PropertyMixin):
 
         mapper = vtk.vtkPolyDataMapper()
         mapper.SetInputConnection(glyph.GetOutputPort())
-        mapper.SetLookupTable(_generic_lut(gradient='spectral'))
+        mapper.SetLookupTable(_generic_lut())
         mapper.SetUseLookupTableScalarRange(True)
         mapper.SetScalarVisibility(False)
 
@@ -5446,7 +5454,7 @@ class PolyMesh(PolyData):
             self._mesh = mesh
             self._normals = None
 
-        self.interpolation = 'flat'
+        self.shading = 'flat'
 
     @property
     def mesh(self):
@@ -5466,10 +5474,6 @@ class PolyMesh(PolyData):
         ----------
         normals : array_like
             Vertex normals.
-
-        See Also
-        --------
-        interpolation
         """
         if normals is None:
             # This should remove normals from the data set... the correct
@@ -5924,7 +5928,7 @@ class _TetrahedralMesh(Prop, PropertyMixin, MapperMixin):
 
         # Create standard lookup table and how this table is used by
         # the mapper.
-        mapper.SetLookupTable(_generic_lut(gradient='spectral'))
+        mapper.SetLookupTable(_generic_lut())
         mapper.SetUseLookupTableScalarRange(True)
         mapper.SetScalarVisibility(False)
 
