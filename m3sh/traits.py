@@ -1228,7 +1228,7 @@ def face_normals(mesh):
     return np.array([face_normal(f) for f in mesh.faces])
 
 
-def planarity_score(face, denom=None):
+def _planarity_score(face, denom=None):
     """ Planarity score of a skew quadrilateral.
 
     Distance of diagonals. Can be normalized to make the measure scale
@@ -1279,7 +1279,7 @@ def planarity_score(face, denom=None):
     return d / denom
 
 
-def planarity_scores(mesh, denom=None, offset=0.0):
+def _planarity_scores(mesh, denom=None, offset=0.0):
     """ Face planarity scores.
 
     Parameters
@@ -1311,7 +1311,7 @@ def planarity_scores(mesh, denom=None, offset=0.0):
     return [offset + planarity_score(f, denom) for f in mesh]
 
 
-def plane_equation(face):
+def _plane_equation(face):
     r""" Equation of face plane.
 
     .. versionadded:: 1.1.0
@@ -1385,7 +1385,7 @@ def laplace_matrix(mesh, weights=None, normalize=False):
     return L.tocsr()
 
 
-def smooth_(mesh, func, iterations, step=0.5, weights=None):
+def _smooth_(mesh, func, iterations, step=0.5, weights=None):
     """ Smooth piecewise linear function.
 
     Parameters
@@ -1416,7 +1416,7 @@ def smooth_(mesh, func, iterations, step=0.5, weights=None):
     return func
 
 
-def smooth(mesh, func, iterations, step=0.5, weights=None):
+def _smooth(mesh, func, iterations, step=0.5, weights=None):
     """ Smooth piecewise linear function.
 
     Parameters
