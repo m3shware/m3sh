@@ -1450,19 +1450,10 @@ class Mesh:
                     data = np.resize(data, (0, *data.shape[1:]))
                     setattr(self, name, data)
 
-    def clean(self, purge_isolated=True):
+    def clean(self):
         """ Garbage collection.
 
         Removes all deleted mesh items from the respective containers.
-
-        Parameters
-        ----------
-        purge_isolated : bool, optional
-            Delete and remove isolated vertices in the process.
-
-        Warnings
-        --------
-        Previously obtained vertex and face indices become invalid.
         """
 
         def shrink(data, items, idx, name):
@@ -1493,9 +1484,6 @@ class Mesh:
         # This should prevent accidental access by triggering assertions and
         # raising exceptions by references outside the mesh instance.
         for v in self._verts:
-            if purge_isolated and v.isolated:
-                self.delete_vertex(v)
-
             if v._deleted:
                 del self._vhout[v]
                 v._invalidate()
@@ -1668,9 +1656,10 @@ class Mesh:
         if (v is not vertex) or (vertex._mesh is not self):
             raise ValueError("'vertex' does not belong to this mesh")
 
-        # This should either be turned into a warning or a return statement
-        # when the method is complete.
-        assert not v._deleted
+        # This should either be turned into a warning or a return statement.
+        # A warning might still be a good idea!
+        if v._deleted:
+            return
 
         if v.isolated:
             v._deleted = True

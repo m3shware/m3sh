@@ -1308,7 +1308,7 @@ def _planarity_scores(mesh, denom=None, offset=0.0):
 
     >>> planarity_scores(mesh, edge_stats(mesh)[-1])
     """
-    return [offset + planarity_score(f, denom) for f in mesh]
+    return [offset + _planarity_score(f, denom) for f in mesh]
 
 
 def _plane_equation(face):
