@@ -179,11 +179,14 @@ class Mesh:
         if faces is not None:
             # Possibly re-oriented face definitions and a list of lists
             # that describes the components of the mesh.
-            faces, components = _oriented_components(faces)
+            # faces, components = _oriented_components(faces)
 
-            for component in components:
-                for face in (faces[i] for i in component):
-                    self.add_face(face)
+            # for component in components:
+            #     for face in (faces[i] for i in component):
+            #         self.add_face(face)
+
+            for face in faces:
+                self.add_face(face)
 
             # Typically one does not expect isolated vertices in a mesh
             # that does define faces. Such vertices might be artifacts.
@@ -4623,8 +4626,8 @@ def _oriented_components(faces):
         face_ = set()
 
         for i in range(valence):
-            origin = face[i]
-            target = face[(i+1) % valence]
+            origin = int(face[i])
+            target = int(face[(i+1) % valence])
 
             # The edge of the face in its original orientation (a halfedge).
             # Used later when building a consistent orientation.
@@ -4661,7 +4664,7 @@ def _oriented_components(faces):
 
     components = list(components.values())
 
-    # The property oriented (if possible) faces. This is an array is the
+    # The properly oriented (if possible) faces. This is an array if the
     # input was an array (deep copy) and a list (shallow copy) otherwise.
     faces_oriented = faces.copy()
 
@@ -4676,7 +4679,7 @@ def _oriented_components(faces):
             face_ = faces_[fidx]
 
             for i, j in face_:
-                origin, target = i, j
+                origin, target = int(i), int(j)
 
                 # Need the edge without orientation to look up the indices
                 # of incident faces.
