@@ -4909,6 +4909,32 @@ class PolyData(PropertyMixin, MapperMixin, Prop):
     #     if color is not None:
     #         self._vtk_prop.GetProperty().SetEdgeColor(color)
 
+    def silhouette(self, width=1, style=None, color=colors.black):
+        silhouette = vtk.vtkPolyDataSilhouette()
+        silhouette.SetInputData(self._vtk_polydata)
+        silhouette.SetCamera(_renderer.GetActiveCamera())
+        silhouette.SetEnableFeatureAngle(False)
+        silhouette.SetBorderEdges(True)
+
+        mapper = vtk.vtkPolyDataMapper()
+        mapper.SetInputConnection(silhouette.GetOutputPort())
+        mapper.SetResolveCoincidentTopologyToPolygonOffset()
+
+        actor = vtk.vtkActor()
+        actor.SetMapper(mapper)
+        actor.GetProperty().SetColor(color)
+        actor.GetProperty().SetLineWidth(width)
+
+        if style == 'lines':
+            actor.GetProperty().SetRenderLinesAsTubes(False)
+        elif style == 'tubes':
+            actor.GetProperty().SetRenderLinesAsTubes(True)
+
+        self._spawn.append(prop := Prop(actor))
+
+        add(prop)
+        return prop
+
     def modified(self):
         """ Update notification.
 
