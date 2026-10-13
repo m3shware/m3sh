@@ -1,0 +1,11 @@
+.. raw:: html
+
+   <div class="prename">m3sh.hds.Mesh.</div>
+   <div class="empty"></div>
+
+write
+===================
+
+.. currentmodule:: m3sh.hds
+
+.. automethod:: Mesh.write

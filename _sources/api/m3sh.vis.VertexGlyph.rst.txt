@@ -1,0 +1,53 @@
+.. raw:: html
+
+   <div class="prename">m3sh.vis.</div>
+   <div class="empty"></div>
+
+VertexGlyph
+====================
+
+.. currentmodule:: m3sh.vis
+ 
+.. autoclass:: VertexGlyph
+    
+   
+   
+   .. rubric:: Attributes
+ 
+   .. autosummary::
+      :toctree:
+      :template: attribute.rst
+   
+      ~VertexGlyph.backface_opacity
+      ~VertexGlyph.bounds
+      ~VertexGlyph.color
+      ~VertexGlyph.name
+      ~VertexGlyph.opacity
+      ~VertexGlyph.pickable
+      ~VertexGlyph.prop
+      ~VertexGlyph.scale
+      ~VertexGlyph.shading
+      ~VertexGlyph.visible
+      ~VertexGlyph.wireframe
+   
+   
+ 
+   
+   
+   .. rubric:: Methods
+ 
+   .. autosummary::
+      :toctree: 
+      :template: method.rst
+   
+      ~VertexGlyph.categorical
+      ~VertexGlyph.colorize
+      ~VertexGlyph.from_points
+      ~VertexGlyph.index
+      ~VertexGlyph.lookuptable
+      ~VertexGlyph.modified
+      ~VertexGlyph.silhouette
+   
+   
+   
+   

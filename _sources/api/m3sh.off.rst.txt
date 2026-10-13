@@ -1,0 +1,28 @@
+﻿m3sh.off
+========
+
+.. automodule:: m3sh.off
+
+   
+   
+   
+
+   
+   
+   
+
+   
+   
+   
+   
+   
+   
+   .. rubric:: Functions
+
+   .. autosummary::
+      :toctree:
+      :template: function.rst
+   
+      read
+   
+   

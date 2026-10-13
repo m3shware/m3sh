@@ -1,0 +1,45 @@
+﻿m3sh.obj
+========
+
+.. automodule:: m3sh.obj
+
+   
+   
+   
+
+   
+   
+   .. rubric:: Classes
+
+   .. autosummary::
+      :toctree:
+      :template: class-toc.rst
+   
+      CSType
+   
+   
+
+   
+   
+   .. rubric:: Exceptions
+
+   .. autosummary::
+      :toctree:
+      :template: exception.rst
+   
+      OBJError
+   
+   
+   
+   
+   
+   .. rubric:: Functions
+
+   .. autosummary::
+      :toctree:
+      :template: function.rst
+   
+      read
+      write
+   
+   

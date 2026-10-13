@@ -1,0 +1,32 @@
+.. raw:: html
+
+   <div class="prename">m3sh.hds.</div>
+   <div class="empty"></div>
+
+Face
+=============
+
+.. currentmodule:: m3sh.hds
+ 
+.. autoclass:: Face
+    
+   
+   
+   .. rubric:: Attributes
+ 
+   .. autosummary::
+      :toctree:
+      :template: attribute.rst
+   
+      ~Face.barycenter
+      ~Face.boundary
+      ~Face.deleted
+      ~Face.halfedge
+      ~Face.index
+      ~Face.valence
+   
+   
+ 
+   
+   
+   

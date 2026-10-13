@@ -1,0 +1,11 @@
+.. raw:: html
+
+   <div class="prename">m3sh.linalg.</div>
+   <div class="empty"></div>
+
+affine_map
+======================
+
+.. currentmodule:: m3sh.linalg
+
+.. autofunction:: affine_map

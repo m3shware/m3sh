@@ -1,0 +1,11 @@
+.. raw:: html
+
+   <div class="prename">m3sh.linalg.</div>
+   <div class="empty"></div>
+
+unit_inplace
+========================
+
+.. currentmodule:: m3sh.linalg
+
+.. autofunction:: unit_inplace

@@ -1,0 +1,11 @@
+.. raw:: html
+
+   <div class="prename">m3sh.obj.CSType.</div>
+   <div class="empty"></div>
+
+parameters
+==========================
+
+.. currentmodule:: m3sh.obj
+
+.. autoattribute:: CSType.parameters

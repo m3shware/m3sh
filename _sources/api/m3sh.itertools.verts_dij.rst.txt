@@ -1,0 +1,11 @@
+.. raw:: html
+
+   <div class="prename">m3sh.itertools.</div>
+   <div class="empty"></div>
+
+verts_dij
+========================
+
+.. currentmodule:: m3sh.itertools
+
+.. autofunction:: verts_dij
