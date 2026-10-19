@@ -2023,6 +2023,10 @@ def _sphere(center, radius, opacity=1.0, resolution=24, color=colors.snow):
     ball = PolyMesh(sphere.GetOutput())
     ball.color = color
     ball.opacity = opacity
+    ball.shading = 'gouraud'
+
+    # Need a canvas to access the current camera...
+    # ball.silhouette()
 
     add(ball)
     return ball
