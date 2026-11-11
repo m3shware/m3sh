@@ -2641,6 +2641,7 @@ class Mesh:
 
                 # Be aware of broadcasting! Even if shapes don't match the
                 # assignment to data[-1] works if shapes can be broadcast!
+                # data.resize((shape[0]+1, *shape[1:]), refcheck=False)
                 data = np.resize(data, (shape[0]+1, *shape[1:]))
                 data[-1] = value
 

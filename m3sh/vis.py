@@ -783,6 +783,11 @@ def update(*args, **kwargs):
         iren.Render()
 
 
+def process(*args, **kwargs):
+    for iren in _interactors:
+        iren.ProcessEvents()
+
+
 def aabb(points, opacity=0.15, edges=True, labels='dim', color=colors.snow):
     """ Axis aligned bounding box.
 
@@ -5785,6 +5790,22 @@ class PolyMesh(PolyData):
 
         add(actor)
         return Prop(actor)
+
+    def modified(self):
+        """ Update notification.
+        """
+        super().modified()
+
+        if (mesh := self._mesh) is not None:
+            cells = vtk.vtkCellArray()
+
+            for f in mesh.faces:
+                face = vtk.vtkIdList()
+                for v in f:
+                    face.InsertNextId(int(v))
+                cells.InsertNextCell(face)
+
+            self._vtk_polydata.SetPolys(cells)
 
     # def _avg_edge_length(self):
     #     # The edge extraction filter only works when there are polygonal
