@@ -60,7 +60,7 @@ from vtk.util.numpy_support import vtk_to_numpy
 # is closed.
 _renwin = None
 
-# The current render of the main window. This is either the last render
+# The current render of the main window. This is either the last renderer
 # created or set as current via canvas().
 _renderer = None
 
@@ -786,6 +786,10 @@ def update(*args, **kwargs):
 def process(*args, **kwargs):
     for iren in _interactors:
         iren.ProcessEvents()
+
+
+def focus(prop):
+    _renderer.ResetCamera(prop.GetBounds())
 
 
 def aabb(points, opacity=0.15, edges=True, labels='dim', color=colors.snow):
