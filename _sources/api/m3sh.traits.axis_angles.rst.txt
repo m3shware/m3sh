@@ -1,0 +1,11 @@
+.. raw:: html
+
+   <div class="prename">m3sh.traits.</div>
+   <div class="empty"></div>
+
+axis_angles
+=======================
+
+.. currentmodule:: m3sh.traits
+
+.. autofunction:: axis_angles

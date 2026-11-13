@@ -1,0 +1,11 @@
+.. raw:: html
+
+   <div class="prename">m3sh.obj.</div>
+   <div class="empty"></div>
+
+read
+=============
+
+.. currentmodule:: m3sh.obj
+
+.. autofunction:: read

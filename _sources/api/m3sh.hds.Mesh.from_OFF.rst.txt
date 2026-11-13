@@ -1,0 +1,11 @@
+.. raw:: html
+
+   <div class="prename">m3sh.hds.Mesh.</div>
+   <div class="empty"></div>
+
+from_OFF
+======================
+
+.. currentmodule:: m3sh.hds
+
+.. automethod:: Mesh.from_OFF

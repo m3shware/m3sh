@@ -1,0 +1,11 @@
+.. raw:: html
+
+   <div class="prename">m3sh.heap.Heap.</div>
+   <div class="empty"></div>
+
+top
+==================
+
+.. currentmodule:: m3sh.heap
+
+.. autoattribute:: Heap.top

@@ -1,0 +1,11 @@
+.. raw:: html
+
+   <div class="prename">m3sh.hds.Halfedge.</div>
+   <div class="empty"></div>
+
+collapsible
+=============================
+
+.. currentmodule:: m3sh.hds
+
+.. autoattribute:: Halfedge.collapsible
