@@ -271,7 +271,8 @@ class Mesh:
         if index == 0:
             return self._points
         elif index == 1:
-            return self._faces
+            return (f for f in self)
+            # return self._faces
 
         raise IndexError(f'index must be 0 or 1, got {index}')
 
@@ -3306,7 +3307,8 @@ class Vertex:
         """ Topological state.
 
         A vertex is defined to be a boundary vertex if it is incident to
-        a boundary halfedge.
+        a boundary halfedge. In particular, isolated vertices are not
+        classified as boundary vertices!
         """
         assert not self._deleted
         return any(h.boundary for h in self._hiter())

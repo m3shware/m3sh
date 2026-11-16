@@ -3304,6 +3304,7 @@ class GlyphMixin:
 
             # There is no SetScaleModeToDataScalingOn(), just set the
             # scale mode to scalar or vector to enable it!
+            self._vtk_glyph.SetScaleFactor(1.0)
             self._vtk_glyph.SetScaling(True)
             self._vtk_glyph.SetScaleModeToScaleByScalar()
             self._vtk_glyph.SetInputArrayToProcess(
@@ -3817,6 +3818,7 @@ class CellGlyph(PropertyMixin, MapperMixin, GlyphMixin, Prop):
 
             # There is no SetScaleModeToDataScalingOn(), just set the
             # scale mode to scalar or vector to enable it!
+            self._vtk_glyph.SetScaleFactor(1.0)
             self._vtk_glyph.SetScaling(True)
             self._vtk_glyph.SetScaleModeToScaleByScalar()
             self._vtk_glyph.SetInputArrayToProcess(
