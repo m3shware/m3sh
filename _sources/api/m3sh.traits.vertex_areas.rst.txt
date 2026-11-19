@@ -1,0 +1,11 @@
+.. raw:: html
+
+   <div class="prename">m3sh.traits.</div>
+   <div class="empty"></div>
+
+vertex_areas
+========================
+
+.. currentmodule:: m3sh.traits
+
+.. autofunction:: vertex_areas

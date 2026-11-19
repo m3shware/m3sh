@@ -1,0 +1,11 @@
+.. raw:: html
+
+   <div class="prename">m3sh.vis.Texture.</div>
+   <div class="empty"></div>
+
+grid
+=====================
+
+.. currentmodule:: m3sh.vis
+
+.. automethod:: Texture.grid

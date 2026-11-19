@@ -1,0 +1,11 @@
+.. raw:: html
+
+   <div class="prename">m3sh.hds.Mesh.</div>
+   <div class="empty"></div>
+
+add_face_data
+===========================
+
+.. currentmodule:: m3sh.hds
+
+.. automethod:: Mesh.add_face_data

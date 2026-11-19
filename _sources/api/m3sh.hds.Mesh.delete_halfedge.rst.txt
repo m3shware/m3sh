@@ -1,0 +1,11 @@
+.. raw:: html
+
+   <div class="prename">m3sh.hds.Mesh.</div>
+   <div class="empty"></div>
+
+delete_halfedge
+=============================
+
+.. currentmodule:: m3sh.hds
+
+.. automethod:: Mesh.delete_halfedge

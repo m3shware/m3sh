@@ -1,0 +1,11 @@
+.. raw:: html
+
+   <div class="prename">m3sh.itertools.</div>
+   <div class="empty"></div>
+
+fdual_bfs
+========================
+
+.. currentmodule:: m3sh.itertools
+
+.. autofunction:: fdual_bfs

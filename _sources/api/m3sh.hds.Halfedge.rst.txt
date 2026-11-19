@@ -1,0 +1,38 @@
+.. raw:: html
+
+   <div class="prename">m3sh.hds.</div>
+   <div class="empty"></div>
+
+Halfedge
+=================
+
+.. currentmodule:: m3sh.hds
+ 
+.. autoclass:: Halfedge
+    
+   
+   
+   .. rubric:: Attributes
+ 
+   .. autosummary::
+      :toctree:
+      :template: attribute.rst
+   
+      ~Halfedge.boundary
+      ~Halfedge.collapsible
+      ~Halfedge.deleted
+      ~Halfedge.face
+      ~Halfedge.flippable
+      ~Halfedge.midpoint
+      ~Halfedge.next
+      ~Halfedge.origin
+      ~Halfedge.pair
+      ~Halfedge.prev
+      ~Halfedge.target
+      ~Halfedge.vector
+   
+   
+ 
+   
+   
+   

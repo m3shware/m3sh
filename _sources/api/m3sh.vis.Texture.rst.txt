@@ -1,0 +1,30 @@
+.. raw:: html
+
+   <div class="prename">m3sh.vis.</div>
+   <div class="empty"></div>
+
+Texture
+================
+
+.. currentmodule:: m3sh.vis
+ 
+.. autoclass:: Texture
+    
+   
+   
+   
+ 
+   
+   
+   .. rubric:: Methods
+ 
+   .. autosummary::
+      :toctree: 
+      :template: method.rst
+   
+      ~Texture.checker
+      ~Texture.grid
+   
+   
+   
+   

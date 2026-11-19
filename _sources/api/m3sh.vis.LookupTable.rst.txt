@@ -1,0 +1,36 @@
+.. raw:: html
+
+   <div class="prename">m3sh.vis.</div>
+   <div class="empty"></div>
+
+LookupTable
+====================
+
+.. currentmodule:: m3sh.vis
+ 
+.. autoclass:: LookupTable
+    
+   
+   
+   .. rubric:: Attributes
+ 
+   .. autosummary::
+      :toctree:
+      :template: attribute.rst
+   
+      ~LookupTable.bounds
+      ~LookupTable.height
+      ~LookupTable.name
+      ~LookupTable.pickable
+      ~LookupTable.position
+      ~LookupTable.prop
+      ~LookupTable.visible
+      ~LookupTable.width
+   
+   
+ 
+   
+   
+   
+   
+   

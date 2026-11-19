@@ -1,0 +1,11 @@
+.. raw:: html
+
+   <div class="prename">m3sh.heap.Heap.</div>
+   <div class="empty"></div>
+
+pop
+==================
+
+.. currentmodule:: m3sh.heap
+
+.. automethod:: Heap.pop

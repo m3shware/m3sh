@@ -1,0 +1,19 @@
+.. raw:: html
+
+   <div class="prename">m3sh.hds.</div>
+   <div class="empty"></div>
+
+NonManifoldError
+=========================
+
+.. currentmodule:: m3sh.hds
+
+.. autoclass:: NonManifoldError
+
+   
+   
+   
+
+   
+   
+   

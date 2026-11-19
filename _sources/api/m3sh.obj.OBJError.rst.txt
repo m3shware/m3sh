@@ -1,0 +1,19 @@
+.. raw:: html
+
+   <div class="prename">m3sh.obj.</div>
+   <div class="empty"></div>
+
+OBJError
+=================
+
+.. currentmodule:: m3sh.obj
+
+.. autoclass:: OBJError
+
+   
+   
+   
+
+   
+   
+   

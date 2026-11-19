@@ -1,0 +1,11 @@
+.. raw:: html
+
+   <div class="prename">m3sh.hds.Vertex.</div>
+   <div class="empty"></div>
+
+halfedge
+========================
+
+.. currentmodule:: m3sh.hds
+
+.. autoattribute:: Vertex.halfedge
