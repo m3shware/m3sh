@@ -3015,7 +3015,7 @@ def _show_id(iren, x, y, **kwargs):
     if iren.GetControlKey():
         # This is meant for meshes. Does not work for pure point clouds
         # since they define no cells.
-        actor, id, point, cell_id = pick(x, y, items='cells', iren=iren)
+        actor, point, id, cell_id = pick(x, y, items='cells', iren=iren)
 
         if actor is not None:
             print(f"picked actor: {BOLD}{actor.GetObjectName()}{ENDC}")
